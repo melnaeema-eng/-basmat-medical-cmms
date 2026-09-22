@@ -46,6 +46,11 @@ export default function MasterAssetLibrary(){
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState('')
  const [system,setSystem]=useState(''),[type,setType]=useState(''),[manufacturer,setManufacturer]=useState(''),[org,setOrg]=useState(''),[query,setQuery]=useState(''),[longLeadOnly,setLongLeadOnly]=useState(false),[busy,setBusy]=useState(false)
  const [adminOpen,setAdminOpen]=useState(false),[adminTab,setAdminTab]=useState('asset')
+  const focusAdmin=(tab)=>{
+   if(tab)setAdminTab(tab)
+   setAdminOpen(true)
+   window.setTimeout(()=>document.getElementById('master-library-admin')?.scrollIntoView({behavior:'smooth',block:'start'}),60)
+  }
  const emptyAsset={id:'',system_code:'GENERAL',code:'',name_ar:'',name_en:'',icon_text:'🔧',group_ar:'',group_en:'',description_ar:'',description_en:'',default_criticality:'medium',expected_life_years:'',procurement_class:'standard',default_lead_time_days:'',critical_spare:false,stock_strategy:''}
  const emptyBrand={id:'',code:'',name:'',short_name:'',website:''}
  const emptyOption={id:'',asset_type_id:'',manufacturer_id:'',model_family:'',notes:''}
@@ -118,11 +123,11 @@ export default function MasterAssetLibrary(){
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
 
- const editAsset=x=>{setAssetForm({...emptyAsset,...x,expected_life_years:x.expected_life_years||'',default_lead_time_days:x.default_lead_time_days||''});setAdminTab('asset');setAdminOpen(true);window.scrollTo({top:0,behavior:'smooth'})}
- const editBrand=x=>{setBrandForm({...emptyBrand,...x});setAdminTab('brand');setAdminOpen(true);window.scrollTo({top:0,behavior:'smooth'})}
- const editOption=x=>{setOptionForm({...emptyOption,...x});setAdminTab('option');setAdminOpen(true);window.scrollTo({top:0,behavior:'smooth'})}
- const editTemplate=x=>{setTemplateForm({...emptyTemplate,...x});setAdminTab('template');setAdminOpen(true);window.scrollTo({top:0,behavior:'smooth'})}
- const editStep=x=>{setStepForm({...emptyStep,...x});setAdminTab('step');setAdminOpen(true);window.scrollTo({top:0,behavior:'smooth'})}
+ const editAsset=x=>{setAssetForm({...emptyAsset,...x,expected_life_years:x.expected_life_years||'',default_lead_time_days:x.default_lead_time_days||''});focusAdmin('asset')}
+ const editBrand=x=>{setBrandForm({...emptyBrand,...x});focusAdmin('brand')}
+ const editOption=x=>{setOptionForm({...emptyOption,...x});focusAdmin('option')}
+ const editTemplate=x=>{setTemplateForm({...emptyTemplate,...x});focusAdmin('template')}
+ const editStep=x=>{setStepForm({...emptyStep,...x});focusAdmin('step')}
 
  const archiveAdmin=async(entity,id,active=false)=>{
   if(!confirm(lang==='ar'?(active?'إعادة تفعيل هذا العنصر؟':'أرشفة هذا العنصر؟'):(active?'Reactivate this item?':'Archive this item?')))return
@@ -156,14 +161,14 @@ export default function MasterAssetLibrary(){
      :'Expanded facility systems with common brands, PPM templates, and compact icons for screen and print.'}</p>
    </div>
    <div className="no-print" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-    {access?.super_admin&&<button className="btn primary" onClick={()=>setAdminOpen(v=>!v)}>{lang==='ar'?'⚙️ إدارة المكتبة':'⚙️ Manage Library'}</button>}
+    {access?.super_admin&&<button className="btn primary" onClick={()=>{if(adminOpen)setAdminOpen(false);else focusAdmin(adminTab)}}>{lang==='ar'?'⚙️ إدارة المكتبة':'⚙️ Manage Library'}</button>}
     <button className="btn" onClick={()=>window.print()}>{lang==='ar'?'🖨️ طباعة / حفظ PDF':'🖨️ Print / Save PDF'}</button>
    </div>
   </div>
 
   <Notice error={error} success={success}/>
 
-  {access?.super_admin&&adminOpen&&data&&<div className="facility-panel no-print" style={{marginBottom:14}}>
+  {access?.super_admin&&adminOpen&&data&&<div id="master-library-admin" className="facility-panel no-print" style={{marginBottom:14,scrollMarginTop:18}}>
    <h2 style={{marginTop:0}}>{lang==='ar'?'إدارة المكتبة المركزية — Super Admin':'Master Library Administration — Super Admin'}</h2>
    <p style={{fontSize:11,color:'#617083'}}>{lang==='ar'?'الإضافات والتعديلات هنا تصبح متاحة لجميع المنظمات. استخدم الأرشفة بدلاً من الحذف للسجلات المستخدمة.':'Changes here become available to all organizations. Archive used records instead of deleting them.'}</p>
    <div className="master-admin-tabs">
@@ -344,8 +349,8 @@ export default function MasterAssetLibrary(){
       </div>
       {access?.super_admin&&<div className="asset-admin-mini no-print">
        <button className="btn" onClick={()=>editAsset(t)}>✏️ {lang==='ar'?'تعديل الأصل':'Edit asset'}</button>
-       <button className="btn" onClick={()=>{setOptionForm({...emptyOption,asset_type_id:t.id});setAdminTab('option');setAdminOpen(true)}}>🏷️ {lang==='ar'?'إضافة علامة/موديل':'Add brand/model'}</button>
-       <button className="btn" onClick={()=>{setTemplateForm({...emptyTemplate,asset_type_id:t.id});setAdminTab('template');setAdminOpen(true)}}>🛠️ {lang==='ar'?'إضافة PPM':'Add PPM'}</button>
+       <button className="btn" onClick={()=>{setOptionForm({...emptyOption,asset_type_id:t.id});focusAdmin('option')}}>🏷️ {lang==='ar'?'إضافة علامة/موديل':'Add brand/model'}</button>
+       <button className="btn" onClick={()=>{setTemplateForm({...emptyTemplate,asset_type_id:t.id});focusAdmin('template')}}>🛠️ {lang==='ar'?'إضافة PPM':'Add PPM'}</button>
        <button className="btn" onClick={()=>archiveAdmin('asset',t.id,t.status!=='active')}>{t.status==='active'?'🗄️ '+(lang==='ar'?'أرشفة':'Archive'):'✅ '+(lang==='ar'?'تفعيل':'Activate')}</button>
        {t.options.slice(0,3).map(o=><button key={o.id} className="btn" onClick={()=>editOption(o)}>✏️ {o.manufacturer?.short_name||o.manufacturer?.name||'Model'}</button>)}
       </div>}
