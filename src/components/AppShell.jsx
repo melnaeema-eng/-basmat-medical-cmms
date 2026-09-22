@@ -6,8 +6,18 @@ import {supabase} from '../lib/supabaseClient'
 import '../bafm-theme.css'
 
 const groups=[
- {title:'Core Operations | العمليات الأساسية',items:[
+ {title:'Dashboard | لوحة التحكم',items:[
   ['/', 'Dashboard | لوحة التحكم', null,'home'],
+ ]},
+ {title:'Administration | الإدارة',items:[
+  ['/organizations','Organizations | المنظمات','organizations.view','org'],
+  ['/clients','Clients | العملاء','clients.view','client'],
+  ['/enterprise-structure','Structure | الهيكل التشغيلي','enterprise-structure.view','tree'],
+  ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
+  ['/security-readiness','Security | الأمن','security.view','lock'],
+  ['/release-readiness','System Readiness | جاهزية النظام','release.view','check'],
+ ]},
+ {title:'Core Operations | العمليات الأساسية',items:[
   ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
   ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
   ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
@@ -49,17 +59,8 @@ const groups=[
   ['/backlog','Backlog | الأعمال المتراكمة','backlog.view','list'],
   ['/reliability','Reliability | الاعتمادية','reliability.view','pulse'],
   ['/executive','Executive Dashboard | اللوحة التنفيذية','executive.view','dashboard'],
- ]},
- {title:'Administration | الإدارة',items:[
-  ['/organizations','Organizations | المنظمات','organizations.view','org'],
-  ['/clients','Clients | العملاء','clients.view','client'],
-  ['/enterprise-structure','Structure | الهيكل التشغيلي','enterprise-structure.view','tree'],
-  ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
-  ['/security-readiness','Security | الأمن','security.view','lock'],
-  ['/release-readiness','System Readiness | جاهزية النظام','release.view','check'],
  ]}
 ]
-
 function NavIcon({type}){
  const common={width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true}
  const paths={

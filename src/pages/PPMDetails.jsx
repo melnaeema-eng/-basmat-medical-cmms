@@ -3,12 +3,13 @@ import {Link,useNavigate,useParams} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadPPM,loadPPMDirectory,loadPPMHistory,ppmAction,frequencies} from '../lib/ppm'
+import {loadMyExecutionPackages,loadExecutionAttachments,uploadExecutionEvidence,openExecutionEvidence} from '../lib/maintenanceExecution'
 import {Field,Select,Notice,Status} from '../components/FacilityFields'
 const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',task_type:'inspection',response_type:'pass_fail',required:true,unit:'',min_value:'',max_value:'',safety_notes:'',tools:'',materials:'',reference:''}
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
- const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState('')
+ const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[executionPkg,setExecutionPkg]=useState(null),[executionEvidence,setExecutionEvidence]=useState([]),[uploadingEvidence,setUploadingEvidence]=useState(false),[activeStepIndex,setActiveStepIndex]=useState(0)
  const load=async()=>{
   setError('')
   try{
@@ -40,7 +41,87 @@ export default function PPMDetails(){
  const resultFor=stepId=>results.find(x=>x.step_id===stepId)
  const update=(stepId,key,value)=>setInputs(old=>({...old,[stepId]:{...old[stepId],[key]:value}}))
  const resultField=(s,key)=>inputs[s.id]?.[key]??resultFor(s.id)?.[key]??''
- const saveResult=s=>run('result',{step_id:s.id,result:resultField(s,'result'),reading:resultField(s,'reading'),comment:resultField(s,'comment')})
+ const firstIncompleteIndex=steps.findIndex(s=>!resultFor(s.id))
+ const completedStepCount=steps.filter(s=>!!resultFor(s.id)).length
+ const activeJobStep=kind==='job'?steps[activeStepIndex]||steps[0]:null
+ const loadPpmExecutionEvidence=async()=>{
+  if(kind!=='job'||!row?.work_order_id){
+   setExecutionPkg(null);setExecutionEvidence([]);return
+  }
+  const packages=await loadMyExecutionPackages()
+  const pkg=(packages||[]).find(x=>
+   (x.source_job_type==='facility_ppm'&&x.source_job_id===row.id)||
+   x.source_job_id===row.id
+  )||null
+  setExecutionPkg(pkg)
+  if(pkg){
+   const rows=await loadExecutionAttachments(pkg.id)
+   setExecutionEvidence(rows||[])
+  }else setExecutionEvidence([])
+ }
+ useEffect(()=>{
+  if(kind==='job'&&row?.work_order_id)loadPpmExecutionEvidence().catch(e=>setError(e.message))
+ },[kind,row?.id,row?.work_order_id])
+
+ const uploadPpmPhoto=async(file)=>{
+  if(!file||!activeJobStep)return
+  if(!executionPkg){
+   setError('PPM execution package is not available for this work order.')
+   return
+  }
+  if(!String(file.type||'').startsWith('image/')){
+   setError('Photo evidence must be an image file.')
+   return
+  }
+  setUploadingEvidence(true);setError('');setSuccess('')
+  try{
+   await uploadExecutionEvidence(executionPkg,activeJobStep.seq,file)
+   await loadPpmExecutionEvidence()
+   setSuccess(lang==='ar'?'تم رفع صورة الإثبات بنجاح.':'Photo evidence uploaded successfully.')
+  }catch(e){
+   setError(e.message)
+  }finally{
+   setUploadingEvidence(false)
+  }
+ }
+ const stepEvidence=s=>executionEvidence.filter(x=>Number(x.step_seq)===Number(s?.seq))
+ useEffect(()=>{
+  if(kind!=='job'||!steps.length)return
+  const next=steps.findIndex(s=>!resultFor(s.id))
+  if(next>=0)setActiveStepIndex(next)
+  else setActiveStepIndex(Math.max(steps.length-1,0))
+ },[kind,id,data?.results?.length])
+ const saveResult=async s=>{
+  if(busy)return
+  const result=resultField(s,'result')
+  if(!result)return
+  setBusy(true);setError('');setSuccess('')
+  try{
+   await ppmAction('job',id,'result',{
+    step_id:s.id,
+    result,
+    reading:resultField(s,'reading'),
+    comment:resultField(s,'comment')
+   })
+
+   const stepIndex=steps.findIndex(x=>x.id===s.id)
+   const isLastStep=stepIndex===steps.length-1
+
+   if(isLastStep&&result!=='fail'){
+    await ppmAction('job',id,'complete',{})
+    navigate('/reports?section=ppm&job='+encodeURIComponent(id))
+    return
+   }
+
+   await load()
+   setSuccess(t('saved'))
+   if(stepIndex>=0&&stepIndex<steps.length-1)setActiveStepIndex(stepIndex+1)
+  }catch(e){
+   setError(e.message)
+  }finally{
+   setBusy(false)
+  }
+ }
  const followup=async s=>{
   if(!confirm(t('confirmAction')))return
   setBusy(true);setError('')
@@ -85,24 +166,72 @@ export default function PPMDetails(){
    {kind==='job'&&<>
     <div className="facility-panel"><h3>{t('actions')}</h3>
      {manager&&['scheduled','assigned'].includes(row.status)&&<div className="form-grid"><Field label={t('assignedTo')}><Select value={assignee} onChange={setAssignee} options={options(directory.filter(x=>x.organization_id===row.organization_id),x=>x.full_name||x.email)}/></Field><div className="row-actions">{button('assign',!!assignee,{user_id:assignee},true)}</div></div>}
-     <div className="row-actions">{button('start',executor&&row.status==='assigned',{},true)}{button('complete',executor&&row.status==='in_progress',{},true)}{button('approve',approver&&row.status==='completed',{},true)}{button('close',approver&&row.status==='approved',{},true)}</div>
+     <div className="row-actions">{button('start',executor&&row.status==='assigned',{},true)}{button('complete',executor&&row.status==='in_progress'&&steps.filter(s=>s.required).every(s=>resultFor(s.id)),{},true)}{button('approve',approver&&row.status==='completed',{},true)}{button('close',approver&&row.status==='approved',{},true)}</div>
      {manager&&row.status==='completed'&&<><Field label={t('reason')}><textarea value={reason} onChange={e=>setReason(e.target.value)}/></Field>{button('reject',reason.trim().length>=5,{reason})}</>}
      <p className="muted">{t('executionNotice')}</p>
     </div>
-    <div className="facility-panel"><h3>{t('checklist')}</h3>
-     {steps.map(s=><div key={s.id} className="facility-panel" style={{marginBlock:'12px'}}>
-      <strong>{s.seq}. {name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p>{lang==='ar'?s.instructions_ar:s.instructions_en}</p>
-      {details([['safetyNotes',s.safety_notes],['tools',s.tools],['materials',s.materials],['unit',s.unit],['minValue',s.min_value],['maxValue',s.max_value]])}
-      {executor&&row.status==='in_progress'?<div className="form-grid">
-       <Field label={t('result')}><Select value={resultField(s,'result')} onChange={v=>update(s.id,'result',v)} options={[{value:'',label:t('select')},...['pass','fail',...(s.required?[]:['na'])].map(v=>({value:v,label:t(v)}))]}/></Field>
-       {s.response_type==='reading'&&<Field label={t('reading')}><input type="number" step="any" value={resultField(s,'reading')} onChange={e=>update(s.id,'reading',e.target.value)}/></Field>}
-       <Field label={t('comment')}><textarea value={resultField(s,'comment')} onChange={e=>update(s.id,'comment',e.target.value)}/></Field>
-       <div className="row-actions"><button type="button" disabled={busy||!resultField(s,'result')} className="btn primary" onClick={()=>saveResult(s)}>{t('save')}</button></div>
-      </div>:<p><Status value={resultFor(s.id)?.result||'not_submitted'}/> {resultFor(s.id)?.reading??''} {resultFor(s.id)?.comment||''}</p>}
-      {resultFor(s.id)?.result==='fail'&&(manager||executor)&&<div className="row-actions">
-       {data.followups.find(f=>f.job_id===id&&f.step_id===s.id)?<Link to={'/corrective/request/'+data.followups.find(f=>f.job_id===id&&f.step_id===s.id).request_id}>{t('followupCreated')}</Link>:<button type="button" disabled={busy} className="btn secondary" onClick={()=>followup(s)}>{t('followup')}</button>}
+    <div className="facility-panel"><h3>Guided PPM | الصيانة الوقائية الموجهة</h3>
+     {!steps.length?<p>{t('noData')}</p>:<>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+       <strong>Step {Math.min(activeStepIndex+1,steps.length)} / {steps.length} | الخطوة {Math.min(activeStepIndex+1,steps.length)} من {steps.length}</strong>
+       <span className="muted">{completedStepCount}/{steps.length} Completed | مكتملة</span>
+      </div>
+      <div style={{height:8,borderRadius:99,background:'#e8edf3',overflow:'hidden',marginBottom:14}}>
+       <div style={{height:'100%',width:`${steps.length?Math.round(completedStepCount/steps.length*100):0}%`,background:'currentColor',opacity:.65}}/>
+      </div>
+      <div className="row-actions" style={{marginBottom:14,flexWrap:'wrap'}}>
+       {steps.map((s,i)=>{
+        const done=!!resultFor(s.id)
+        const unlocked=firstIncompleteIndex<0||i<=firstIncompleteIndex
+        return <button type="button" key={s.id} disabled={!unlocked} className={'btn xs '+(i===activeStepIndex?'primary':'secondary')} onClick={()=>unlocked&&setActiveStepIndex(i)}>{done?'✓ ':''}{s.seq}</button>
+       })}
+      </div>
+      {activeJobStep&&<div className="facility-panel" style={{marginBlock:'12px'}}>
+       <strong>{activeJobStep.seq}. {name({name_ar:activeJobStep.title_ar,name_en:activeJobStep.title_en})}</strong>
+       <p>{lang==='ar'?activeJobStep.instructions_ar:activeJobStep.instructions_en}</p>
+       {details([['safetyNotes',activeJobStep.safety_notes],['tools',activeJobStep.tools],['materials',activeJobStep.materials],['unit',activeJobStep.unit],['minValue',activeJobStep.min_value],['maxValue',activeJobStep.max_value]])}
+       {/* PPM PHOTO EVIDENCE UI */}
+       {executor&&row.status==='in_progress'&&<div className="facility-panel" style={{marginTop:12}}>
+        <strong>📷 Photo Evidence | صورة إثبات</strong>
+        <p className="muted">{lang==='ar'?'ارفع صورة واضحة لهذه الخطوة قبل إنهاء الصيانة.':'Upload a clear photo for this step before completing the maintenance.'}</p>
+        <div className="row-actions" style={{alignItems:'center',flexWrap:'wrap'}}>
+         <label className={'btn secondary '+(uploadingEvidence?'disabled':'')} style={{cursor:uploadingEvidence?'not-allowed':'pointer'}}>
+          {uploadingEvidence?(lang==='ar'?'جاري الرفع...':'Uploading...'):(lang==='ar'?'📷 التقاط / رفع صورة':'📷 Take / Upload Photo')}
+          <input
+           type="file"
+           accept="image/jpeg,image/png,image/webp"
+           capture="environment"
+           disabled={uploadingEvidence||!executionPkg}
+           style={{display:'none'}}
+           onChange={e=>{const f=e.target.files?.[0];if(f)uploadPpmPhoto(f);e.target.value=''}}
+          />
+         </label>
+         {!executionPkg&&<span className="muted">{lang==='ar'?'لا توجد حزمة تنفيذ مرتبطة بأمر العمل.':'No execution package is linked to this work order.'}</span>}
+        </div>
+        {stepEvidence(activeJobStep).length>0&&<div style={{marginTop:10}}>
+         <strong>✓ {lang==='ar'?'تم إرفاق الإثبات':'Evidence attached'}</strong>
+         <div className="row-actions" style={{marginTop:8,flexWrap:'wrap'}}>
+          {stepEvidence(activeJobStep).map(x=><button type="button" key={x.id} className="btn xs secondary" onClick={()=>openExecutionEvidence(x)}>
+           {x.file_name||('Evidence '+x.id)}
+          </button>)}
+         </div>
+        </div>}
+       </div>}
+       {executor&&row.status==='in_progress'?<div className="form-grid">
+        <Field label={t('result')}><Select value={resultField(activeJobStep,'result')} onChange={v=>update(activeJobStep.id,'result',v)} options={[{value:'',label:t('select')},...['pass','fail',...(activeJobStep.required?[]:['na'])].map(v=>({value:v,label:t(v)}))]}/></Field>
+        {activeJobStep.response_type==='reading'&&<Field label={t('reading')}><input type="number" step="any" value={resultField(activeJobStep,'reading')} onChange={e=>update(activeJobStep.id,'reading',e.target.value)}/></Field>}
+        <Field label={t('comment')}><textarea value={resultField(activeJobStep,'comment')} onChange={e=>update(activeJobStep.id,'comment',e.target.value)}/></Field>
+        <div className="row-actions"><button type="button" disabled={busy||!resultField(activeJobStep,'result')} className="btn primary" onClick={()=>saveResult(activeJobStep)}>{activeStepIndex===steps.length-1?(lang==='ar'?'حفظ وإنهاء':'Save & Finish'):(lang==='ar'?'حفظ والتالي':'Save & Next')}</button></div>
+       </div>:<p><Status value={resultFor(activeJobStep.id)?.result||'not_submitted'}/> {resultFor(activeJobStep.id)?.reading??''} {resultFor(activeJobStep.id)?.comment||''}</p>}
+       {resultFor(activeJobStep.id)?.result==='fail'&&(manager||executor)&&<div className="row-actions">
+        {data.followups.find(f=>f.job_id===id&&f.step_id===activeJobStep.id)?<Link to={'/corrective/request/'+data.followups.find(f=>f.job_id===id&&f.step_id===activeJobStep.id).request_id}>{t('followupCreated')}</Link>:<button type="button" disabled={busy} className="btn secondary" onClick={()=>followup(activeJobStep)}>{t('followup')}</button>}
+       </div>}
       </div>}
-     </div>)}
+      <div className="row-actions">
+       <button type="button" className="btn secondary" disabled={activeStepIndex<=0} onClick={()=>setActiveStepIndex(i=>Math.max(0,i-1))}>← Previous | السابق</button>
+       <button type="button" className="btn secondary" disabled={activeStepIndex>=steps.length-1||!resultFor(activeJobStep?.id)} onClick={()=>setActiveStepIndex(i=>Math.min(steps.length-1,i+1))}>Next | التالي →</button>
+      </div>
+     </>}
      <p className="muted">{t('qaNotice')}</p>
     </div>
    </>}
