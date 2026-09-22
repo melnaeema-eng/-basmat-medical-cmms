@@ -1,0 +1,11 @@
+import {supabase} from './supabaseClient'
+export async function loadExecutiveDashboard(f={}){
+ const {data,error}=await supabase.rpc('bf28_dashboard',{
+  p_org:f.organization_id||null,
+  p_client:f.client_id||null,
+  p_from:f.from||null,
+  p_to:f.to||null
+ })
+ if(error)throw error
+ return data
+}

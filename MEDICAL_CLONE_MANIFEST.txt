@@ -1,0 +1,25 @@
+BASMAT MEDICAL FULL CLONE V11
+Created: 2026-09-22 07:51:33
+
+SOURCE:
+C:\projects\basmat-facilities-cmms
+
+TARGET:
+C:\projects\basmat-medical-cmms
+
+RULES:
+- Facilities source project was not modified.
+- Medical target has no .git repository.
+- Nothing was pushed to GitHub.
+- All Facilities modules were cloned.
+- User-facing Facilities wording was changed to Medical Equipment wording.
+- Technical identifiers/routes/table names were intentionally NOT globally renamed.
+- Only master-library table references were switched:
+  bf_master_asset_types     -> bf_med_master_types
+  bf_master_manufacturers   -> bf_med_manufacturers
+  bf_master_asset_options   -> bf_med_master_options
+  bf_master_ppm_templates   -> bf_med_master_pm_templates
+  bf_master_ppm_steps       -> bf_med_master_pm_steps
+
+LIBRARY FILES MODIFIED:
+src\lib\masterAssetLibrary.js

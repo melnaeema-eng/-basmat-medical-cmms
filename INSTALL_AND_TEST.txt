@@ -1,0 +1,82 @@
+BASMAT FACILITIES CMMS — SPRINT 3 RELEASE CANDIDATE
+====================================================
+Scope: Locations + Asset Register + Categories + QR + Security hardening.
+Prerequisite: The approved Sprint 2 project and database.
+This is not a production sign-off. Database and role isolation must be tested
+against your own Supabase project before accepting the baseline.
+
+1. BACKUP AND INSTALL
+Save basmat-facilities-cmms-sprint-3.zip in Downloads.
+Run the PowerShell command supplied with the ZIP. It extracts to a temporary
+folder, backs up your existing project, copies the source, installs dependencies,
+runs local tests, and executes npm run build.
+It preserves package.json, package-lock dependencies, .env.local, and Git history.
+The local environment file is created through a prompt only if missing.
+Never paste a service_role key into the frontend.
+
+2. DATABASE — REQUIRED BEFORE OPENING THE NEW APP
+Supabase > select "melnaeema-eng's Project" > SQL Editor > New query.
+Open sql/003_SECURITY_AND_ASSETS.sql and execute the entire file ONCE.
+It runs in a transaction, creates migration marker 3, and rolls back on failure.
+It updates only bf_ tables/functions and adds no data to other projects.
+Do not run the old Sprint 1 or Sprint 2 SQL again after migration 003.
+Do not rerun migration 003 if it succeeds.
+
+Verify:
+select version,applied_at from public.bf_migrations where version=3;
+select count(*) from public.bf_assets;
+select tablename,rowsecurity from pg_tables
+where schemaname='public' and tablename like 'bf_%'
+order by tablename;
+
+3. LOCAL
+cd C:\projects\basmat-facilities-cmms
+npm run dev
+Sign in with the existing Super Admin.
+Verify AR/EN and sidebar direction.
+
+4. ACCEPTANCE TESTS
+[ ] Organizations/Clients/Contracts/Sites still work.
+[ ] Create Building > Floor > Zone > Room.
+[ ] Edit and archive/restore each location.
+[ ] Create and edit an asset category and a child category.
+[ ] Register an asset with both names, serial, manufacturer, model and warranty.
+[ ] Assign a location and a parent asset from the same site.
+[ ] Search/filter asset register and open asset detail.
+[ ] Generate/download/print QR, scan it with a phone, and authenticate to view.
+[ ] Edit the asset and confirm the activity history.
+[ ] Archive/restore the asset without deleting its record.
+[ ] Arabic sidebar on right; English sidebar on left.
+[ ] npm run build passes.
+[ ] No existing unrelated project tables changed.
+
+5. SECURITY ACCEPTANCE — MANDATORY
+Use separate test Auth users created in Supabase Authentication.
+Assign a Company Admin through trusted SQL or the existing platform admin.
+Assign other staff/owner roles using the Users & Roles page.
+[ ] Company A cannot read Company B assets or locations.
+[ ] Company A cannot modify Company B records using direct REST requests.
+[ ] An ordinary user cannot update bf_profiles.is_super_admin.
+[ ] An ordinary user cannot insert into bf_user_roles or modify permissions.
+[ ] A Company Admin cannot grant Company Admin to themselves.
+[ ] Owner access is restricted to explicitly assigned client records.
+[ ] A technician cannot read commercial cost fields.
+[ ] Cross-company/site asset references are rejected by database constraints.
+[ ] Invalid parent cycles and inconsistent location hierarchies are rejected.
+Do not put real customer data into the new system before these checks pass.
+If a test fails, do not approve the sprint; send the exact error.
+
+6. GITHUB AFTER SUCCESSFUL TESTS
+git status
+git add src public sql tests INSTALL_AND_TEST.txt INSTALL_SPRINT3.ps1 REQUIREMENTS_APPROVED.md sprint3-package.json .env.example .gitignore package.json package-lock.json
+git commit -m "Sprint 3 Assets Locations Security - Basmat Facilities CMMS"
+git push origin main
+
+Cloudflare Pages redeploys from main. Confirm Production environment variables
+and check the deployment build log. Never commit .env.local.
+
+7. NEXT
+The corrective maintenance engine and per-asset annual PPM planning are separate
+operational sprints. The current package does not yet implement WO execution,
+automatic PPM generation, GPS attendance, inventory transactions, or PDF reporting.
+See REQUIREMENTS_APPROVED.md for the approved full product scope.

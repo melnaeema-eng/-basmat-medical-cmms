@@ -1,0 +1,8 @@
+import {supabase} from './supabaseClient'
+export async function loadHseDashboard(f={}){const {data,error}=await supabase.rpc('bf26_dashboard',{p_org:f.organization_id||null,p_status:f.status||null,p_limit:f.limit||300});if(error)throw error;return data}
+export async function createHseIncident(v){const {data,error}=await supabase.rpc('bf26_create_incident',{p_site:v.site_id,p_asset:v.asset_id||null,p_work_order:v.work_order_id||null,p_type:v.incident_type,p_severity:v.severity,p_title:v.title,p_description:v.description,p_occurred_at:new Date(v.occurred_at).toISOString(),p_immediate_action:v.immediate_action||''});if(error)throw error;return data}
+export async function loadHseDetail(id){const {data,error}=await supabase.rpc('bf26_detail',{p_incident:id});if(error)throw error;return data}
+export async function addHseAction(v){const {data,error}=await supabase.rpc('bf26_add_action',{p_incident:v.incident_id,p_action_text:v.action_text,p_owner:v.owner_id||null,p_due_date:v.due_date||null,p_priority:v.priority||'medium'});if(error)throw error;return data}
+export async function completeHseAction(id,note){const {error}=await supabase.rpc('bf26_complete_action',{p_action:id,p_note:note});if(error)throw error}
+export async function updateHseInvestigation(id,rootCause,notes,immediateAction=null){const {error}=await supabase.rpc('bf26_update_investigation',{p_incident:id,p_root_cause:rootCause,p_notes:notes||'',p_immediate_action:immediateAction});if(error)throw error}
+export async function closeHseIncident(id,notes){const {error}=await supabase.rpc('bf26_close_incident',{p_incident:id,p_closure_notes:notes});if(error)throw error}
