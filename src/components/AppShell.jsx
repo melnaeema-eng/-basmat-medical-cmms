@@ -153,8 +153,8 @@ export default function AppShell(){
  return <div className="bafm-shell">
   <aside className="bafm-sidebar">
    <div className="bafm-logo-block">
-    <img src="/bafm-logo.png" alt="BAFM"/>
-    <div className="bafm-logo-word">BAFM</div>
+    <img src="/bafm-logo.png" alt="BAMM"/>
+    <div className="bafm-logo-word">BAMM</div>
     <div className="bafm-logo-sub">Basmat Alnawabigh</div>
     <div className="bafm-logo-tiny">Medical Equipment Maintenance Management System</div>
    </div>
@@ -172,7 +172,7 @@ export default function AppShell(){
      </section>
     })}
    </nav>
-   <div className="bafm-sidebar-footer">BAFM · v1.0</div>
+   <div className="bafm-sidebar-footer">BAMM · v1.0</div>
   </aside>
 
   <div className="bafm-main">

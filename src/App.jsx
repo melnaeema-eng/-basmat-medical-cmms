@@ -1,4 +1,4 @@
-﻿import MasterAssetLibrary from './pages/MasterAssetLibrary'
+import MasterAssetLibrary from './pages/MasterAssetLibrary'
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
 import SoftFmOperations from './pages/SoftFmOperations'
@@ -57,7 +57,9 @@ import Corrective from './pages/Corrective'
 import CorrectiveDetails from './pages/CorrectiveDetails'
 import AssetDetails from './pages/AssetDetails'
 import MedicalMaintenanceCenter from './pages/MedicalMaintenanceCenter'
-import TechnicianExecution from './pages/TechnicianExecution'
+import TechnicianExecution from './pages/TechnicianExecution'
+import ReportsHub from './pages/ReportsHub'
+import AssetPassport from './pages/AssetPassport'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -74,7 +76,9 @@ export default function App(){
    <Route path="/locations" element={guard('locations.view',<LocationManagement/>)}/>
    <Route path="/asset-categories" element={guard('assets.view',<AssetCategories/>)}/>
    <Route path="/asset-library" element={guard('assets.view',<MasterAssetLibrary/>)}/>
-   <Route path="/assets" element={guard('assets.view',<AssetRegister/>)}/>
+   <Route path="/assets" element={guard('assets.view',<AssetRegister/>)}/>
+   <Route path="/asset-passport" element={guard('assets.view',<AssetPassport/>)}/>
+   <Route path="/asset-passport/:id" element={guard('assets.view',<AssetPassport/>)}/>
    <Route path="/assets/:id" element={guard('assets.view',<AssetDetails/>)}/>
    <Route path="/corrective" element={guard('corrective.view',<Corrective/>)}/>
    <Route path="/corrective/:kind/:id" element={guard('corrective.view',<CorrectiveDetails/>)}/>
@@ -86,7 +90,7 @@ export default function App(){
    <Route path="/procurement/:kind/:id" element={guard('procurement.view',<ProcurementDetails/>)}/>
    <Route path="/advanced-stock" element={guard('inventory.view',<AdvancedStock/>)}/>
    <Route path="/advanced-stock/:id" element={guard('inventory.view',<AdvancedStockDetails/>)}/>
-   <Route path="/reports" element={guard('reports.view',<ManagementReports/>)}/>
+   <Route path="/reports" element={guard('reports.view',<ReportsHub/>)}/>
    <Route path="/approvals" element={<ApprovalPortal/>}/>
    <Route path="/notifications" element={<Notifications/>}/>
    <Route path="/documents" element={<Documents/>}/>

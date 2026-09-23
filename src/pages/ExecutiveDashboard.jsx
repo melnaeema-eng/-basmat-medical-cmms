@@ -12,8 +12,8 @@ export default function ExecutiveDashboard(){
  return <section className="facility-module">
   <div className="page-head bafm-page-head">
    <div className="bafm-page-title">
-    <img src="/bafm-logo.png" alt="BAFM" className="bafm-page-logo"/>
-    <div><h1>{t('executiveDashboard')}</h1><p className="muted">BAFM · Basmat Alnawabigh Medical Equipment Maintenance Management System</p></div>
+    <img src="/bafm-logo.png" alt="BAMM" className="bafm-page-logo"/>
+    <div><h1>{t('executiveDashboard')}</h1><p className="muted">BAMM · Basmat Alnawabigh Medical Equipment Maintenance Management System</p></div>
    </div>
    <button className="btn secondary" onClick={load} disabled={busy}>{t('executiveRefresh')}</button>
   </div>
