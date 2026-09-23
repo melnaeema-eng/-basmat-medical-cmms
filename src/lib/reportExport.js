@@ -126,7 +126,9 @@ export function printReport(report,columns,labels,title,lang='en'){
   tbody tr:nth-child(even){background:#fafbfd}
   .footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;color:#6b7280;font-size:11px}
   @media print{body{background:#fff} .page{padding:0} .toolbar{display:none} .sheet{box-shadow:none;border:0;border-radius:0;padding:0} @page{size:A4 landscape;margin:10mm}}
- </style></head><body>
+ /* BASMAT ALNAWABIGH PRINT SIGNATURE */
+body::before{content:"BASMAT ALNAWABIGH";position:fixed;inset:42% 0 auto 0;text-align:center;font-size:52pt;font-weight:800;letter-spacing:4px;color:rgba(11,43,75,.055);transform:rotate(-28deg);z-index:0;pointer-events:none;white-space:nowrap}
+body::after{content:"BAMM | Basmat Alnawabigh";position:fixed;left:12mm;right:12mm;bottom:4mm;text-align:center;font-size:8pt;font-weight:700;color:#536274;border-top:1px solid #cfd8e3;padding-top:2mm;background:#fff;z-index:9998;pointer-events:none}</style></head><body>
  <div class="page">
    <div class="toolbar"><button class="print-btn" onclick="window.print()">${lang==='ar'?'طباعة التقرير':'Print report'}</button><div></div></div>
    <div class="sheet">
