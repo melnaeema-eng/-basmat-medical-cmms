@@ -295,7 +295,7 @@ export default function MasterAssetLibrary(){
     </Field>
 
     <Field label={lang==='ar'?'بحث':'Search'}>
-     <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Avaya / Cisco / Radio / DAS / Zamil / FM-200 / Chiller..."/>
+     <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Philips / GE / Siemens / Drager / Ventilator / Monitor / Ultrasound..."/>
     </Field>
     <Field label={lang==='ar'?'التوريد':'Procurement'}>
      <label style={{display:'flex',gap:7,alignItems:'center',paddingTop:8}}>
@@ -337,7 +337,7 @@ export default function MasterAssetLibrary(){
       <div style={{marginTop:9,fontSize:11}}>
        <b>{lang==='ar'?'العلامات التجارية المحتملة':'Common brands'}:</b>{' '}
        {t.options.length
-        ?t.options.slice(0,12).map(o=><span className="asset-brand" key={o.id} title={o.model_family||''}>{o.manufacturer?.name||''}{o.model_family?` · ${o.model_family}`:''}</span>)
+        ?t.options.slice(0,12).map(o=><button type="button" className="asset-brand" key={o.id} title={o.model_family||''} onClick={()=>{setManufacturer(o.manufacturer_id);setQuery(o.model_family||'');window.scrollTo({top:0,behavior:'smooth'})}}>{o.manufacturer?.name||''}{o.model_family?` - ${o.model_family}`:''}</button>)
         :<span>{lang==='ar'?'OEM / عام':'OEM / Generic'}</span>}
       </div>
 
