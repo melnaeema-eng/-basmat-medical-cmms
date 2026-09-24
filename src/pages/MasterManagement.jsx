@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import {useMasterRecords} from '../lib/useMasterRecords'
 import {isActive,labelFor} from '../lib/masterRecords'
+import SiteGeoFields from '../components/SiteGeoFields'
 
 const configs={
  organizations:{
@@ -119,6 +120,7 @@ export default function MasterManagement({kind}){
   <DataTable columns={columns} rows={visible} emptyText={loading?t('loading'):t('noData')}/>
   <Modal open={open} title={editing?t('edit'):t('add')} onClose={()=>!busy&&setOpen(false)}>
    <form onSubmit={submit} className="form-grid">
+   <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     {error&&<div className="alert error span-2" role="alert">{error}</div>}
     {cfg.fields.map(renderField)}
     <div className="form-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setOpen(false)}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>
