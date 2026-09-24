@@ -61,6 +61,8 @@ import TechnicianExecution from './pages/TechnicianExecution'
 import ReportsHub from './pages/ReportsHub'
 import AssetPassport from './pages/AssetPassport'
 import './basmat-print-signature.css'
+import ProjectSetupWizard from './pages/ProjectSetupWizard'
+import TechnicianAssetScanner from './pages/TechnicianAssetScanner'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -116,6 +118,8 @@ export default function App(){
    <Route path="/security-readiness" element={guard('security.view',<SecurityReadiness/>)}/>
    <Route path="/release-readiness" element={guard('release.view',<ReleaseReadiness/>)}/>
    <Route path="/enterprise-access" element={guard('enterprise-access.view',<EnterpriseAccess/>)}/>
+          <Route path="/project-setup" element={<ProjectSetupWizard/>}/>
+          <Route path="/field-scan" element={<TechnicianAssetScanner/>}/>
    <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>

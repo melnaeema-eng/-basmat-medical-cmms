@@ -10,6 +10,7 @@ const groups=[
   ['/', 'Dashboard | لوحة التحكم', null,'home'],
  ]},
  {title:'Administration | الإدارة',items:[
+  ['/project-setup','Project Setup | إعداد المشروع','organizations.view','check'],
   ['/organizations','Organizations | المنظمات','organizations.view','org'],
   ['/clients','Clients | العملاء','clients.view','client'],
   ['/enterprise-structure','Structure | الهيكل التشغيلي','enterprise-structure.view','tree'],
@@ -21,6 +22,7 @@ const groups=[
   ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
   ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
   ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
+  ['/field-scan','QR Scan | مسح QR','mobile-field.view','asset'],
   ['/soft-fm','Soft FM | الخدمات المساندة','soft-fm.view','services'],
   ['/workforce','Workforce | القوى العاملة','workforce.view','users'],
   ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
