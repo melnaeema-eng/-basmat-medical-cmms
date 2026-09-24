@@ -28,7 +28,7 @@ export default function AssetRegister(){
  const today=new Date(),in30=new Date(today.getTime()+30*86400000)
  const stats=[['totalAssets',data?.assets.filter(a=>a.status!=='archived').length||0],['criticalAssets',data?.assets.filter(a=>a.status!=='archived'&&a.criticality==='critical').length||0],['warrantyDue',data?.assets.filter(a=>a.status!=='archived'&&a.warranty_end&&new Date(a.warranty_end)>=today&&new Date(a.warranty_end)<=in30).length||0],['archivedAssets',data?.assets.filter(a=>a.status==='archived').length||0]]
  return <section className="facility-module">
-  <div className="page-head"><h1>{t('assets')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button>{can('assets.manage',org||null)&&<button className="btn primary" onClick={()=>start()} disabled={!data?.sites.length||!data?.categories.length}>{t('newAsset')}</button>}</div></div>
+  <div className="page-head"><h1>{t('assets')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button>{can('assets.manage',org||null)&&<button className="btn primary" onClick={()=>start()} disabled={!data?.sites.length}>{t('newAsset')}</button>}</div></div>
   <Notice error={error} success={success}/>
   {data&&<><div className="stats-grid facility-stats">{stats.map(([key,value])=><div className="stat-card" key={key}><span>{t(key)}</span><strong>{value}</strong></div>)}</div>
   <div className="facility-panel filter-grid">
