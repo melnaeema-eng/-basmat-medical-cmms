@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadMobileField,lookupAsset,fieldAction,uploadEvidence} from '../lib/mobileField'
-import TechnicianQrCamera from '../components/TechnicianQrCamera'
+import MobileAssetEntry from '../components/MobileAssetEntry'
 
 export default function MobileField(){
  const {t}=useLanguage()
@@ -19,6 +19,7 @@ export default function MobileField(){
  const addEvidence=e=>{e.preventDefault();run(async()=>{await uploadEvidence(evidence.wo.id,evidence.visitId,evidence.file,evidence.caption);setEvidence(null)})}
  const s=data.summary||{}
  return <section className="facility-module mobile-field">
+  <MobileAssetEntry/>
   <div className="page-head"><h1>{t('mobileFieldTitle')}</h1><button className="btn secondary" onClick={load}>{t('mfRefresh')}</button></div>
   {error&&<div className="facility-panel" role="alert">{error}</div>}
   <div className="stats-grid facility-stats">{[['mfAssigned',s.assigned],['mfP1',s.p1],['mfBreached',s.sla_breached],['mfDueToday',s.due_today],['mfActiveVisit',s.active_visit]].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v??0}</strong></div>)}</div>
@@ -28,7 +29,5 @@ export default function MobileField(){
   {finish&&<form className="facility-panel" onSubmit={finishVisit}><h2>{t('mfFinish')}</h2><div className="form-grid"><label>{t('mfWorkPerformed')}<input required minLength={5} value={finish.work_performed} onChange={e=>setFinish(v=>({...v,work_performed:e.target.value}))}/></label><label>{t('mfDiagnosis')}<input value={finish.diagnosis} onChange={e=>setFinish(v=>({...v,diagnosis:e.target.value}))}/></label><label>{t('mfTests')}<input value={finish.tests_performed} onChange={e=>setFinish(v=>({...v,tests_performed:e.target.value}))}/></label><label>{t('mfNotes')}<input value={finish.notes} onChange={e=>setFinish(v=>({...v,notes:e.target.value}))}/></label></div><button className="btn primary">{t('mfFinish')}</button></form>}
   {labor&&<form className="facility-panel" onSubmit={addLabor}><h2>{t('mfLabor')}</h2><div className="form-grid"><label>{t('mfActivity')}<input required minLength={5} value={labor.activity} onChange={e=>setLabor(v=>({...v,activity:e.target.value}))}/></label><label>{t('mfMinutes')}<input type="number" min="1" max="1440" value={labor.minutes} onChange={e=>setLabor(v=>({...v,minutes:e.target.value}))}/></label></div><button className="btn primary">{t('mfLabor')}</button></form>}
   {evidence&&<form className="facility-panel" onSubmit={addEvidence}><h2>{t('mfEvidence')}</h2><div className="form-grid"><label>{t('mfEvidence')}<input required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setEvidence(v=>({...v,file:e.target.files?.[0]||null}))}/></label><label>{t('mfCaption')}<input value={evidence.caption} onChange={e=>setEvidence(v=>({...v,caption:e.target.value}))}/></label></div><button className="btn primary" disabled={!evidence.file}>{t('mfUpload')}</button></form>}
- 
-  <TechnicianQrCamera/>
- </section>
+</section>
 }
