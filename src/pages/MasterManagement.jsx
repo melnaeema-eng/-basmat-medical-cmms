@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react'
+﻿import {useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import DataTable from '../components/DataTable'
@@ -30,7 +30,7 @@ const contractTypes=['comprehensive','nonComprehensive','ppm','corrective','manp
 const fieldNames={organization_id:'organization',client_id:'client',contract_id:'contractNumber',contract_number:'contractNumber',contract_type:'contractType',start_date:'startDate',end_date:'endDate',contract_value:'contractValue'}
 
 export default function MasterManagement({kind}){
- const {t}=useLanguage(),{can}=useAuth()
+ const {t,lang}=useLanguage(),{can}=useAuth()
  const cfg=configs[kind]
  const state=useMasterRecords(kind)
  const {rows,bundle,loading,busy,error,success,setError,setSuccess,refresh,persist}=state
@@ -90,7 +90,7 @@ export default function MasterManagement({kind}){
  const renderField=([key,type,required])=>{
   const value=form[key]??''
   return <label key={key} className={key==='address'?'span-2':''}>{name(key)}
-   {type==='reference'?<input value={value||'Auto-generated on save / يُنشأ عند الحفظ'} readOnly aria-label={name(key)} />:
+   {type==='reference'?<input value={value||'Auto-generated on save / ظٹظڈظ†ط´ط£ ط¹ظ†ط¯ ط§ظ„ط­ظپط¸'} readOnly aria-label={name(key)} />:
    ['organization','client','contract','status','contractType'].includes(type)?
     <select required={!!required} value={value} disabled={busy||(editing&&key==='organization_id')||(editing&&key==='client_id'&&['contracts','sites'].includes(kind))} onChange={e=>set(key,e.target.value)}>
      <option value="">{t('select')}</option>{options(key).map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
@@ -128,3 +128,4 @@ export default function MasterManagement({kind}){
   </Modal>
  </section>
 }
+
