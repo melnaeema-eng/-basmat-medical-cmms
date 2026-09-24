@@ -1,0 +1,35 @@
+export const inventoryDict={
+en:{
+ inventory:'Inventory & spare parts',inventoryParts:'Part master',inventoryWarehouses:'Warehouses & bins',inventoryStock:'Stock balances',inventoryRequests:'Material requests',inventoryMovements:'Stock ledger',
+ newPart:'New spare part',newWarehouse:'New warehouse',newBin:'New bin',newRequest:'New material request',newMovement:'New stock movement',
+ part:'Part',sku:'SKU',manufacturerPartNumber:'OEM part number',warehouse:'Warehouse',bin:'Bin',binCode:'Bin code',warehouseKind:'Warehouse type',
+ central:'Central',site:'Site',van:'Van',organization:'Company',client:'Client',workOrder:'Work order',asset:'Asset',nameAr:'Arabic name',nameEn:'English name',
+ manufacturer:'Manufacturer',category:'Category',unit:'Unit of measure',barcode:'Barcode',criticality:'Criticality',minQty:'Minimum stock',reorderQty:'Reorder quantity',leadDays:'Lead time (days)',
+ quantity:'Quantity',reserved:'Reserved',available:'Available',onHand:'On hand',lowStock:'Low stock',reference:'Reference / GRN',reason:'Reason',description:'Description',
+ receipt:'Goods receipt',transfer:'Transfer',adjust_in:'Positive adjustment',adjust_out:'Negative adjustment',issue:'Issue',return:'Return unreceived issue',
+ reserve:'Reserve',approve:'Approve',reject:'Reject',receive:'Confirm receipt',consume:'Confirm consumption',cancel:'Cancel request',destinationBin:'Destination bin',
+ submitted:'Submitted',approved:'Approved',rejected:'Rejected',reservedStatus:'Reserved',issued:'Issued',received:'Received',consumed:'Consumed',cancelled:'Cancelled',
+ active:'Active',inactive:'Inactive',archived:'Archived',low:'Low',medium:'Medium',high:'High',critical:'Critical',
+ status:'Status',actions:'Actions',details:'Details',createdAt:'Created',refresh:'Refresh',save:'Save',cancel:'Cancel',select:'Select...',all:'All',search:'Search',loading:'Loading...',noData:'No records found',saved:'Saved successfully',noPermission:'Access denied',confirmAction:'Confirm this action?',
+ stockNotice:'This foundation handles untracked, company-owned stock. Batch/serial, owner-specific stock, valuation, partial returns and procurement are reserved for later releases.',
+ movementNotice:'Enter a real delivery or adjustment reference. Quantities are transactional; reserved stock cannot be issued twice or adjusted below zero.',
+ requestNotice:'Material requests are linked to corrective work orders. Approval, reservation, issue, receipt and consumption are separate states.',
+ automaticCode:'Generated on save',stockLocation:'Stock location',movementType:'Movement type',requestNumber:'Request number',movementHistory:'Movement history',noStock:'No available stock',chooseScope:'Select the company first.'
+},
+ar:{
+ inventory:'المخزون وقطع الغيار',inventoryParts:'دليل قطع الغيار',inventoryWarehouses:'المستودعات والأرفف',inventoryStock:'أرصدة المخزون',inventoryRequests:'طلبات المواد',inventoryMovements:'سجل الحركات',
+ newPart:'قطعة غيار جديدة',newWarehouse:'مستودع جديد',newBin:'موقع تخزين جديد',newRequest:'طلب مواد جديد',newMovement:'حركة مخزون جديدة',
+ part:'قطعة الغيار',sku:'كود الصنف',manufacturerPartNumber:'رقم المصنع',warehouse:'المستودع',bin:'موقع التخزين',binCode:'كود الموقع',warehouseKind:'نوع المستودع',
+ central:'مركزي',site:'موقع',van:'سيارة',organization:'الشركة',client:'العميل',workOrder:'أمر العمل',asset:'المعدة',nameAr:'الاسم بالعربية',nameEn:'الاسم بالإنجليزية',
+ manufacturer:'الشركة المصنعة',category:'التصنيف',unit:'وحدة القياس',barcode:'الباركود',criticality:'الأهمية',minQty:'الحد الأدنى',reorderQty:'كمية إعادة الطلب',leadDays:'مدة التوريد بالأيام',
+ quantity:'الكمية',reserved:'المحجوز',available:'المتاح',onHand:'الرصيد الفعلي',lowStock:'مخزون منخفض',reference:'مرجع الاستلام / الحركة',reason:'السبب',description:'الوصف',
+ receipt:'استلام بضاعة',transfer:'تحويل',adjust_in:'تسوية زيادة',adjust_out:'تسوية نقص',issue:'صرف',return:'إرجاع صرف غير مستلم',
+ reserve:'حجز',approve:'اعتماد',reject:'رفض',receive:'تأكيد الاستلام',consume:'تأكيد الاستهلاك',cancel:'إلغاء الطلب',destinationBin:'موقع التخزين المستلم',
+ submitted:'مقدم',approved:'معتمد',rejected:'مرفوض',reservedStatus:'محجوز',issued:'مصروف',received:'مستلم',consumed:'مستهلك',cancelled:'ملغي',
+ active:'نشط',inactive:'غير نشط',archived:'مؤرشف',low:'منخفضة',medium:'متوسطة',high:'عالية',critical:'حرجة',
+ status:'الحالة',actions:'الإجراءات',details:'التفاصيل',createdAt:'تاريخ الإنشاء',refresh:'تحديث',save:'حفظ',cancel:'إلغاء',select:'اختر...',all:'الكل',search:'بحث',loading:'جارٍ التحميل...',noData:'لا توجد بيانات',saved:'تم الحفظ بنجاح',noPermission:'غير مصرح',confirmAction:'هل تؤكد تنفيذ هذا الإجراء؟',
+ stockNotice:'هذا الإصدار التأسيسي يدير المخزون غير المتسلسل والمملوك للشركة. الدفعات والأرقام التسلسلية ومخزون المالك والتقييم المالي والإرجاع الجزئي والمشتريات ضمن الإصدارات التالية.',
+ movementNotice:'أدخل مرجعًا حقيقيًا للاستلام أو التسوية. الحركات تتم داخل معاملة آمنة، ولا يمكن صرف المخزون المحجوز مرتين أو جعل الرصيد سالبًا.',
+ requestNotice:'طلبات المواد مرتبطة بأوامر الصيانة التصحيحية. الاعتماد والحجز والصرف والاستلام والاستهلاك حالات مستقلة.',
+ automaticCode:'ينشأ عند الحفظ',stockLocation:'موقع التخزين',movementType:'نوع الحركة',requestNumber:'رقم الطلب',movementHistory:'سجل الحركات',noStock:'لا يوجد مخزون متاح',chooseScope:'اختر الشركة أولًا.'
+}}

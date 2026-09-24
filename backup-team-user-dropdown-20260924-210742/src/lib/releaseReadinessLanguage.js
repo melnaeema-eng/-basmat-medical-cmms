@@ -1,0 +1,3 @@
+export const releaseReadinessDict={
+en:{releaseReadiness:'Release',releaseReadinessTitle:'Final UAT & Production Release Readiness',relRefresh:'Refresh',relPass:'Pass',relFail:'Failures',relChecks:'Release checks',relManifest:'Release manifest',relUat:'UAT checklist',relDeploy:'Deployment steps',relStatus:'Status',relDetail:'Details'},
+ar:{releaseReadiness:'الإصدار',releaseReadinessTitle:'الاختبار النهائي وجاهزية الإطلاق للإنتاج',relRefresh:'تحديث',relPass:'ناجح',relFail:'إخفاقات',relChecks:'فحوصات الإصدار',relManifest:'بيانات الإصدار',relUat:'قائمة الاختبار النهائي',relDeploy:'خطوات النشر',relStatus:'الحالة',relDetail:'التفاصيل'}}

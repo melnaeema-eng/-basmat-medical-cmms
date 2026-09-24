@@ -1,0 +1,35 @@
+export const procurementDict={
+en:{
+ procurement:'Procurement',suppliers:'Suppliers',requisitions:'Purchase requisitions',purchaseOrders:'Purchase orders',goodsReceipts:'Goods receipts',traceableStock:'Traceable stock',
+ newSupplier:'New supplier',newRequisition:'New requisition',newPurchaseOrder:'Create purchase order',supplier:'Supplier',supplierCode:'Supplier code',
+ requisition:'Requisition',requisitionNumber:'Requisition number',purchaseOrder:'Purchase order',purchaseOrderNumber:'PO number',goodsReceipt:'Goods receipt',
+ name:'Name',taxNumber:'Tax number',contactName:'Contact name',email:'Email',phone:'Phone',address:'Address',organization:'Company',client:'Client',workOrder:'Work order',
+ part:'Part',quantity:'Quantity',unitPrice:'Unit price',lineTotal:'Line total',total:'Total',currency:'Currency',prices:'Line prices',reason:'Reason',notes:'Notes',
+ addLine:'Add line',submit:'Submit',approve:'Approve',reject:'Reject',cancelOrder:'Cancel draft',create:'Create',receive:'Receive goods',remaining:'Remaining',
+ supplierReference:'Supplier delivery reference',warehouse:'Warehouse',bin:'Bin',stockOwner:'Stock owner',companyStock:'Company-owned',ownerStock:'Client-owned',
+ lotCode:'Lot / batch',serialNumber:'Serial number',expiresOn:'Expiry date',onHand:'On hand',reserved:'Reserved',available:'Available',unitCost:'Unit cost',
+ automatic:'Automatic',manual:'Manual',numberMode:'Number mode',officialNumber:'Official PO number',reference:'Reference',status:'Status',actions:'Actions',details:'Details',
+ createdAt:'Created',draft:'Draft',submitted:'Submitted',approved:'Approved',rejected:'Rejected',ordered:'Ordered',part_received:'Part received',received:'Received',cancelled:'Cancelled',
+ active:'Active',inactive:'Inactive',archived:'Archived',refresh:'Refresh',save:'Save',cancel:'Cancel',select:'Select...',all:'All',search:'Search',loading:'Loading...',noData:'No records found',saved:'Saved successfully',confirmAction:'Confirm this action?',noPermission:'Access denied',
+ procurementNotice:'Requisitions require independent approval. Approved purchase orders preserve their quantities and prices. Financial totals are purchase commitments, not invoices.',
+ stockNotice:'Traceable stock is separate from legacy Sprint 6 balances. Existing stock is not migrated or merged. Owner-specific allocation, partial issue/return and valuation reconciliation are pending.',
+ receiptNotice:'Receive only the delivered quantity. Record the actual owner, lot, serial and expiry. A serialized receipt must have quantity one.',
+ approvalNotice:'The creator cannot approve their own requisition or purchase order.',automaticCode:'Generated on save',noSupplier:'Create an active supplier first.',noLines:'Add at least one line first.'
+},
+ar:{
+ procurement:'المشتريات',suppliers:'الموردون',requisitions:'طلبات الشراء',purchaseOrders:'أوامر الشراء',goodsReceipts:'استلامات البضائع',traceableStock:'المخزون المتتبع',
+ newSupplier:'مورد جديد',newRequisition:'طلب شراء جديد',newPurchaseOrder:'إنشاء أمر شراء',supplier:'المورد',supplierCode:'كود المورد',
+ requisition:'طلب الشراء',requisitionNumber:'رقم طلب الشراء',purchaseOrder:'أمر الشراء',purchaseOrderNumber:'رقم أمر الشراء',goodsReceipt:'استلام البضاعة',
+ name:'الاسم',taxNumber:'الرقم الضريبي',contactName:'اسم المسؤول',email:'البريد الإلكتروني',phone:'الهاتف',address:'العنوان',organization:'الشركة',client:'العميل',workOrder:'أمر العمل',
+ part:'الصنف',quantity:'الكمية',unitPrice:'سعر الوحدة',lineTotal:'إجمالي البند',total:'الإجمالي',currency:'العملة',prices:'أسعار البنود',reason:'السبب',notes:'ملاحظات',
+ addLine:'إضافة بند',submit:'تقديم',approve:'اعتماد',reject:'رفض',cancelOrder:'إلغاء المسودة',create:'إنشاء',receive:'استلام البضاعة',remaining:'المتبقي',
+ supplierReference:'مرجع تسليم المورد',warehouse:'المستودع',bin:'موقع التخزين',stockOwner:'مالك المخزون',companyStock:'مملوك للشركة',ownerStock:'مملوك للعميل',
+ lotCode:'الدفعة / التشغيلة',serialNumber:'الرقم التسلسلي',expiresOn:'تاريخ الانتهاء',onHand:'الرصيد الفعلي',reserved:'المحجوز',available:'المتاح',unitCost:'تكلفة الوحدة',
+ automatic:'تلقائي',manual:'يدوي',numberMode:'طريقة الترقيم',officialNumber:'رقم أمر الشراء الرسمي',reference:'المرجع',status:'الحالة',actions:'الإجراءات',details:'التفاصيل',
+ createdAt:'تاريخ الإنشاء',draft:'مسودة',submitted:'مقدم',approved:'معتمد',rejected:'مرفوض',ordered:'تم إصدار الأمر',part_received:'استلام جزئي',received:'مستلم',cancelled:'ملغي',
+ active:'نشط',inactive:'غير نشط',archived:'مؤرشف',refresh:'تحديث',save:'حفظ',cancel:'إلغاء',select:'اختر...',all:'الكل',search:'بحث',loading:'جارٍ التحميل...',noData:'لا توجد بيانات',saved:'تم الحفظ بنجاح',confirmAction:'هل تؤكد تنفيذ هذا الإجراء؟',noPermission:'غير مصرح',
+ procurementNotice:'طلبات الشراء تتطلب اعتمادًا مستقلًا. أوامر الشراء المعتمدة تحفظ الكميات والأسعار. الإجماليات التزامات شراء وليست فواتير.',
+ stockNotice:'المخزون المتتبع منفصل عن أرصدة Sprint 6 السابقة. لا يتم ترحيل أو دمج المخزون القديم. تخصيص مخزون المالك والصرف والإرجاع الجزئي ومطابقة التقييم لم تكتمل بعد.',
+ receiptNotice:'استلم الكمية المسلمة فعليًا فقط، وسجل المالك والدفعة والرقم التسلسلي والانتهاء. الصنف المتسلسل يستلم بكمية واحدة.',
+ approvalNotice:'لا يجوز لمنشئ طلب الشراء أو أمر الشراء اعتماد مستنده.',automaticCode:'ينشأ عند الحفظ',noSupplier:'أنشئ موردًا نشطًا أولًا.',noLines:'أضف بندًا واحدًا على الأقل.'
+}}

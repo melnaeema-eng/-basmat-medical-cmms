@@ -1,0 +1,40 @@
+export const permitDict={
+ en:{
+  permit:'Permit to Work',permitCenter:'Permit to Work & safety control',
+  permitTotal:'Permits',permitSubmitted:'Submitted',permitApproved:'Approved',
+  permitActive:'Active',permitExpiring:'Expiring within 24h',permitHighRisk:'High/Critical risk',
+  permitAdd:'Create permit',permitSite:'Site',permitWorkOrder:'Work order',permitAsset:'Asset',
+  permitType:'Permit type',permitTitle:'Title',permitDescription:'Description',
+  permitRisk:'Risk level',permitValidFrom:'Valid from',permitValidTo:'Valid to',
+  permitSave:'Save draft',permitControls:'Safety controls',permitAddControl:'Add control',
+  permitControlType:'Control type',permitControlDescription:'Control description',
+  permitMandatory:'Mandatory',permitVerify:'Verify',permitSubmit:'Submit',
+  permitApprove:'Approve',permitReject:'Reject',permitActivate:'Activate',
+  permitClose:'Close',permitCancel:'Cancel',permitRefresh:'Refresh',
+  permitNumber:'Permit number',permitStatus:'Status',permitNoData:'No permits',
+  permitHotWork:'Hot work',permitElectrical:'Electrical',permitConfined:'Confined space',
+  permitHeight:'Working at height',permitExcavation:'Excavation',permitGeneral:'General',
+  permitIsolation:'Isolation',permitLoto:'Lockout/Tagout',permitGas:'Gas test',
+  permitFireWatch:'Fire watch',permitPpe:'PPE',permitBarrier:'Barrier',
+  permitToolbox:'Toolbox talk',permitOther:'Other',permitDetail:'Permit details'
+ },
+ ar:{
+  permit:'تصاريح العمل',permitCenter:'تصاريح العمل والتحكم بالسلامة',
+  permitTotal:'التصاريح',permitSubmitted:'مقدمة',permitApproved:'معتمدة',
+  permitActive:'نشطة',permitExpiring:'تنتهي خلال 24 ساعة',permitHighRisk:'مخاطر عالية/حرجة',
+  permitAdd:'إنشاء تصريح',permitSite:'الموقع',permitWorkOrder:'أمر العمل',permitAsset:'الأصل',
+  permitType:'نوع التصريح',permitTitle:'العنوان',permitDescription:'الوصف',
+  permitRisk:'مستوى المخاطر',permitValidFrom:'ساري من',permitValidTo:'ساري حتى',
+  permitSave:'حفظ مسودة',permitControls:'ضوابط السلامة',permitAddControl:'إضافة ضابط',
+  permitControlType:'نوع الضابط',permitControlDescription:'وصف الضابط',
+  permitMandatory:'إلزامي',permitVerify:'تحقق',permitSubmit:'تقديم',
+  permitApprove:'اعتماد',permitReject:'رفض',permitActivate:'تفعيل',
+  permitClose:'إغلاق',permitCancel:'إلغاء',permitRefresh:'تحديث',
+  permitNumber:'رقم التصريح',permitStatus:'الحالة',permitNoData:'لا توجد تصاريح',
+  permitHotWork:'أعمال ساخنة',permitElectrical:'كهرباء',permitConfined:'أماكن محصورة',
+  permitHeight:'عمل على ارتفاع',permitExcavation:'حفر',permitGeneral:'عام',
+  permitIsolation:'عزل',permitLoto:'قفل ووضع بطاقة',permitGas:'اختبار غازات',
+  permitFireWatch:'مراقب حريق',permitPpe:'معدات الوقاية',permitBarrier:'حواجز',
+  permitToolbox:'اجتماع سلامة',permitOther:'أخرى',permitDetail:'تفاصيل التصريح'
+ }
+}

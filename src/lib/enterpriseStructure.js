@@ -37,7 +37,7 @@ export async function addTeamMember(v){
  if(error)throw error
 }
 export async function loadStaffDirectory(){
- const {data,error}=await supabase.rpc('bf4_staff_directory')
+ const {data,error}=await supabase.rpc('bf_team_user_directory',{p_org:null})
  if(error)throw error
  return data||[]
 }

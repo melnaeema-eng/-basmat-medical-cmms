@@ -1,0 +1,43 @@
+/* Basmat Alnawabigh unified print signature - Medical */
+@media print {
+  body::before{
+    content:"BASMAT ALNAWABIGH";
+    position:fixed;
+    inset:42% 0 auto 0;
+    text-align:center;
+    font-size:52pt;
+    font-weight:800;
+    letter-spacing:4px;
+    color:rgba(11,43,75,.055);
+    transform:rotate(-28deg);
+    transform-origin:center;
+    z-index:0;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  body::after{
+    content:"BAMM  |  Basmat Alnawabigh  |  Medical Equipment Maintenance";
+    position:fixed;
+    left:12mm;
+    right:12mm;
+    bottom:4mm;
+    text-align:center;
+    font-size:8pt;
+    font-weight:700;
+    letter-spacing:.35px;
+    color:#536274;
+    border-top:1px solid #cfd8e3;
+    padding-top:2mm;
+    background:#fff;
+    z-index:9998;
+    pointer-events:none;
+  }
+  .owner-report-document,
+  .facility-panel,
+  table,
+  .report-page,
+  .document-page{
+    position:relative;
+    z-index:1;
+  }
+}
