@@ -215,7 +215,11 @@ export default function AppShell(){
     <span aria-hidden="true">👋</span>
     <span>{welcomeText}</span>
    </div>
-   <main className="bafm-content" key={location.pathname}><Outlet/></main>
+   <main className="bafm-content" key={location.pathname}>
+    {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
+      <strong>{lang==='ar'?'وضع إعداد المشروع':'Project Setup Mode'}</strong>
+      <button type="button" className="btn secondary" onClick={()=>navigate(sessionStorage.getItem('bafm-project-setup-return')||'/project-setup')}>{lang==='ar'?'العودة إلى إعداد المشروع':'Back to Project Setup'}</button>
+    </div>}<Outlet/></main>
   </div>
  </div>
 }
