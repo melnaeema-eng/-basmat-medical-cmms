@@ -75,6 +75,5 @@ export default function ProjectSetupWizard(){
       {!next&&<div className="alert success" style={{marginTop:14}}>{ar?'الإعداد الأساسي مكتمل. يمكنك الانتقال للتشغيل.':'Core setup is complete. You can move to operations.'}</div>}
     </div>
     <div className="security-check-list">{steps.map(s=><article className="facility-panel" key={s.key} style={{borderInlineStart:`5px solid ${s.done?'#20b26b':'#d9a514'}`}}><div className="page-head"><div><strong>{ar?s.labelAr:s.labelEn}</strong><p className="muted">{ar?s.noteAr:s.noteEn}</p></div><div className="row-actions"><span className={s.done?'badge success':'badge'}>{s.done?(ar?'مكتمل':'Done'):(ar?'مطلوب':'Required')}</span><Link className="btn secondary" to={s.to}>{ar?'فتح':'Open'}</Link></div></div></article>)}</div>
-    <div className="facility-panel"><h2>{ar?'الانتقال للتشغيل':'Move to Operations'}</h2><p className="muted">{ar?'بعد اكتمال الإعداد استخدم العمل الميداني لمسح QR وفتح الأصل مباشرة.':'After setup, use Mobile Field to scan QR and open the asset directly.'}</p><div className="row-actions"><Link className="btn primary" to="/field-scan">{ar?'فتح ماسح QR للفني':'Open technician QR scanner'}</Link><Link className="btn secondary" to="/field-mobile">{ar?'العمل الميداني':'Mobile Field'}</Link><Link className="btn secondary" to="/ppm">{ar?'الصيانة الوقائية':'PPM'}</Link><Link className="btn secondary" to="/corrective">{ar?'أوامر العمل':'Work Orders'}</Link></div></div>
-  </section>
+    </section>
 }

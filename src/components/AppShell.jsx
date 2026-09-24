@@ -22,7 +22,6 @@ const groups=[
   ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
   ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
   ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
-  ['/field-scan','QR Scan | مسح QR','mobile-field.view','asset'],
   ['/soft-fm','Soft FM | الخدمات المساندة','soft-fm.view','services'],
   ['/workforce','Workforce | القوى العاملة','workforce.view','users'],
   ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
