@@ -5,6 +5,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {loadPPM,ppmAction,frequencies} from '../lib/ppm'
 import {Field,Select,Dialog,Notice,Status,FormActions} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
+import {focusNextField} from '../lib/smartLanguage'
 import GuidedDevicePPM from '../components/GuidedDevicePPM'
 const blankProcedure={organization_id:'',name_ar:'',name_en:'',category_id:'',manufacturer:'',model:'',frequency:'monthly',reference:'',estimated_minutes:60}
 const blankPlan={organization_id:'',asset_id:'',procedure_id:'',contract_id:'',start_date:'',interval_count:1}
@@ -17,8 +18,30 @@ export default function PPM(){
  useEffect(()=>{load()},[])
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
  const options=(rows,label)=>[{value:'',label:t('select')},...(rows||[]).map(x=>({value:x.id,label:label(x)}))]
- const change=(key,value)=>setForm(f=>({...f,[key]:value,...(key==='organization_id'?{asset_id:'',procedure_id:'',contract_id:'',category_id:''}:key==='asset_id'?{procedure_id:'',contract_id:''}:{})}))
  const procedures=data?.procedures||[],plans=data?.plans||[],jobs=data?.jobs||[]
+ const norm=v=>(v||'').trim().toLowerCase()
+ const matchRank=(p,a,org)=>{
+  if(!a||p.organization_id!==org||p.status!=='approved')return -1
+  if(p.category_id&&p.category_id!==a.category_id)return -1
+  if(p.manufacturer&&norm(p.manufacturer)!==norm(a.manufacturer))return -1
+  if(p.model&&norm(p.model)!==norm(a.model))return -1
+  if(p.model)return 40
+  if(p.manufacturer)return 30
+  if(p.category_id)return 20
+  return 10
+ }
+ const matchingProcedures=(assetId=form.asset_id,org=form.organization_id)=>{
+  const a=data?.assets.find(x=>x.id===assetId)
+  if(!a)return[]
+  return procedures.map(p=>({p,rank:matchRank(p,a,org)})).filter(x=>x.rank>=0).sort((a,b)=>b.rank-a.rank||(Number(b.p.version||1)-Number(a.p.version||1))).map(x=>x.p)
+ }
+ const selectedAsset=data?.assets.find(a=>a.id===form.asset_id)
+ const suggestedProcedures=matchingProcedures()
+ const change=(key,value)=>setForm(f=>{
+  if(key==='organization_id')return {...f,organization_id:value,asset_id:'',procedure_id:'',contract_id:'',category_id:''}
+  if(key==='asset_id'){const matches=matchingProcedures(value,f.organization_id);return {...f,asset_id:value,procedure_id:matches[0]?.id||'',contract_id:''}}
+  return {...f,[key]:value}
+ })
  const rows=useMemo(()=>{
   if(tab==='device')return []
   const source=tab==='procedures'?procedures:tab==='plans'?plans:jobs
@@ -65,7 +88,7 @@ export default function PPM(){
    <form className="facility-form" onSubmit={submit}><div className="form-grid">
     <Field label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&can('ppm.manage',x.id)),name)}/></Field>
     {tab==='procedures'?<>
-     {['name_ar','name_en'].map(key=><Field key={key} label={t(key==='name_ar'?'nameAr':'nameEn')} required><input required value={form[key]} onChange={e=>change(key,e.target.value)}/></Field>)}
+     {['name_ar','name_en'].map(key=><Field key={key} label={t(key==='name_ar'?'nameAr':'nameEn')} required><input name={key} required value={form[key]} onChange={e=>change(key,e.target.value)} onBlur={e=>e.target.value&&focusNextField(e.target)}/></Field>)}
      <Field label={t('category')}><Select value={form.category_id} onChange={v=>change('category_id',v)} options={options(data?.categories.filter(x=>x.organization_id===form.organization_id),name)}/></Field>
      {['manufacturer','model','reference'].map(key=><Field key={key} label={t(key)}><input value={form[key]} onChange={e=>change(key,e.target.value)}/></Field>)}
      <Field label={t('frequency')}><Select value={form.frequency} onChange={v=>change('frequency',v)} options={frequencies.map(v=>({value:v,label:t(v)}))}/></Field>
@@ -73,10 +96,10 @@ export default function PPM(){
      <p className="muted span-2">{t('procedureNotice')}</p>
     </>:<>
      <Field label={t('asset')} required><Select required value={form.asset_id} onChange={v=>change('asset_id',v)} options={options(data?.assets.filter(x=>x.organization_id===form.organization_id&&x.status==='active'),x=>x.asset_tag+' · '+name(x))}/></Field>
-     <Field label={t('procedure')} required><Select required value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={options(procedures.filter(x=>{
-      const a=data?.assets.find(a=>a.id===form.asset_id)
-      return x.organization_id===form.organization_id&&x.status==='approved'&&(!a||(!x.category_id||x.category_id===a.category_id)&&(!x.manufacturer||x.manufacturer.toLowerCase()===(a.manufacturer||'').toLowerCase())&&(!x.model||x.model.toLowerCase()===(a.model||'').toLowerCase()))
-     }),x=>x.code+' · '+name(x)+' · '+t(x.frequency))}/></Field>
+     <Field label={t('procedure')} required><Select required value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={options(suggestedProcedures,x=>x.code+' · '+name(x)+' · '+t(x.frequency))}/></Field>
+     {selectedAsset&&<p className="muted span-2">{suggestedProcedures.length
+      ?(lang==='ar'?`تم العثور على ${suggestedProcedures.length} خطة مناسبة. تم اختيار الأفضل تلقائياً حسب الموديل ثم الشركة المصنعة ثم التصنيف.`:`${suggestedProcedures.length} matching maintenance procedure(s) found. Best match selected automatically by model, manufacturer, then category.`)
+      :(lang==='ar'?'لا توجد خطة معتمدة مطابقة لهذا الأصل. اعتمد قالب الصيانة من المكتبة أولاً ثم ارجع لإنشاء الخطة.':'No approved procedure matches this asset. Adopt the maintenance template in the library first, then create the plan.')}</p>}
      <Field label={t('contractNumber')}><Select value={form.contract_id} onChange={v=>change('contract_id',v)} options={options(data?.contracts.filter(x=>x.organization_id===form.organization_id&&x.client_id===data?.assets.find(a=>a.id===form.asset_id)?.client_id),x=>x.contract_number)}/></Field>
      <Field label={t('startDate')} required><input type="date" required value={form.start_date} onChange={e=>change('start_date',e.target.value)}/></Field>
      <Field label={t('intervalCount')}><input type="number" min="1" max="100" value={form.interval_count} onChange={e=>change('interval_count',e.target.value)}/></Field>

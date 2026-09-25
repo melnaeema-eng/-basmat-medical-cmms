@@ -1,4 +1,4 @@
-
+﻿
 :root{
  --bafm-navy:#071f39;--bafm-navy2:#0b2b4b;--bafm-gold:#f1c644;--bafm-gold2:#d9a91b;
  --bafm-bg:#f4f7fb;--bafm-line:#dde5ef;--bafm-text:#10243e;--bafm-muted:#66758a;
@@ -42,3 +42,74 @@ body{background:var(--bafm-bg)}
 @media(max-width:1200px){.bafm-kpi-grid{grid-template-columns:repeat(3,1fr)}.bafm-dashboard-grid{grid-template-columns:1fr}.bafm-topbar{grid-template-columns:1fr 300px auto}.bafm-user>div:last-child{display:none}.bafm-user{min-width:40px}}
 @media(max-width:900px){.bafm-shell{display:block}.bafm-sidebar{position:relative;width:100%;height:auto;min-height:0}.bafm-logo-block{display:flex;align-items:center;text-align:start;gap:10px}.bafm-logo-block img{width:55px;height:55px;margin:0}.bafm-logo-word{font-size:22px}.bafm-nav{display:grid;grid-template-columns:repeat(2,1fr)}.bafm-topbar{position:sticky;grid-template-columns:1fr auto;height:auto;padding:8px 12px}.bafm-search{grid-column:1/-1;grid-row:2}.bafm-top-title span{display:none}.bafm-content{padding:8px}.bafm-kpi-grid{grid-template-columns:repeat(2,1fr)}.bafm-quick-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.bafm-nav{grid-template-columns:1fr}.bafm-kpi-grid{grid-template-columns:1fr}.bafm-hero{min-height:190px;padding:18px}.bafm-hero-copy h1{font-size:22px}.bafm-hero-tag{display:none}.bafm-quick-grid{grid-template-columns:repeat(2,1fr)}.bafm-top-actions{gap:5px}.bafm-user{display:none}}
+
+
+/* Guided Workflow + Organization Branding */
+.guided-workflow-bar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,2fr) auto;gap:12px;align-items:center;padding:10px 18px;background:#fff7d8;border-bottom:1px solid #e6cf78;position:sticky;top:0;z-index:45}
+.guided-workflow-copy{display:flex;flex-direction:column;gap:2px}
+.guided-workflow-copy span{font-size:12px;opacity:.75}
+.guided-workflow-progress{height:7px;background:#e7e7e7;border-radius:999px;overflow:hidden}
+.guided-workflow-progress i{display:block;height:100%;background:currentColor;border-radius:999px;transition:width .2s ease}
+.guided-workflow-actions{display:flex;gap:6px}
+.smart-language-warning{outline:2px solid #d89b16!important;outline-offset:1px}
+.bafm-logo-block img.org-brand-logo{max-height:66px;max-width:150px;object-fit:contain}
+.org-context-select{max-width:230px;min-width:150px}
+@media(max-width:800px){.guided-workflow-bar{grid-template-columns:1fr auto}.guided-workflow-progress{grid-column:1/-1}.org-context-select{max-width:140px}}
+
+/* BASMAT DUAL BRANDING V1 */
+.bafm-logo-block.dual-branding{
+ padding-block:16px;
+}
+
+.dual-brand-row{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ min-height:72px;
+}
+
+.dual-brand-primary,
+.dual-brand-org{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:4px;
+ min-width:72px;
+}
+
+.dual-brand-primary img{
+ max-width:76px;
+ max-height:54px;
+ object-fit:contain;
+}
+
+.dual-brand-org img{
+ max-width:90px;
+ max-height:54px;
+ object-fit:contain;
+}
+
+.dual-brand-primary span,
+.dual-brand-org small{
+ font-size:9px;
+ line-height:1.2;
+ text-align:center;
+ max-width:110px;
+}
+
+.dual-brand-divider{
+ font-weight:700;
+ opacity:.5;
+}
+
+.org-logo-fallback{
+ width:48px;
+ height:48px;
+ border-radius:12px;
+ place-items:center;
+ font-weight:800;
+ border:1px solid currentColor;
+ opacity:.8;
+}

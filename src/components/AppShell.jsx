@@ -3,6 +3,8 @@ import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
+import GuidedWorkflowBar from './GuidedWorkflowBar'
+import {useSmartLanguageInputs} from '../lib/smartLanguage'
 import '../bafm-theme.css'
 
 const groups=[
@@ -97,6 +99,8 @@ export default function AppShell(){
  const navigate=useNavigate(),location=useLocation()
  const [query,setQuery]=useState('')
  const [organizations,setOrganizations]=useState([])
+ const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
+ useSmartLanguageInputs()
  const visible=permission=>permission===null||permission==='__client__'||can(permission)
  const organizationIds=useMemo(()=>{
   if(profile?.is_super_admin||access?.super_admin)return []
@@ -107,7 +111,7 @@ export default function AppShell(){
   let alive=true
   async function loadOrganizations(){
    try{
-    let q=supabase.from('bf_organizations').select('id,name,code,status').order('name')
+    let q=supabase.from('bf_organizations').select('id,name,name_ar,name_en,code,status,logo_url').order('name')
     if(!(profile?.is_super_admin||access?.super_admin)){
      if(!organizationIds.length){if(alive)setOrganizations([]);return}
      q=q.in('id',organizationIds)
@@ -122,6 +126,30 @@ export default function AppShell(){
   if(user)loadOrganizations()
   return()=>{alive=false}
  },[user,profile,access,organizationIds.join('|')])
+
+ const activeOrganization=useMemo(()=>{
+  if(!organizations.length)return null
+  const selected=organizations.find(x=>x.id===activeOrgId)
+  if(selected)return selected
+  if(organizations.length===1)return organizations[0]
+  return null
+ },[organizations,activeOrgId])
+ useEffect(()=>{
+  if(organizations.length===1&&activeOrgId!==organizations[0].id){
+   setActiveOrgId(organizations[0].id)
+   localStorage.setItem('basmat.active.organization',organizations[0].id)
+  }
+ },[organizations,activeOrgId])
+ const chooseOrganization=id=>{
+  setActiveOrgId(id)
+  if(id)localStorage.setItem('basmat.active.organization',id)
+  else localStorage.removeItem('basmat.active.organization')
+  window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:id||null}}))
+ }
+ const organizationLogo=activeOrganization?.logo_url||''
+ const organizationBrand=activeOrganization
+  ?(lang==='ar'?(activeOrganization.name_ar||activeOrganization.name||activeOrganization.name_en):(activeOrganization.name_en||activeOrganization.name||activeOrganization.name_ar))
+  :'Basmat Alnawabigh'
 
  const displayName=profile?.full_name||user?.email||'User'
  const organizationLabel=useMemo(()=>{
@@ -153,10 +181,34 @@ export default function AppShell(){
 
  return <div className="bafm-shell">
   <aside className="bafm-sidebar">
-   <div className="bafm-logo-block">
-    <img src="/bafm-logo.png" alt="BAMM"/>
+   <div className="bafm-logo-block dual-branding">
+    <div className="dual-brand-row">
+     <div className="dual-brand-primary">
+      <img src="/bafm-logo.png" alt="Basmat Alnawabigh"/>
+      <span>Basmat Alnawabigh</span>
+     </div>
+     {activeOrganization&&<div className="dual-brand-divider">×</div>}
+     {activeOrganization&&<div className="dual-brand-org">
+      {organizationLogo
+       ?<img src={organizationLogo} alt={organizationBrand}
+          onError={e=>{
+           e.currentTarget.style.display='none'
+           e.currentTarget.nextElementSibling.style.display='grid'
+          }}/>
+       :null}
+      <span className="org-logo-fallback"
+       style={{display:organizationLogo?'none':'grid'}}>
+       {(organizationBrand||'ORG').slice(0,2)}
+      </span>
+      <small>{organizationBrand}</small>
+     </div>}
+    </div>
     <div className="bafm-logo-word">BAMM</div>
-    <div className="bafm-logo-sub">Basmat Alnawabigh</div>
+    <div className="bafm-logo-sub">
+     {organizationBrand
+      ?('Basmat CMMS · '+organizationBrand)
+      :'Basmat Alnawabigh'}
+    </div>
     <div className="bafm-logo-tiny">Medical Equipment Maintenance Management System</div>
    </div>
    <nav className="bafm-nav">
@@ -188,6 +240,10 @@ export default function AppShell(){
       placeholder={lang==='ar'?'البحث في أوامر العمل والأجهزة الطبية...':'Search work orders, assets, facilities...'}/>
     </form>
     <div className="bafm-top-actions">
+     {organizations.length>1&&<select className="org-context-select" value={activeOrgId} onChange={e=>chooseOrganization(e.target.value)}>
+      <option value="">{lang==='ar'?'كل المنظمات / الهوية العامة':'All organizations / default brand'}</option>
+      {organizations.map(o=><option key={o.id} value={o.id}>{lang==='ar'?(o.name_ar||o.name||o.name_en):(o.name_en||o.name||o.name_ar)}</option>)}
+     </select>}
      <button className="bafm-top-btn" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{lang==='ar'?'EN':'عربي'}</button>
      <button className="bafm-bell" onClick={()=>navigate('/notifications')} aria-label="Notifications"><NavIcon type="bell"/><span>•</span></button>
      <div className="bafm-user">
@@ -219,7 +275,7 @@ export default function AppShell(){
     {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
       <strong>{lang==='ar'?'وضع إعداد المشروع':'Project Setup Mode'}</strong>
       <button type="button" className="btn secondary" onClick={()=>navigate(sessionStorage.getItem('bafm-project-setup-return')||'/project-setup')}>{lang==='ar'?'العودة إلى إعداد المشروع':'Back to Project Setup'}</button>
-    </div>}<Outlet/></main>
+    </div>}<GuidedWorkflowBar/><Outlet/></main>
   </div>
  </div>
 }

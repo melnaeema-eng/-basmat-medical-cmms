@@ -5,6 +5,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {save,active,display} from '../lib/facility'
 import {loadMasterAssetLibrary} from '../lib/masterAssetLibrary'
 import {Field,Choice,Select,Notice,FormActions} from './FacilityFields'
+import {focusNextField} from '../lib/smartLanguage'
 const blank={organization_id:'',client_id:'',site_id:'',building_id:'',floor_id:'',zone_id:'',room_id:'',category_id:'',parent_asset_id:'',asset_tag:'',name_ar:'',name_en:'',description:'',serial_number:'',manufacturer:'',model:'',capacity:'',unit:'',installation_date:'',commissioning_date:'',purchase_date:'',warranty_start:'',warranty_end:'',warranty_provider:'',purchase_cost:'',replacement_cost:'',expected_life_years:'',criticality:'medium',condition:'good',operational_status:'in_service',status:'active',notes:''}
 const textFields=['serial_number','manufacturer','model','capacity','unit','warranty_provider']
 const dates=['installation_date','commissioning_date','purchase_date','warranty_start','warranty_end']
@@ -131,7 +132,7 @@ export default function AssetEditor({record,data,initial={},onSaved,onCancel}){
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const choice=(key,label,rows,required=false,disabled=false,reset=[])=> <Field label={t(label)} required={required}><Choice rows={rows} lang={lang} value={form[key]} required={required} disabled={disabled} onChange={v=>setForm(f=>({...f,[key]:v,...Object.fromEntries(reset.map(k=>[k,'']))}))}/></Field>
- const input=(key,label,type='text',required=false)=> <Field key={key} label={t(label)} required={required}><input type={type} required={required} min={type==='number'?'0':undefined} step={type==='number'?(key==='expected_life_years'?'1':'0.01'):undefined} value={form[key]??''} onChange={e=>set(key,e.target.value)}/></Field>
+ const input=(key,label,type='text',required=false)=> <Field key={key} label={t(label)} required={required}><input type={type} required={required} min={type==='number'?'0':undefined} step={type==='number'?(key==='expected_life_years'?'1':'0.01'):undefined} value={form[key]??''} onChange={e=>set(key,e.target.value)} onBlur={e=>required&&e.target.value&&focusNextField(e.target)}/></Field>
  const opts=(key,values)=> <Field label={t(key)}><Select value={form[key]} onChange={v=>set(key,v)} options={values.map(v=>({value:v,label:t(v)}))}/></Field>
  return <form className="form-grid asset-form" onSubmit={submit}>
   <Notice error={error}/>
