@@ -43,6 +43,7 @@ const groups=[
   ['/advanced-stock','Advanced Stock | المخزون المتقدم','inventory.view','stack'],
   ['/procurement','Procurement | المشتريات','procurement.view','cart'],
   ['/supplier-performance','Vendors | الموردون','supplier-performance.view','truck'],
+  ['/medical-service-library','Medical Maintenance Companies | شركات صيانة الأجهزة الطبية','supplier-performance.view','truck'],
   ['/maintenance-costing','Maintenance Cost | تكاليف الصيانة','costing.view','money'],
   ['/contracts','Contracts | العقود','contracts.view','contract'],
   ['/contract-renewal','Contract Renewal | تجديد العقود','contract-renewal.view','renew'],
