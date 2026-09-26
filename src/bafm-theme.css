@@ -1,4 +1,4 @@
-﻿
+
 :root{
  --bafm-navy:#071f39;--bafm-navy2:#0b2b4b;--bafm-gold:#f1c644;--bafm-gold2:#d9a91b;
  --bafm-bg:#f4f7fb;--bafm-line:#dde5ef;--bafm-text:#10243e;--bafm-muted:#66758a;
@@ -112,4 +112,37 @@ body{background:var(--bafm-bg)}
  font-weight:800;
  border:1px solid currentColor;
  opacity:.8;
+}
+
+
+/* BASMAT GUIDED WORKFLOW FULL V1 */
+.guided-workflow-full{
+ box-shadow:0 4px 14px rgba(0,0,0,.08);
+}
+.guided-workflow-full .guided-workflow-copy strong{
+ font-size:13px;
+}
+.guided-workflow-full .guided-workflow-actions{
+ flex-wrap:wrap;
+ justify-content:flex-end;
+}
+.guided-required-missing{
+ outline:3px solid #d88900!important;
+ outline-offset:2px;
+ animation:guidedPulse .7s ease-in-out 2;
+}
+@keyframes guidedPulse{
+ 0%,100%{transform:scale(1)}
+ 50%{transform:scale(1.015)}
+}
+
+/* BASMAT SMART LANGUAGE PROFESSIONAL V1 */
+.smart-language-warning{outline:2px solid #b45309 !important;outline-offset:1px}
+
+
+
+/* BASMAT GLOBAL EMAIL VALIDATION V1 */
+.smart-email-invalid{
+  outline:2px solid #b91c1c !important;
+  outline-offset:1px;
 }
