@@ -1,5 +1,6 @@
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
+import {evaluateAccess} from '../lib/scopeAccess'
 const Context=createContext(null)
 const empty={super_admin:false,roles:[],clients:[]}
 export function AuthProvider({children}){
@@ -23,16 +24,17 @@ export function AuthProvider({children}){
   const {data:sub}=supabase.auth.onAuthStateChange((_event,next)=>{if(active)load(next)})
   return()=>{active=false;sub.subscription.unsubscribe()}
  },[])
- const can=(permission,org=null,client=null)=>{
-  if(profile?.status!=='active')return false
-  if(access.super_admin)return true
-  if(!org&&!client&&['organizations.view','clients.view','contracts.view','sites.view','locations.view','assets.view','corrective.view','corrective.request'].includes(permission)&&access.clients.length)return true
-  if(access.roles.some(r=>r.permission===permission&&(!org||r.organization_id===org)))return true
-  return !!client&&['clients.view','contracts.view','sites.view','locations.view','assets.view','corrective.view','corrective.request'].includes(permission)
-   &&access.clients.some(c=>c.client_id===client&&(!org||c.organization_id===org))
- }
+ const can=(permission,org=null,client=null,scope=null)=>
+  evaluateAccess({profile,access,permission,org,client,scope})
+ const canScoped=(permission,scope={})=>
+  evaluateAccess({
+   profile,access,permission,
+   org:scope.organization_id||null,
+   client:scope.client_id||null,
+   scope
+  })
  const value=useMemo(()=>({
-  session,user:session?.user||null,profile,access,loading,can,
+  session,user:session?.user||null,profile,access,loading,can,canScoped,
   signIn:(email,password)=>supabase.auth.signInWithPassword({email,password}),
   signOut:()=>supabase.auth.signOut(),
   refreshProfile:async()=>{const [p,a]=await Promise.all([
