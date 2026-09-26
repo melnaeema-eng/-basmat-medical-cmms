@@ -150,7 +150,7 @@ export default function MedicalServiceCompaniesLibrary(){
   {adminOpen&&access?.super_admin&&<div id="medical-company-admin" className="facility-panel">
    <h2>{form.id?(ar?'تعديل شركة':'Edit company'):(ar?'إضافة شركة صيانة طبية':'Add medical maintenance company')}</h2>
    <div className="form-grid">
-    <label>Code<input value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></label>
+    <label>{ar?'الكود':'Code'}<input value={form.id?(form.code||''):(ar?'يولد تلقائيًا عند الحفظ':'Auto generated on save')} readOnly /></label>
     <label>{ar?'الاسم بالعربية':'Arabic name'}<input value={form.name_ar} onChange={e=>setForm({...form,name_ar:e.target.value})}/></label>
     <label>{ar?'الاسم بالإنجليزية':'English name'}<input value={form.name_en||''} onChange={e=>setForm({...form,name_en:e.target.value})}/></label>
     <label>{ar?'التخصصات — مفصولة بفاصلة':'Specialties — comma separated'}<input value={form.specialties} onChange={e=>setForm({...form,specialties:e.target.value})} placeholder="Imaging, Lab, ICU, OR, CSSD"/></label>
