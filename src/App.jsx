@@ -1,4 +1,4 @@
-import MasterAssetLibrary from './pages/MasterAssetLibrary'
+﻿import MasterAssetLibrary from './pages/MasterAssetLibrary'
 import MedicalServiceCompaniesLibrary from './pages/MedicalServiceCompaniesLibrary'
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
@@ -103,7 +103,7 @@ export default function App(){
    <Route path="/audit" element={guard('audit.view',<AuditCenter/>)}/>
    <Route path="/planning" element={guard('planning.view',<PlanningCalendar/>)}/>
    <Route path="/supplier-performance" element={guard('supplier-performance.view',<SupplierPerformance/>)}/>
-   <Route path="/medical-service-library" element={guard('supplier-performance.view',<MedicalServiceCompaniesLibrary/>)}/>
+   <Route path="/medical-service-library" element={<MedicalServiceCompaniesLibrary/>}/>
    <Route path="/workforce" element={guard('workforce.view',<WorkforceDispatch/>)}/>
    <Route path="/backlog" element={guard('backlog.view',<BacklogPriority/>)}/>
    <Route path="/reliability" element={guard('reliability.view',<ReliabilityDashboard/>)}/>
@@ -128,5 +128,6 @@ export default function App(){
       <Route path="/technician-execution" element={guard('maintenance.execute', <TechnicianExecution />)} />
 </Routes></BrowserRouter></AuthProvider></LanguageProvider>
 }
+
 
 
