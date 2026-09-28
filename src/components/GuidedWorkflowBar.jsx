@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react'
+﻿import {useEffect,useMemo,useState} from 'react'
 import {useLocation,useNavigate} from 'react-router-dom'
 import {applySmartLanguage} from '../lib/smartLanguage'
 import {
@@ -364,14 +364,15 @@ export default function GuidedWorkflowBar(){
    {firstMissing&&<small>{ar?'الخطوة التالية: ':'Next: '}{firstMissing.label}</small>}
   </div>
   <div className="row-actions">
-   {!currentFlow&&<button className="btn primary" type="button" onClick={start}>{ar?'ابدأ القائد':'Start guide'}</button>}
+   {!currentFlow&&<button className="btn primary" type="button" onClick={start}>{ar?'ابدأ الدليل':'Start guide'}</button>}
    {firstMissing?.prerequisite&&firstMissing.emptyOptions&&
     <button className="btn secondary" type="button" onClick={goPrerequisite}>
      {ar?'إنشاء المتطلب أولاً':'Create prerequisite'}
     </button>}
    {currentFlow&&<button className="btn secondary" type="button" onClick={()=>finishGuidedWorkflow()}>
-    {ar?'إنهاء القائد':'Close guide'}
+    {ar?'إنهاء الدليل':'Close guide'}
    </button>}
   </div>
  </div>
 }
+

@@ -103,19 +103,25 @@ export default function AppShell(){
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
  useSmartLanguageInputs()
  const visible=permission=>permission===null||permission==='__client__'||can(permission)
- const organizationIds=useMemo(()=>{
-  if(profile?.is_super_admin||access?.super_admin)return []
-  return [...new Set((access?.roles||[]).map(r=>r.organization_id).filter(Boolean))]
- },[access,profile])
+ const isPlatformAdmin=!!(profile?.is_super_admin||access?.super_admin)
+ const homeOrganizationId=access?.home_organization_id||null
 
  useEffect(()=>{
   let alive=true
   async function loadOrganizations(){
    try{
-    let q=supabase.from('bf_organizations').select('id,name,name_ar,name_en,code,status,logo_url').order('name')
-    if(!(profile?.is_super_admin||access?.super_admin)){
-     if(!organizationIds.length){if(alive)setOrganizations([]);return}
-     q=q.in('id',organizationIds)
+    let q=supabase.from('bf_organizations')
+     .select('id,name,name_ar,name_en,code,status,logo_url,organization_type')
+     .order('name')
+    if(!isPlatformAdmin){
+     if(!homeOrganizationId){if(alive)setOrganizations([]);return}
+     const home=access?.home_organization
+     if(home){
+      const normalized={...home,id:home.id||home.organization_id||homeOrganizationId}
+      if(alive)setOrganizations([normalized])
+      return
+     }
+     q=q.eq('id',homeOrganizationId)
     }
     const {data,error}=await q
     if(error)throw error
@@ -126,22 +132,30 @@ export default function AppShell(){
   }
   if(user)loadOrganizations()
   return()=>{alive=false}
- },[user,profile,access,organizationIds.join('|')])
+ },[user,isPlatformAdmin,homeOrganizationId])
 
  const activeOrganization=useMemo(()=>{
   if(!organizations.length)return null
+  if(!isPlatformAdmin)return organizations.find(x=>x.id===homeOrganizationId)||organizations[0]
   const selected=organizations.find(x=>x.id===activeOrgId)
-  if(selected)return selected
-  if(organizations.length===1)return organizations[0]
-  return null
- },[organizations,activeOrgId])
+  return selected||null
+ },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
  useEffect(()=>{
+  if(!isPlatformAdmin){
+   const fixed=homeOrganizationId||''
+   if(activeOrgId!==fixed)setActiveOrgId(fixed)
+   if(fixed)localStorage.setItem('basmat.active.organization',fixed)
+   else localStorage.removeItem('basmat.active.organization')
+   window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:fixed||null}}))
+   return
+  }
   if(organizations.length===1&&activeOrgId!==organizations[0].id){
    setActiveOrgId(organizations[0].id)
    localStorage.setItem('basmat.active.organization',organizations[0].id)
   }
- },[organizations,activeOrgId])
+ },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
  const chooseOrganization=id=>{
+  if(!isPlatformAdmin)return
   setActiveOrgId(id)
   if(id)localStorage.setItem('basmat.active.organization',id)
   else localStorage.removeItem('basmat.active.organization')
@@ -154,18 +168,15 @@ export default function AppShell(){
 
  const displayName=profile?.full_name||user?.email||'User'
  const organizationLabel=useMemo(()=>{
-  if(profile?.is_super_admin||access?.super_admin){
+  if(isPlatformAdmin){
+   if(activeOrganization)return activeOrganization.name||activeOrganization.code||''
    return lang==='ar'?'الإدارة العامة · جميع المنظمات':'General Administration · All Organizations'
   }
-  if(!organizations.length){
-   return lang==='ar'?'لا توجد منظمة مرتبطة':'No organization assigned'
+  if(!activeOrganization){
+   return lang==='ar'?'لا توجد منظمة مسندة للمستخدم':'No organization assigned to this user'
   }
-  if(organizations.length===1)return organizations[0].name||organizations[0].code||''
-  const names=organizations.slice(0,2).map(x=>x.name||x.code).filter(Boolean).join(' · ')
-  return organizations.length>2
-   ? `${names} +${organizations.length-2}`
-   : names
- },[organizations,profile,access,lang])
+  return activeOrganization.name||activeOrganization.code||''
+ },[activeOrganization,isPlatformAdmin,lang])
 
  const welcomeText=lang==='ar'
   ? `مرحباً ${displayName} — ${organizationLabel}`
@@ -241,8 +252,8 @@ export default function AppShell(){
       placeholder={lang==='ar'?'البحث في أوامر العمل والأجهزة الطبية...':'Search work orders, assets, facilities...'}/>
     </form>
     <div className="bafm-top-actions">
-     {organizations.length>1&&<select className="org-context-select" value={activeOrgId} onChange={e=>chooseOrganization(e.target.value)}>
-      <option value="">{lang==='ar'?'كل المنظمات / الهوية العامة':'All organizations / default brand'}</option>
+     {isPlatformAdmin&&organizations.length>0&&<select className="org-context-select" value={activeOrgId} onChange={e=>chooseOrganization(e.target.value)}>
+      <option value="">{lang==='ar'?'كل المنظمات / إدارة المنصة':'All organizations / Platform'}</option>
       {organizations.map(o=><option key={o.id} value={o.id}>{lang==='ar'?(o.name_ar||o.name||o.name_en):(o.name_en||o.name||o.name_ar)}</option>)}
      </select>}
      <button className="bafm-top-btn" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{lang==='ar'?'EN':'عربي'}</button>
