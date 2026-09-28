@@ -9,6 +9,7 @@ import EnterpriseAccess from './pages/EnterpriseAccess'
 import ReleaseReadiness from './pages/ReleaseReadiness'
 import SecurityReadiness from './pages/SecurityReadiness'
 import MobileField from './pages/MobileField'
+import QrAssetScanner from './pages/QrAssetScanner'
 import DocumentControl from './pages/DocumentControl'
 import OwnerPortal from './pages/OwnerPortal'
 import ExecutiveDashboard from './pages/ExecutiveDashboard'
@@ -116,6 +117,7 @@ export default function App(){
    <Route path="/owner-portal" element={<OwnerPortal/>}/>
    <Route path="/document-control" element={guard('document-control.view',<DocumentControl/>)}/>
    <Route path="/field-mobile" element={guard('mobile-field.view',<MobileField/>)}/>
+   <Route path="/qr-scan" element={guard('mobile-field.view',<QrAssetScanner/>)}/>
    <Route path="/security-readiness" element={guard('security.view',<SecurityReadiness/>)}/>
    <Route path="/release-readiness" element={guard('release.view',<ReleaseReadiness/>)}/>
    <Route path="/enterprise-access" element={guard('enterprise-access.view',<EnterpriseAccess/>)}/>
