@@ -67,7 +67,7 @@ export function AuthProvider({children}){
 
  const can=(permission,org=null)=>{
   if(profile?.status!=='active')return false
-  if(access?.super_admin)return true
+  if(profile?.is_super_admin||access?.super_admin)return true
   const resolved=resolveMedicalPermission(permission)
   return (access?.permissions||[]).some(x=>
     x.permission_key===resolved&&(!org||x.organization_id===org)
@@ -76,7 +76,7 @@ export function AuthProvider({children}){
 
  const canScoped=(permission,scope={})=>{
   if(!can(permission,scope.organization_id||null))return false
-  if(access?.super_admin)return true
+  if(profile?.is_super_admin||access?.super_admin)return true
   if(!scope.project_id&&!scope.site_id&&!scope.discipline_code)return true
 
   return (access?.projects||[]).some(p=>

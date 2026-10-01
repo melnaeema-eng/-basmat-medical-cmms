@@ -47,7 +47,7 @@ export function normalizeScopeContext(org=null,client=null,scope=null){
 
 export function evaluateAccess({profile,access,permission,org=null,client=null,scope=null}){
  if(profile?.status!=='active')return false
- if(access?.super_admin)return true
+ if(profile?.is_super_admin||access?.super_admin)return true
 
  const ctx=normalizeScopeContext(org,client,scope)
 

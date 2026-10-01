@@ -1,4 +1,5 @@
-﻿import MasterAssetLibrary from './pages/MasterAssetLibrary'
+import MasterAssetLibrary from './pages/MasterAssetLibrary'
+import LibraryDeployment from './pages/LibraryDeployment'
 import MedicalServiceCompaniesLibrary from './pages/MedicalServiceCompaniesLibrary'
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
@@ -80,7 +81,7 @@ export default function App(){
    <Route path="/sites" element={guard('sites.view',<Sites/>)}/>
    <Route path="/locations" element={guard('locations.view',<LocationManagement/>)}/>
    <Route path="/asset-categories" element={guard('assets.view',<AssetCategories/>)}/>
-   <Route path="/asset-library" element={guard('assets.view',<MasterAssetLibrary/>)}/>
+   <Route path="/asset-library" element={guard('assets.view',<MedicalMaintenanceCenter/>)}/>
    <Route path="/assets" element={guard('assets.view',<AssetRegister/>)}/>
    <Route path="/asset-passport" element={guard('assets.view',<AssetPassport/>)}/>
    <Route path="/asset-passport/:id" element={guard('assets.view',<AssetPassport/>)}/>
@@ -126,6 +127,7 @@ export default function App(){
    <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="/roles-permissions" element={guard('roles.view',<RolesPermissions/>)}/>
+   <Route path="/library-deployment" element={guard('assets.view',<LibraryDeployment/>)} />
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
        <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />

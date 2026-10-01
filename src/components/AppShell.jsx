@@ -35,8 +35,9 @@ const groups=[
   ['/sites','Facilities / Sites | الأجهزة الطبية والمواقع','sites.view','building'],
   ['/locations','Locations | المواقع','locations.view','pin'],
   ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
-  ['/asset-library','Asset Library | مكتبة الأصول والصيانة','assets.view','grid'],
-  ['/assets','Assets | الأصول','assets.view','asset'],
+  ['/asset-library','Medical Asset Library | مكتبة الأجهزة الطبية','assets.view','grid'],
+  ['/library-deployment','Library → Project → PPM | المكتبة → المشروع → PPM','assets.view','calendar'],
+  ['/assets','Medical Devices | الأجهزة الطبية','assets.view','asset'],
   ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],
   ['/utilities','Utilities | الأجهزة الطبية الخدمية','utilities.view','bolt'],
  ]},
@@ -104,7 +105,7 @@ export default function AppShell(){
  const [organizations,setOrganizations]=useState([])
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
  useSmartLanguageInputs()
- const visible=permission=>permission===null||permission==='__client__'||can(permission)
+ const visible=permission=>!!(profile?.is_super_admin||access?.super_admin)||permission===null||permission==='__client__'||can(permission)
  const isPlatformAdmin=!!(profile?.is_super_admin||access?.super_admin)
  const homeOrganizationId=access?.home_organization_id||null
 
