@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
+import DashboardIdentity from '../components/DashboardIdentity'
 
 const closed=['closed','cancelled']
 const complete=['completed','approved','closed']
@@ -114,6 +115,7 @@ const ppmTotal=ppmJobs.length
   ['/reports','▥','Open Reports','فتح التقارير','reports.view'],
  ].filter(x=>can(x[4]))
  return <section className="bafm-dashboard">
+   <DashboardIdentity/>
   <div className="bafm-hero" style={{backgroundImage:"linear-gradient(90deg,rgba(7,39,68,.24),rgba(0,87,126,.08)),url('/images/medical-dashboard-hero-clear.png')",backgroundSize:"cover",backgroundPosition:"center"}}>
    <div className="bafm-hero-copy">
     <span>WELCOME BACK</span>

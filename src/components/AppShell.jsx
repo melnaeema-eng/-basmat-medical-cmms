@@ -29,6 +29,7 @@ const groups=[
   ['/workforce','Workforce | القوى العاملة','workforce.view','users'],
   ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
+  ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
  ]},
  {title:'Assets & Facilities | الأجهزة الطبية',items:[
   ['/sites','Facilities / Sites | الأجهزة الطبية والمواقع','sites.view','building'],
