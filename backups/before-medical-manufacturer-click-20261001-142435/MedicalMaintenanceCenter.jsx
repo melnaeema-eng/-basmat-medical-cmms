@@ -41,15 +41,6 @@ export default function MedicalMaintenanceCenter(){
  const load=async()=>{try{setError('');setData(await loadMedicalCenter())}catch(e){setError(e.message)}}
  const [selectedLibrary,setSelectedLibrary]=useState(null)
 
- const openMedicalManufacturer=(type,manufacturer)=>{
-  setSelectedLibrary({type,manufacturer})
-  window.setTimeout(()=>{
-   document.getElementById('medical-library-drilldown')?.scrollIntoView({
-    behavior:'smooth',
-    block:'start'
-   })
-  },80)
- }
  const registerFromLibrary=pick=>{
   if(!pick)return
   setAssetForm(v=>({
@@ -192,7 +183,7 @@ if(!data)return[]
     <div className="med-grid">{rows.map(t=><div className="med-card" key={t.id}>
      <div style={{display:'flex',gap:9}}><span className="med-icon">{t.icon_text}</span><div><small>{t.code}</small><h3 style={{margin:'2px 0'}}>{lang==='ar'?t.name_ar:t.name_en}</h3></div></div>
      <div><span className="med-badge">{t.default_criticality}</span><span className="med-badge">PM {t.default_pm_months||'—'}m</span><span className="med-badge">CAL {t.default_calibration_months||'—'}m</span>{t.procurement_class==='long_lead'&&<span className="med-badge">⏳ {t.default_lead_time_days}d</span>}</div>
-     <div style={{fontSize:10,marginTop:6}}><b>{lang==='ar'?'المصنعون':'Brands'}:</b> {t.brands.slice(0,8).map(b=><button type="button" className="med-badge" key={b.id} style={{cursor:'pointer',pointerEvents:'auto',position:'relative',zIndex:2}} onClick={()=>openMedicalManufacturer(t,b)}>{b.name}</button>)}</div>
+     <div style={{fontSize:10,marginTop:6}}><b>{lang==='ar'?'المصنعون':'Brands'}:</b> {t.brands.slice(0,8).map(b=><button type="button" className="med-badge" key={b.id} style={{cursor:'pointer'}} onClick={()=>setSelectedLibrary({type:t,manufacturer:b})}>{b.name}</button>)}</div>
     </div>)}</div>
    </div>)}
   </>}

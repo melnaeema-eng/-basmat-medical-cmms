@@ -66,7 +66,6 @@ import AssetPassport from './pages/AssetPassport'
 import './basmat-print-signature.css'
 import ProjectSetupWizard from './pages/ProjectSetupWizard'
 import RolesPermissions from './pages/RolesPermissions'
-import MedicalDeviceTraceability from './pages/MedicalDeviceTraceability'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -128,7 +127,6 @@ export default function App(){
    <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="/roles-permissions" element={guard('roles.view',<RolesPermissions/>)}/>
-   <Route path="/medical-devices" element={guard('medical.assets.view',<MedicalDeviceTraceability/>)} />
    <Route path="/library-deployment" element={guard('assets.view',<LibraryDeployment/>)} />
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>

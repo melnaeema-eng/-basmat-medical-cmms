@@ -1,5 +1,4 @@
 import {useEffect,useMemo,useState} from 'react'
-import MedicalLibraryDrilldown from '../components/MedicalLibraryDrilldown'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadMedicalCenter,registerMedicalAsset,completeMedicalActivity,createMedicalWorkOrder,saveMedicalType,saveMedicalManufacturer} from '../lib/medicalMaintenance'
@@ -39,38 +38,12 @@ export default function MedicalMaintenanceCenter(){
  const [assetForm,setAssetForm]=useState(emptyAsset),[activity,setActivity]=useState(emptyActivity),[wo,setWo]=useState(emptyWO)
  const [typeForm,setTypeForm]=useState(emptyType),[brandForm,setBrandForm]=useState(emptyBrand)
  const load=async()=>{try{setError('');setData(await loadMedicalCenter())}catch(e){setError(e.message)}}
- const [selectedLibrary,setSelectedLibrary]=useState(null)
-
- const openMedicalManufacturer=(type,manufacturer)=>{
-  setSelectedLibrary({type,manufacturer})
-  window.setTimeout(()=>{
-   document.getElementById('medical-library-drilldown')?.scrollIntoView({
-    behavior:'smooth',
-    block:'start'
-   })
-  },80)
- }
- const registerFromLibrary=pick=>{
-  if(!pick)return
-  setAssetForm(v=>({
-   ...v,
-   organization_id:v.organization_id||org,
-   master_type_id:pick.type?.id||'',
-   manufacturer_id:pick.manufacturer?.id||'',
-   model:pick.model||''
-  }))
-  const buttons=[...document.querySelectorAll('button')]
-  const registerButton=buttons.find(b=>/register medical device|تسجيل جهاز/i.test(b.textContent||''))
-  registerButton?.click()
- }
-
  useEffect(()=>{load()},[])
 
  const mfrMap=useMemo(()=>new Map((data?.manufacturers||[]).map(x=>[x.id,x])),[data])
  const typeMap=useMemo(()=>new Map((data?.types||[]).map(x=>[x.id,x])),[data])
  const allowedOrgs=useMemo(()=>{
-  
-if(!data)return[]
+  if(!data)return[]
   if(access?.super_admin)return data.organizations
   const ids=new Set((access?.roles||[]).filter(r=>r.permission==='medical.manage'||r.permission==='medical.view').map(r=>r.organization_id))
   return data.organizations.filter(x=>ids.has(x.id))
@@ -192,18 +165,12 @@ if(!data)return[]
     <div className="med-grid">{rows.map(t=><div className="med-card" key={t.id}>
      <div style={{display:'flex',gap:9}}><span className="med-icon">{t.icon_text}</span><div><small>{t.code}</small><h3 style={{margin:'2px 0'}}>{lang==='ar'?t.name_ar:t.name_en}</h3></div></div>
      <div><span className="med-badge">{t.default_criticality}</span><span className="med-badge">PM {t.default_pm_months||'—'}m</span><span className="med-badge">CAL {t.default_calibration_months||'—'}m</span>{t.procurement_class==='long_lead'&&<span className="med-badge">⏳ {t.default_lead_time_days}d</span>}</div>
-     <div style={{fontSize:10,marginTop:6}}><b>{lang==='ar'?'المصنعون':'Brands'}:</b> {t.brands.slice(0,8).map(b=><button type="button" className="med-badge" key={b.id} style={{cursor:'pointer',pointerEvents:'auto',position:'relative',zIndex:2}} onClick={()=>openMedicalManufacturer(t,b)}>{b.name}</button>)}</div>
+     <div style={{fontSize:10,marginTop:6}}><b>{lang==='ar'?'المصنعون':'Brands'}:</b> {t.brands.slice(0,8).map(b=><span className="med-badge" key={b.id}>{b.name}</span>)}</div>
     </div>)}</div>
    </div>)}
   </>}
 
-   {selectedLibrary&&<MedicalLibraryDrilldown
-  lang={lang}
-  selection={selectedLibrary}
-  options={data.options||[]}
-  onRegister={registerFromLibrary}
- />}
-{tab==='register'&&<>
+  {tab==='register'&&<>
    {can('medical.manage',org||null)&&<div className="facility-panel">
     <h2>{lang==='ar'?'تسجيل جهاز طبي':'Register Medical Device'}</h2>
     <div className="med-grid">
