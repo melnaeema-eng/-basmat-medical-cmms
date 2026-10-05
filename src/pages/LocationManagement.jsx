@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react'
+﻿import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadAll,save,active,display,levels,tables} from '../lib/facility'
@@ -8,16 +8,16 @@ const blank={name_ar:'',name_en:'',code:'',description:'',status:'active',level_
 export default function LocationManagement(){
  const {can}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState('')
- const [org,setOrg]=useState(''),[client,setClient]=useState(''),[site,setSite]=useState('')
+ const [org,setOrg]=useState(''),[site,setSite]=useState('')
  const [level,setLevel]=useState('buildings'),[search,setSearch]=useState(''),[form,setForm]=useState(blank),[editing,setEditing]=useState(null),[open,setOpen]=useState(false),[busy,setBusy]=useState(false)
  const reload=async()=>{try{setError('');setData(await loadAll())}catch(e){setError(e.message)}}
  useEffect(()=>{reload()},[])
  const config=levels.find(l=>l.key===level)
- const sites=active(data?.sites).filter(s=>(!org||s.organization_id===org)&&(!client||s.client_id===client))
+ const sites=active(data?.sites).filter(s=>(!org||s.organization_id===org))
  const parents=level==='buildings'?data?.sites.filter(s=>s.id===site)||[]:(data?.[config.previous]||[]).filter(r=>r.site_id===site)
- const rows=useMemo(()=>data?.[level]?.filter(r=>(!org||r.organization_id===org)&&(!client||data.sites.find(s=>s.id===r.site_id)?.client_id===client)&&(!site||r.site_id===site)&&(!search||[r.name,r.name_ar,r.name_en,r.code].join(' ').toLowerCase().includes(search.toLowerCase())))||[],[data,level,org,client,site,search])
+ const rows=useMemo(()=>data?.[level]?.filter(r=>(!org||r.organization_id===org)&&(!site||r.site_id===site)&&(!search||[r.name,r.name_ar,r.name_en,r.code].join(' ').toLowerCase().includes(search.toLowerCase())))||[],[data,level,org,site,search])
  const start=(row=null)=>{
-  if(row){setOrg(row.organization_id);setSite(row.site_id);setClient(data.sites.find(s=>s.id===row.site_id)?.client_id||'')}
+  if(row){setOrg(row.organization_id);setSite(row.site_id)}
   setEditing(row);setForm(row?{...blank,...row,level_no:row.level_no??''}:{...blank,code:'',[config.parent]:level==='buildings'?site:''})
   setOpen(true);setError('')
  }
@@ -36,11 +36,11 @@ export default function LocationManagement(){
  const change=async(row,status)=>{if(!confirm(t(status==='archived'?'confirmArchive':'confirmRestore')))return;try{await save(tables[level],{status},row.id);await reload();setSuccess(t('saved'))}catch(e){setError(e.message)}}
  const cols=[{key:'code',label:t('code')},{key:'name',label:t('name'),render:r=>display(r,lang)},{key:'parent',label:t('parent'),render:r=>display(data[config.previous].find(x=>x.id===r[config.parent]),lang)},{key:'status',label:t('status'),render:r=><Status value={r.status}/>},{key:'actions',label:t('actions'),render:r=>can('locations.manage',r.organization_id)&&<div className="row-actions"><button className="btn xs secondary" onClick={()=>start(r)}>{t('edit')}</button><button className="btn xs danger-soft" onClick={()=>change(r,r.status==='archived'?'active':'archived')}>{t(r.status==='archived'?'restore':'archive')}</button></div>}]
  return <section className="facility-module">
-  <div className="page-head"><h1>{t('locations')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button>{can('locations.manage',org||null)&&<button className="btn primary" disabled={!site} onClick={()=>start()}>{t('add')}</button>}</div></div>
+  <div className="page-head"><h1>{t('locations')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button><button className="btn primary" disabled={!site} onClick={()=>start()}>{t('add')}</button></div></div>
   <Notice error={error} success={success}/>
   <div className="facility-panel filter-grid">
-   <Field label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setClient('');setSite('')}}/></Field>
-   <Field label={t('client')}><Choice rows={active(data?.clients).filter(c=>!org||c.organization_id===org)} lang={lang} value={client} onChange={v=>{setClient(v);setSite('')}}/></Field>
+   <Field label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setSite('')}}/></Field>
+
    <Field label={t('site')}><Choice rows={sites} lang={lang} value={site} onChange={setSite}/></Field>
   </div>
   <div className="facility-tabs">{levels.map(l=><button key={l.key} className={level===l.key?'selected':''} onClick={()=>{setLevel(l.key);setSearch('')}}>{t(l.key)}</button>)}</div>
@@ -60,3 +60,5 @@ export default function LocationManagement(){
   </Dialog>
  </section>
 }
+
+
