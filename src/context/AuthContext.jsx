@@ -3,7 +3,15 @@ import {supabase} from '../lib/supabaseClient'
 import {resolveMedicalPermission} from '../lib/medicalPermissionAliases'
 
 const Context=createContext(null)
-const empty={super_admin:false,organizations:[],roles:[],role_assignments:[],projects:[],permissions:[]}
+
+const empty={
+ super_admin:false,
+ organizations:[],
+ roles:[],
+ role_assignments:[],
+ projects:[],
+ permissions:[]
+}
 
 export function AuthProvider({children}){
  const [session,setSession]=useState(null)
@@ -13,21 +21,46 @@ export function AuthProvider({children}){
 
  async function readAccess(userId){
   const [p,a]=await Promise.all([
-   supabase.from('bf_profiles').select('id,full_name,email,status,is_super_admin').eq('id',userId).maybeSingle(),
+   supabase
+    .from('bf_profiles')
+    .select('id,full_name,email,status,is_super_admin')
+    .eq('id',userId)
+    .maybeSingle(),
+
    supabase.rpc('bf_acl_my_context')
   ])
+
   if(p.error)throw p.error
   if(a.error)throw a.error
+
   const payload=a.data||empty
+
+  const isSuperAdmin=
+   p.data?.is_super_admin===true ||
+   payload?.super_admin===true ||
+   payload?.is_super_admin===true
+
   return {
-   profile:p.data,
+   profile:p.data
+    ?{
+      ...p.data,
+      is_super_admin:isSuperAdmin
+     }
+    :null,
+
    access:{
     ...payload,
+
+    // Canonical platform-level flag
+    super_admin:isSuperAdmin,
+
     role_assignments:payload.roles||[],
+
     roles:(payload.permissions||[]).map(x=>({
-      organization_id:x.organization_id,
-      permission:x.permission_key
+     organization_id:x.organization_id,
+     permission:x.permission_key
     })),
+
     organizations:payload.organizations||[],
     projects:payload.projects||[],
     permissions:payload.permissions||[]
@@ -36,82 +69,166 @@ export function AuthProvider({children}){
  }
 
  useEffect(()=>{
-  let active=true,seq=0
+  let active=true
+  let seq=0
+
   async function load(next){
    const n=++seq
+
    setSession(next)
+
    if(!next?.user){
-    setProfile(null);setAccess(empty);setLoading(false);return
+    setProfile(null)
+    setAccess(empty)
+    setLoading(false)
+    return
    }
+
+   setLoading(true)
+
    try{
     const result=await readAccess(next.user.id)
+
     if(active&&n===seq){
-      setProfile(result.profile)
-      setAccess(result.access)
+     setProfile(result.profile)
+     setAccess(result.access)
     }
    }catch(e){
     console.error('ACL load failed',e)
+
     if(active&&n===seq){
-      setProfile(null)
-      setAccess(empty)
+     setProfile(null)
+     setAccess(empty)
     }
    }finally{
-    if(active&&n===seq)setLoading(false)
+    if(active&&n===seq){
+     setLoading(false)
+    }
    }
   }
 
-  supabase.auth.getSession().then(({data})=>{if(active)load(data.session)})
-  const {data:sub}=supabase.auth.onAuthStateChange((_event,next)=>{if(active)load(next)})
-  return()=>{active=false;sub.subscription.unsubscribe()}
+  supabase.auth
+   .getSession()
+   .then(({data})=>{
+    if(active)load(data.session)
+   })
+
+  const {data:sub}=supabase.auth.onAuthStateChange(
+   (_event,next)=>{
+    if(active)load(next)
+   }
+  )
+
+  return()=>{
+   active=false
+   sub.subscription.unsubscribe()
+  }
  },[])
 
+ const isSuperAdmin=
+  profile?.is_super_admin===true ||
+  access?.super_admin===true
+
  const can=(permission,org=null)=>{
+  // User must still be active
   if(profile?.status!=='active')return false
-  if(profile?.is_super_admin||access?.super_admin)return true
+
+  // Platform Super Admin has unrestricted access
+  if(isSuperAdmin)return true
+
+  if(!permission)return true
+
   const resolved=resolveMedicalPermission(permission)
+
   return (access?.permissions||[]).some(x=>
-    x.permission_key===resolved&&(!org||x.organization_id===org)
+   (
+    x.permission_key===resolved ||
+    x.permission_key===permission ||
+    x.permission_key==='*'
+   )&&
+   (
+    !org ||
+    !x.organization_id ||
+    x.organization_id===org
+   )
   )
  }
 
  const canScoped=(permission,scope={})=>{
+  if(profile?.status!=='active')return false
+
+  // Super Admin ignores organization/project/site/discipline scope
+  if(isSuperAdmin)return true
+
   if(!can(permission,scope.organization_id||null))return false
-  if(profile?.is_super_admin||access?.super_admin)return true
-  if(!scope.project_id&&!scope.site_id&&!scope.discipline_code)return true
+
+  if(
+   !scope.project_id &&
+   !scope.site_id &&
+   !scope.discipline_code
+  ){
+   return true
+  }
 
   return (access?.projects||[]).some(p=>
-    (!scope.organization_id||p.organization_id===scope.organization_id)&&
-    (!scope.project_id||p.project_id===scope.project_id)&&
-    (!scope.site_id||!p.site_id||p.site_id===scope.site_id)&&
-    (!scope.discipline_code||!p.discipline_code||p.discipline_code===scope.discipline_code)
+   (!scope.organization_id||p.organization_id===scope.organization_id)&&
+   (!scope.project_id||p.project_id===scope.project_id)&&
+   (!scope.site_id||!p.site_id||p.site_id===scope.site_id)&&
+   (!scope.discipline_code||!p.discipline_code||p.discipline_code===scope.discipline_code)
   )
  }
 
  const refreshProfile=async()=>{
   if(!session?.user?.id)return
+
   const result=await readAccess(session.user.id)
+
   setProfile(result.profile)
   setAccess(result.access)
  }
 
- const value=useMemo(()=>({
+ const value=useMemo(()=>( {
   session,
   user:session?.user||null,
   profile,
   access,
+
+  // Direct canonical flag for all UI components
+  isSuperAdmin,
+
   loading,
   can,
   canScoped,
-  signIn:(email,password)=>supabase.auth.signInWithPassword({email,password}),
-  signOut:()=>supabase.auth.signOut(),
-  refreshProfile
- }),[session,profile,access,loading])
 
- return <Context.Provider value={value}>{children}</Context.Provider>
+  signIn:(email,password)=>
+   supabase.auth.signInWithPassword({email,password}),
+
+  signOut:()=>
+   supabase.auth.signOut(),
+
+  refreshProfile
+
+ }),[
+  session,
+  profile,
+  access,
+  loading,
+  isSuperAdmin
+ ])
+
+ return(
+  <Context.Provider value={value}>
+   {children}
+  </Context.Provider>
+ )
 }
 
 export function useAuth(){
  const v=useContext(Context)
- if(!v)throw Error('AuthProvider missing')
+
+ if(!v){
+  throw Error('AuthProvider missing')
+ }
+
  return v
 }

@@ -13,6 +13,7 @@ export default function LibraryDeployment(){
  const {access,can}=useAuth()
  const {lang}=useLanguage()
  const ar=lang==='ar'
+ const canManagePPM=!!(access?.super_admin||can('ppm.manage',org))
 
  const [master,setMaster]=useState(null)
  const [ppm,setPpm]=useState(null)
@@ -241,7 +242,7 @@ export default function LibraryDeployment(){
    </div>}
 
    <div className="row-actions" style={{marginTop:14}}>
-    <button className="btn primary" onClick={prepare} disabled={busy||!org||!assetType||!can('ppm.manage',org)}>
+    <button className="btn primary" onClick={prepare} disabled={busy||!org||!assetType||!canManagePPM}>
      {ar?'اعتماد قوالب PPM للمشروع':'Prepare PPM procedures'}
     </button>
    </div>
@@ -267,7 +268,7 @@ export default function LibraryDeployment(){
     </Field>
    </div>
    <div className="row-actions" style={{marginTop:14}}>
-    <button className="btn primary" onClick={createPlan} disabled={busy||!asset||!procedure||!can('ppm.manage',org)}>
+    <button className="btn primary" onClick={createPlan} disabled={busy||!asset||!procedure||!canManagePPM}>
      {ar?'إنشاء خطة PPM':'Create PPM plan'}
     </button>
    </div>

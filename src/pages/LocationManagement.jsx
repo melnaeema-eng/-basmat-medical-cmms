@@ -1,64 +1,116 @@
-﻿import {useEffect,useMemo,useState} from 'react'
-import {useAuth} from '../context/AuthContext'
+import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
-import {loadAll,save,active,display,levels,tables} from '../lib/facility'
-import {Field,Choice,Select,Dialog,Notice,Status,FormActions} from '../components/FacilityFields'
-import DataTable from '../components/DataTable'
-const blank={name_ar:'',name_en:'',code:'',description:'',status:'active',level_no:''}
+import {med2Catalog,med2SaveLocation} from '../lib/medicalCoreV2'
+
+const kinds=[
+ {key:'building',ar:'المباني',en:'Buildings',parent:null},
+ {key:'floor',ar:'الطوابق',en:'Floors',parent:'building'},
+ {key:'zone',ar:'المناطق',en:'Zones',parent:'floor'},
+ {key:'room',ar:'الغرف',en:'Rooms',parent:'zone'}
+]
+const blank={name:'',code:'',level_no:'',parent_id:''}
+function Field({label,children}){return <label style={{display:'grid',gap:6}}><span>{label}</span>{children}</label>}
+
 export default function LocationManagement(){
- const {can}=useAuth(),{t,lang}=useLanguage()
- const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState('')
- const [org,setOrg]=useState(''),[site,setSite]=useState('')
- const [level,setLevel]=useState('buildings'),[search,setSearch]=useState(''),[form,setForm]=useState(blank),[editing,setEditing]=useState(null),[open,setOpen]=useState(false),[busy,setBusy]=useState(false)
- const reload=async()=>{try{setError('');setData(await loadAll())}catch(e){setError(e.message)}}
- useEffect(()=>{reload()},[])
- const config=levels.find(l=>l.key===level)
- const sites=active(data?.sites).filter(s=>(!org||s.organization_id===org))
- const parents=level==='buildings'?data?.sites.filter(s=>s.id===site)||[]:(data?.[config.previous]||[]).filter(r=>r.site_id===site)
- const rows=useMemo(()=>data?.[level]?.filter(r=>(!org||r.organization_id===org)&&(!site||r.site_id===site)&&(!search||[r.name,r.name_ar,r.name_en,r.code].join(' ').toLowerCase().includes(search.toLowerCase())))||[],[data,level,org,site,search])
- const start=(row=null)=>{
-  if(row){setOrg(row.organization_id);setSite(row.site_id)}
-  setEditing(row);setForm(row?{...blank,...row,level_no:row.level_no??''}:{...blank,code:'',[config.parent]:level==='buildings'?site:''})
-  setOpen(true);setError('')
- }
- const submit=async e=>{
-  e.preventDefault();setBusy(true);setError('')
+ const {lang}=useLanguage(),ar=lang==='ar'
+ const [data,setData]=useState({projects:[],sites:[],locations:[]})
+ const [project,setProject]=useState(''),[site,setSite]=useState(''),[kind,setKind]=useState('building')
+ const [open,setOpen]=useState(false),[form,setForm]=useState(blank)
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(''),[search,setSearch]=useState('')
+
+ const reload=async()=>setData(await med2Catalog())
+ useEffect(()=>{reload().catch(e=>setError(e.message))},[])
+
+ const sites=useMemo(()=>data.sites.filter(s=>!project||s.project_id===project),[data.sites,project])
+ const rows=useMemo(()=>data.locations.filter(x=>
+   x.kind===kind&&(!project||x.project_id===project)&&(!site||x.site_id===site)&&
+   (!search||`${x.name||''} ${x.code||''}`.toLowerCase().includes(search.toLowerCase()))
+ ),[data.locations,kind,project,site,search])
+ const current=kinds.find(x=>x.key===kind)
+ const parents=useMemo(()=>{
+  if(!current.parent)return []
+  return data.locations.filter(x=>x.kind===current.parent&&x.project_id===project&&x.site_id===site)
+ },[data.locations,current.parent,project,site])
+
+ const start=()=>{setError('');setForm(blank);setOpen(true)}
+ const save=async()=>{
+  setBusy(true);setError('');setSuccess('')
   try{
-   const parent=(level==='buildings'?data.sites:data[config.previous]).find(r=>r.id===form[config.parent])
-   if(!parent)throw Error(t('required'))
-   const targetSite=level==='buildings'?parent:data.sites.find(s=>s.id===parent.site_id)
-   if(!targetSite||!can('locations.manage',targetSite.organization_id))throw Error(t('noPermission'))
-   const payload={organization_id:targetSite.organization_id,site_id:targetSite.id,[config.parent]:parent.id,name:form.name_en.trim(),name_ar:form.name_ar.trim(),name_en:form.name_en.trim(),description:form.description||null,status:form.status}
-   if(level==='floors')payload.level_no=form.level_no===''?null:Number(form.level_no)
-   await save(tables[level],payload,editing?.id);setOpen(false);await reload();setSuccess(t('saved'))
+   if(!project||!site)throw Error(ar?'اختر المشروع والموقع أولاً':'Select project and site first')
+   if(!form.name.trim())throw Error(ar?'الاسم مطلوب':'Name required')
+   if(current.parent&&!form.parent_id)throw Error(ar?'اختر المستوى الأعلى':'Select parent level')
+   await med2SaveLocation({...form,kind,project_id:project,site_id:site})
+   setOpen(false);setForm(blank);await reload()
+   setSuccess(ar?'تمت الإضافة':'Added successfully')
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
- const change=async(row,status)=>{if(!confirm(t(status==='archived'?'confirmArchive':'confirmRestore')))return;try{await save(tables[level],{status},row.id);await reload();setSuccess(t('saved'))}catch(e){setError(e.message)}}
- const cols=[{key:'code',label:t('code')},{key:'name',label:t('name'),render:r=>display(r,lang)},{key:'parent',label:t('parent'),render:r=>display(data[config.previous].find(x=>x.id===r[config.parent]),lang)},{key:'status',label:t('status'),render:r=><Status value={r.status}/>},{key:'actions',label:t('actions'),render:r=>can('locations.manage',r.organization_id)&&<div className="row-actions"><button className="btn xs secondary" onClick={()=>start(r)}>{t('edit')}</button><button className="btn xs danger-soft" onClick={()=>change(r,r.status==='archived'?'active':'archived')}>{t(r.status==='archived'?'restore':'archive')}</button></div>}]
- return <section className="facility-module">
-  <div className="page-head"><h1>{t('locations')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button><button className="btn primary" disabled={!site} onClick={()=>start()}>{t('add')}</button></div></div>
-  <Notice error={error} success={success}/>
-  <div className="facility-panel filter-grid">
-   <Field label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setSite('')}}/></Field>
 
-   <Field label={t('site')}><Choice rows={sites} lang={lang} value={site} onChange={setSite}/></Field>
+ return <section className="facility-module">
+  <div className="page-head">
+   <div><h1>{ar?'الهيكل المكاني':'Location Hierarchy'}</h1>
+    <p className="muted">{ar?'المشروع ← الموقع ← المبنى ← الطابق ← المنطقة ← الغرفة':'Project → Site → Building → Floor → Zone → Room'}</p>
+   </div>
+   <div className="row-actions">
+    <button className="btn secondary" onClick={()=>reload().catch(e=>setError(e.message))}>{ar?'تحديث':'Refresh'}</button>
+    <button className="btn primary" onClick={start}>{ar?'+ إضافة':'+ Add'}</button>
+   </div>
   </div>
-  <div className="facility-tabs">{levels.map(l=><button key={l.key} className={level===l.key?'selected':''} onClick={()=>{setLevel(l.key);setSearch('')}}>{t(l.key)}</button>)}</div>
-  <div className="facility-toolbar"><input placeholder={t('search')} value={search} onChange={e=>setSearch(e.target.value)}/><span>{rows.length}</span></div>
-  {data?<DataTable columns={cols} rows={rows} emptyText={t('noData')}/>:<p>{t('loading')}</p>}
-  <Dialog open={open} title={editing?t('edit'):t('add')} onClose={()=>setOpen(false)}>
-   <form className="form-grid" onSubmit={submit}>
-    <Field label={t('parent')} required><Choice rows={parents} value={form[config.parent]} lang={lang} required onChange={v=>setForm({...form,[config.parent]:v})}/></Field>
-    <Field label={t('code')}><input value={form.code||'Auto-generated on save / يُنشأ عند الحفظ'} readOnly/></Field>
-    <Field label={t('nameAr')} required><input required value={form.name_ar} onChange={e=>setForm({...form,name_ar:e.target.value})}/></Field>
-    <Field label={t('nameEn')} required><input required value={form.name_en} onChange={e=>setForm({...form,name_en:e.target.value})}/></Field>
-    {level==='floors'&&<Field label={t('code')}><input type="number" value={form.level_no} onChange={e=>setForm({...form,level_no:e.target.value})}/></Field>}
-    <Field label={t('description')} wide><textarea value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})}/></Field>
-    <Field label={t('status')}><Select value={form.status} onChange={v=>setForm({...form,status:v})} options={['active','inactive','archived'].map(v=>({value:v,label:t(v)}))}/></Field>
-    <FormActions busy={busy} onCancel={()=>setOpen(false)}/>
-   </form>
-  </Dialog>
+
+  {error&&<div className="alert error">{error}</div>}
+  {success&&<div className="alert success">{success}</div>}
+
+  <div className="facility-panel filter-grid">
+   <Field label={ar?'المشروع':'Project'}>
+    <select value={project} onChange={e=>{setProject(e.target.value);setSite('')}}>
+     <option value="">{ar?'اختر...':'Select...'}</option>
+     {data.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+    </select>
+   </Field>
+   <Field label={ar?'المستشفى / الموقع':'Hospital / Site'}>
+    <select value={site} onChange={e=>setSite(e.target.value)}>
+     <option value="">{ar?'اختر...':'Select...'}</option>
+     {sites.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+    </select>
+   </Field>
+   <Field label={ar?'بحث':'Search'}><input value={search} onChange={e=>setSearch(e.target.value)}/></Field>
+  </div>
+
+  <div className="tabs">
+   {kinds.map(k=><button key={k.key} className={kind===k.key?'active':''} onClick={()=>{setKind(k.key);setOpen(false)}}>
+    {ar?k.ar:k.en}
+   </button>)}
+  </div>
+
+  {open&&<div className="facility-panel">
+   <h2>{ar?`إضافة ${current.ar}`:`Add ${current.en}`}</h2>
+   <div className="form-grid">
+    {current.parent&&<Field label={ar?'المستوى الأعلى':'Parent'}>
+     <select value={form.parent_id} onChange={e=>setForm({...form,parent_id:e.target.value})}>
+      <option value="">{ar?'اختر...':'Select...'}</option>
+      {parents.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+     </select>
+    </Field>}
+    <Field label={ar?'الاسم':'Name'}><input autoFocus value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></Field>
+    <Field label={ar?'الكود':'Code'}><input value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></Field>
+    {kind==='floor'&&<Field label={ar?'رقم الطابق':'Floor number'}><input type="number" value={form.level_no} onChange={e=>setForm({...form,level_no:e.target.value})}/></Field>}
+   </div>
+   <div className="row-actions">
+    <button className="btn primary" disabled={busy} onClick={save}>{ar?'حفظ':'Save'}</button>
+    <button className="btn secondary" onClick={()=>setOpen(false)}>{ar?'إلغاء':'Cancel'}</button>
+   </div>
+  </div>}
+
+  <div className="facility-panel">
+   <table className="facility-table">
+    <thead><tr><th>{ar?'الكود':'Code'}</th><th>{ar?'الاسم':'Name'}</th><th>{ar?'المستوى الأعلى':'Parent'}</th></tr></thead>
+    <tbody>
+     {rows.length===0?<tr><td colSpan="3">{ar?'لا توجد بيانات':'No data'}</td></tr>:
+      rows.map(r=>{
+       const p=data.locations.find(x=>x.id===r.parent_id)
+       return <tr key={r.id}><td>{r.code||'—'}</td><td>{r.name}</td><td>{p?.name||'—'}</td></tr>
+      })}
+    </tbody>
+   </table>
+  </div>
  </section>
 }
-
-

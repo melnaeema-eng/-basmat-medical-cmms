@@ -14,7 +14,6 @@ const groups=[
  {title:'Administration | الإدارة',items:[
   ['/project-setup','Project Setup | إعداد المشروع','organizations.view','check'],
   ['/organizations','Organizations | المنظمات','organizations.view','org'],
-  ['/clients','Clients | العملاء','clients.view','client'],
   ['/enterprise-structure','Structure | الهيكل التشغيلي','enterprise-structure.view','tree'],
   ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
   ['/security-readiness','Security | الأمن','security.view','lock'],
@@ -22,6 +21,8 @@ const groups=[
  ]},
  {title:'Core Operations | العمليات الأساسية',items:[
   ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
+  ['/medical-asset-cockpit','Medical Asset Operations | تشغيل الأجهزة الطبية','assets.view','asset'],
+
   ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
   ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
   ['/qr-scan','Scan Medical Device QR | مسح QR للجهاز الطبي','mobile-field.view','mobile'],
@@ -30,6 +31,10 @@ const groups=[
   ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
   ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
+  ['/medical-tenant-admin','Medical Tenant Admin','organization-onboarding.manage','building'],
+  ['/medical-owner-report','Owner Service Report','medical.workorders','work'],
+  ['/medical-smart-onboarding','Medical Smart Onboarding','organization-onboarding.manage','building'],
+  ['/medical-knowledge-library','Medical Knowledge Library','organization-onboarding.manage','building'],
  ]},
  {title:'Assets & Facilities | الأجهزة الطبية',items:[
   ['/sites','Facilities / Sites | الأجهزة الطبية والمواقع','sites.view','building'],
@@ -37,7 +42,6 @@ const groups=[
   ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
   ['/asset-library','Medical Asset Library | مكتبة الأجهزة الطبية','assets.view','grid'],
   ['/medical-devices','Device Passport / Traceability | جواز وسجل الجهاز','medical.assets.view','asset'],
-  ['/library-deployment','Library → Project → PPM | المكتبة → المشروع → PPM','assets.view','calendar'],
   ['/assets','Medical Devices | الأجهزة الطبية','assets.view','asset'],
   ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],
   ['/utilities','Utilities | الأجهزة الطبية الخدمية','utilities.view','bolt'],
@@ -50,6 +54,7 @@ const groups=[
   ['/medical-service-library','Medical Maintenance Companies | شركات صيانة الأجهزة الطبية','supplier-performance.view','truck'],
   ['/maintenance-costing','Maintenance Cost | تكاليف الصيانة','costing.view','money'],
   ['/contracts','Contracts | العقود','contracts.view','contract'],
+  ['/medical-operational-setup','Medical Operations Setup','contracts.view','contract'],
   ['/contract-renewal','Contract Renewal | تجديد العقود','contract-renewal.view','renew'],
  ]},
  {title:'Safety & Compliance | السلامة والامتثال',items:[
@@ -295,3 +300,4 @@ export default function AppShell(){
   </div>
  </div>
 }
+
