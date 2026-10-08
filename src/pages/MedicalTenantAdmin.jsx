@@ -6,7 +6,7 @@ import {medRegisterTenant,medLinkClient,medLinkSite,medOperationalDirectory} fro
 
 const emptyTenant={name_ar:'',name_en:'',registration_no:'',vat_no:'',email:'',phone:'',city:'',address:'',logo_url:'',brand_color:'',report_footer:''}
 const emptyClient={organization_id:'',name:'',email:'',phone:''}
-const emptySite={organization_id:'',client_id:'',name:'',city:'',address:''}
+const emptySite={organization_id:'',client_id:'',name:'',city:'',address:'',latitude:'',longitude:''}
 
 export default function MedicalTenantAdmin(){
  const {profile}=useAuth()
@@ -75,11 +75,16 @@ export default function MedicalTenantAdmin(){
  }
 
  const saveSite=async e=>{
+  const lat=Number(site.latitude),lng=Number(site.longitude)
+  if(String(site.latitude).trim()===''||String(site.longitude).trim()===''||!Number.isFinite(lat)||!Number.isFinite(lng)||lat < -90||lat > 90||lng < -180||lng > 180){
+    setError('Enter valid Latitude and Longitude before saving')
+    return
+  }
   e.preventDefault();setBusy(true);setError('');setOk('')
   try{
    const {data,error}=await supabase.from('bf_sites').insert({
     organization_id:site.organization_id,client_id:site.client_id,
-    name:site.name.trim(),city:site.city||null,address:site.address||null,status:'active'
+    name:site.name.trim(),city:site.city||null,address:site.address||null,latitude:Number(site.latitude),longitude:Number(site.longitude),location_source:'manual',status:'active'
    }).select('*').single()
    if(error)throw error
    await medLinkSite(site.organization_id,site.client_id,data.id)
@@ -127,6 +132,8 @@ export default function MedicalTenantAdmin(){
   <div className="facility-panel">
    <h2>{ar?'إضافة مستشفى / موقع':'Add Hospital / Site'}</h2>
    <form onSubmit={saveSite}><div className="form-grid">
+<label>Latitude<input type="number" step="any" min="-90" max="90" required value={site.latitude} onChange={e=>setSite(v=>({...v,latitude:e.target.value}))}/></label>
+<label>Longitude<input type="number" step="any" min="-180" max="180" required value={site.longitude} onChange={e=>setSite(v=>({...v,longitude:e.target.value}))}/></label>
     <label>{ar?'شركة الصيانة':'Maintenance company'}<select required value={site.organization_id} onChange={e=>{setSite(v=>({...v,organization_id:e.target.value,client_id:''}));setSelectedOrg(e.target.value)}}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></label>
     <label>{ar?'المالك':'Owner/client'}<select required value={site.client_id} onChange={e=>setSite(v=>({...v,client_id:e.target.value}))}><option value="">{ar?'اختر':'Select'}</option>{clients.filter(x=>x.organization_id===site.organization_id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
     <label>{ar?'اسم المستشفى':'Hospital name'}<input required value={site.name} onChange={e=>setSite(v=>({...v,name:e.target.value}))}/></label>

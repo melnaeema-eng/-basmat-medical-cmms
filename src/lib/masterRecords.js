@@ -32,7 +32,7 @@ export function normalizeMaster(key,form){
   organizations:['name','code','status'],
   clients:['organization_id','name','code','email','phone','status'],
   contracts:['organization_id','client_id','contract_number','contract_type','start_date','end_date','contract_value','status'],
-  sites:['organization_id','client_id','contract_id','name','code','city','address','status']
+  sites:['organization_id','client_id','contract_id','name','code','city','address','latitude','longitude','location_source','status']
  }
  const p=Object.fromEntries(fields[key].map(k=>[k,form[k]??null]))
 
