@@ -1,8 +1,7 @@
-import {useEffect,useRef,useState} from 'react'
+import {useEffect,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import {useLanguage} from '../i18n/LanguageContext'
+import {useAuth} from '../context/AuthContext'
 import {supabase} from '../lib/supabaseClient'
 import {loadMasterAssetLibrary,adoptMasterTemplates} from '../lib/masterAssetLibrary'
 import {loadPPM,ppmAction} from '../lib/ppm'
@@ -50,65 +49,12 @@ function ActionButton({children,onClick,primary=false}){
 }
 
 
-function SiteMapPicker({sites,value,onChange,ar}){
-  const mapEl=useRef(null)
-  const mapRef=useRef(null)
-  const markersRef=useRef([])
-
-  useEffect(()=>{
-    if(!mapEl.current||mapRef.current)return
-    const map=L.map(mapEl.current,{scrollWheelZoom:true}).setView([24.7136,46.6753],10)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'&copy; OpenStreetMap'
-    }).addTo(map)
-    mapRef.current=map
-    return()=>{map.remove();mapRef.current=null}
-  },[])
-
-  useEffect(()=>{
-    const map=mapRef.current
-    if(!map)return
-    markersRef.current.forEach(m=>m.remove())
-    markersRef.current=[]
-
-    const points=[]
-    for(const s of sites||[]){
-      const lat=Number(s.latitude)
-      const lng=Number(s.longitude)
-      if(!Number.isFinite(lat)||!Number.isFinite(lng))continue
-      const selected=String(s.id)===String(value)
-      const marker=L.circleMarker([lat,lng],{
-        radius:selected?10:7,
-        weight:selected?4:2
-      }).addTo(map)
-      marker.bindTooltip(s.name||s.code||'Site')
-      marker.on('click',()=>onChange(s.id))
-      markersRef.current.push(marker)
-      points.push([lat,lng])
-    }
-
-    if(points.length){
-      if(points.length===1)map.setView(points[0],15)
-      else map.fitBounds(points,{padding:[30,30]})
-    }
-  },[sites,value,onChange])
-
-  return <div>
-    <div style={{fontWeight:700,marginBottom:6}}>
-      {ar?'اختر الموقع من الخريطة':'Choose site from map'}
-    </div>
-    <div ref={mapEl} style={{height:280,width:'100%',borderRadius:12,overflow:'hidden',border:'1px solid #d9e0e8'}}/>
-    {!(sites||[]).some(s=>Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)))&&
-      <div className="alert warning" style={{marginTop:8}}>
-        {ar?'لا توجد إحداثيات للمواقع المتاحة. حدّث إحداثيات الموقع من إعداد المواقع أولاً.':'Available sites do not have map coordinates yet.'}
-      </div>}
-  </div>
-}
-
 export default function MedicalAssetCockpit(){
   const {lang}=useLanguage()
   const ar=lang==='ar'
   const nav=useNavigate()
+  const {can,profile,access}=useAuth()
+  const canCreateAsset=org=>!!org&&(!!profile?.is_super_admin||!!access?.super_admin||can('medical.assets.manage',org)||can('assets.manage',org))
 
   const [query,setQuery]=useState('')
   const [assets,setAssets]=useState([])
@@ -417,6 +363,7 @@ export default function MedicalAssetCockpit(){
     (!deploy.organization_id||String(s.organization_id)===String(deploy.organization_id)) &&
     (!deploy.project_id||deployProjectSiteIds.has(String(s.id)))
   )
+  const automaticSiteId=deploy.project_id&&deploySites.length===1?String(deploySites[0].id):''
   const deployTypes=(deployCtx.master?.types||[]).filter(t=>t.status!=='archived')
   const deployManufacturers=(deployCtx.master?.manufacturers||[]).filter(m=>
     m.status!=='archived' &&
@@ -431,21 +378,23 @@ export default function MedicalAssetCockpit(){
   )
 
   const addAssetFromLibrary=async()=>{
-    if(!deploy.organization_id||!deploy.project_id||!deploy.site_id||!deploy.asset_type_id||!deploy.serial_number.trim()){
-      setError(ar?'اختر المنظمة والمشروع والموقع ونوع الجهاز وأدخل الرقم التسلسلي.':'Select organization, project, site, asset type and enter serial number.')
+    if(!canCreateAsset(deploy.organization_id)){
+      setError(ar?'ليس لديك صلاحية إضافة أجهزة لهذه المؤسسة.':'No asset-create permission for this organization.')
       return
     }
-    const link=(deployCtx.projectSites||[]).find(x=>
+    if(!deploy.organization_id||!deploy.project_id||!deploy.asset_type_id){
+      setError(['البيانات الناقصة:', !deploy.organization_id&&'المنظمة', !deploy.project_id&&'المشروع', !deploy.asset_type_id&&'نوع الجهاز'].filter(Boolean).join(' '))
+      return
+    }
+    // An asset belongs to the selected organization even when its project has
+    // multiple sites. Do not invent a site or a room.
+    const link=automaticSiteId?(deployCtx.projectSites||[]).find(x=>
       String(x.project_id)===String(deploy.project_id)&&
-      String(x.site_id)===String(deploy.site_id)&&
+      String(x.site_id)===String(automaticSiteId)&&
       String(x.organization_id)===String(deploy.organization_id)
-    )
-    if(!link){
-      setError(ar?'الموقع المختار غير مربوط بالمشروع الحالي.':'Selected site is not linked to the current project.')
-      return
-    }
+    ):null
+    const siteRow=link?(deployCtx.sites||[]).find(s=>String(s.id)===String(automaticSiteId)):null
 
-    const siteRow=(deployCtx.sites||[]).find(s=>String(s.id)===String(deploy.site_id))
     const typeRow=(deployCtx.master?.types||[]).find(t=>String(t.id)===String(deploy.asset_type_id))
     const manufacturerRow=(deployCtx.master?.manufacturers||[]).find(m=>String(m.id)===String(deploy.manufacturer_id))
     const optionRow=(deployCtx.master?.options||[]).find(o=>String(o.id)===String(deploy.option_id))
@@ -458,14 +407,46 @@ export default function MedicalAssetCockpit(){
         deploy.manufacturer_id||null
       )
 
+      let categoryId=adopted?.category_id||null
+
+      if(!categoryId){
+        const {data:found,error:lookupError}=await supabase
+          .from('bf_asset_categories')
+          .select('id')
+          .eq('organization_id',deploy.organization_id)
+          .eq('master_asset_type_id',deploy.asset_type_id)
+          .eq('status','active')
+          .limit(1)
+
+        if(lookupError)throw lookupError
+        categoryId=found?.[0]?.id||null
+      }
+
+      if(!categoryId){
+        const newCategory={
+          organization_id:deploy.organization_id,
+          tenant_id:deploy.organization_id,
+          master_asset_type_id:null,
+          code:'MED-'+crypto.randomUUID().slice(0,12).toUpperCase(),
+          name_ar:typeRow?.name_ar||typeRow?.name_en||'جهاز طبي',
+          name_en:typeRow?.name_en||typeRow?.name_ar||'Medical Device',
+          status:'active'
+        }
+        const {data:created,error:createError}=await supabase
+          .from('bf_asset_categories')
+          .insert(newCategory).select('id').single()
+
+        if(createError)throw createError
+        categoryId=created.id
+      }
       const payload={
         organization_id:deploy.organization_id,
-        client_id:siteRow?.client_id||link.client_id||null,
-        site_id:deploy.site_id,
-        category_id:adopted?.category_id||null,
+        client_id:siteRow?.client_id||link?.client_id||null,
+        site_id:link?automaticSiteId:null,
+        category_id:categoryId,
         name_ar:typeRow?.name_ar||typeRow?.name_en||'جهاز طبي',
         name_en:typeRow?.name_en||typeRow?.name_ar||'Medical Asset',
-        serial_number:deploy.serial_number.trim(),
+        serial_number:deploy.serial_number.trim()||`TEMP-${crypto.randomUUID()}`, 
         manufacturer:manufacturerRow?.name||manufacturerRow?.short_name||null,
         model:(deploy.exact_model||optionRow?.model_family||'').trim()||null,
         status:'active',
@@ -480,8 +461,8 @@ export default function MedicalAssetCockpit(){
       }
 
       setSuccess(ar
-        ?`تمت إضافة الجهاز للمشروع والموقع${tag?` برقم ${tag}`:''}. تم توليد Asset Tag آلياً.`
-        :`Asset added to the project/site${tag?` as ${tag}`:''}. Asset Tag was generated automatically.`)
+        ?`تم حفظ الجهاز ضمن أصول المنظمة${link?' وربطه بموقع المشروع':''}${tag?` برقم ${tag}`:''}. يمكن استكمال موقعه ورقمه التسلسلي الحقيقي لاحقاً.`
+        :`Asset registered under the organization${link?' and linked to the project site':''}${tag?` as ${tag}`:''}. Complete the real serial/site later if needed.`)
 
       setDeploy(v=>({...v,serial_number:'',exact_model:'',option_id:''}))
       await Promise.all([reloadList(),loadDeployment()])
@@ -527,6 +508,7 @@ export default function MedicalAssetCockpit(){
       </button>
     </div>
 
+
     {error&&<div className="alert error">{error}</div>}
     {success&&<div className="alert success">{success}</div>}
 
@@ -567,23 +549,12 @@ export default function MedicalAssetCockpit(){
           <select
             value={deploy.project_id}
             disabled={!deploy.organization_id}
-            onChange={e=>setDeploy(v=>({...v,project_id:e.target.value,site_id:''}))}
+            onChange={e=>{setDeploy(v=>({...v,project_id:e.target.value,site_id:''}))}}
           >
             <option value="">{ar?'اختر المشروع':'Select project'}</option>
             {deployProjects.map(p=><option key={p.id||p.project_id} value={p.id||p.project_id}>
               {p.name||p.project_name||p.project_code||p.id}
             </option>)}
-          </select>
-        </Field>
-
-        <Field label={ar?'الموقع':'Site'}>
-          <select
-            value={deploy.site_id}
-            disabled={!deploy.project_id}
-            onChange={e=>setDeploy(v=>({...v,site_id:e.target.value}))}
-          >
-            <option value="">{ar?'اختر الموقع أو اضغط على الخريطة':'Select site or click the map'}</option>
-            {deploySites.map(s=><option key={s.id} value={s.id}>{s.name||s.code}</option>)}
           </select>
         </Field>
 
@@ -633,32 +604,23 @@ export default function MedicalAssetCockpit(){
           <input
             value={deploy.serial_number}
             onChange={e=>setDeploy(v=>({...v,serial_number:e.target.value}))}
-            placeholder={ar?'إلزامي — Asset Tag سيولد آلياً':'Required — Asset Tag is automatic'}
+            placeholder={ar?'اختياري — يولّد رقم مؤقت عند تركه فارغاً':'Optional — temporary serial if blank'}
           />
         </Field>
       </div>
 
-      {deploy.project_id&&<div style={{marginTop:14}}>
-        <SiteMapPicker
-          sites={deploySites}
-          value={deploy.site_id}
-          onChange={id=>setDeploy(v=>({...v,site_id:id}))}
-          ar={ar}
-        />
-      </div>}
-
-      <div className="row-actions" style={{marginTop:14}}>
+      {canCreateAsset(deploy.organization_id)&&<div className="row-actions" style={{marginTop:14}}>
         <button
           className="btn primary"
           onClick={addAssetFromLibrary}
-          disabled={busy||deployCtx.loading||!deploy.organization_id||!deploy.project_id||!deploy.site_id||!deploy.asset_type_id||!deploy.serial_number.trim()}
+          disabled={busy||deployCtx.loading}
         >
-          {ar?'إضافة الجهاز للمشروع والموقع':'Add Asset to Project / Site'}
+          {ar?'إضافة الجهاز':'Add Asset'}
         </button>
         <span className="muted">
           {ar?'Asset Tag يُنشأ آلياً من النظام.':'Asset Tag is generated automatically.'}
         </span>
-      </div>
+      </div>}
     </Panel>
 
     <div style={{display:'grid',gap:12}}>
@@ -674,7 +636,7 @@ export default function MedicalAssetCockpit(){
             boxShadow:'0 2px 10px rgba(15,23,42,.04)'
           }}
         >
-          <div style={{display:'grid',gridTemplateColumns:'1.2fr 1fr 1fr 1.5fr auto',gap:14,alignItems:'center'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1.2fr 1fr 1fr auto',gap:14,alignItems:'center'}}>
             <div>
               <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>
                 {ar?'رقم الأصل':'Asset Tag'}
@@ -698,15 +660,6 @@ export default function MedicalAssetCockpit(){
                 {ar?'الرقم التسلسلي':'Serial Number'}
               </div>
               <div style={{fontWeight:800}}>{txt(a.serial_number)}</div>
-            </div>
-
-            <div>
-              <div style={{fontSize:12,color:'#64748b'}}>
-                {ar?'الموقع':'Location'}
-              </div>
-              <div style={{fontWeight:700}}>
-                {txt(a.location_path||a.location_name_ar||a.location_name_en)}
-              </div>
             </div>
 
             <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
