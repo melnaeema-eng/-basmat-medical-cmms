@@ -377,6 +377,18 @@ export default function MedicalAssetCockpit(){
     (!deploy.manufacturer_id||String(o.manufacturer_id)===String(deploy.manufacturer_id))
   )
 
+  const chooseDeviceFromLibrary=(typeId,manufacturerId='',optionId='')=>{
+    const option=(deployCtx.master?.options||[]).find(o=>String(o.id)===String(optionId))
+    setDeploy(v=>({
+      ...v,
+      asset_type_id:String(typeId),
+      manufacturer_id:manufacturerId?String(manufacturerId):'',
+      option_id:optionId?String(optionId):'',
+      exact_model:option?.model_family||''
+    }))
+    setError('');setSuccess('')
+    document.getElementById('medical-asset-deploy')?.scrollIntoView({behavior:'smooth',block:'start'})
+  }
   const addAssetFromLibrary=async()=>{
     if(!canCreateAsset(deploy.organization_id)){
       setError(ar?'ليس لديك صلاحية إضافة أجهزة لهذه المؤسسة.':'No asset-create permission for this organization.')
@@ -439,9 +451,29 @@ export default function MedicalAssetCockpit(){
         if(createError)throw createError
         categoryId=created.id
       }
+      const projectRow=(deployCtx.projects||[]).find(p=>
+        String(p.id||p.project_id)===String(deploy.project_id) &&
+        String(p.organization_id)===String(deploy.organization_id)
+      )
+      const projectLinks=(deployCtx.projectSites||[]).filter(x=>
+        String(x.project_id)===String(deploy.project_id) &&
+        String(x.organization_id)===String(deploy.organization_id)
+      )
+      const ownerIds=[...new Set([
+        projectRow?.client_id,
+        ...projectLinks.map(x=>x.client_id),
+        ...projectLinks.map(x=>(deployCtx.sites||[]).find(s=>
+          String(s.id)===String(x.site_id) &&
+          String(s.organization_id)===String(deploy.organization_id)
+        )?.client_id)
+      ].filter(Boolean).map(String))]
+      if(ownerIds.length!==1){
+        throw Error('Project owner is missing or ambiguous. Assign one owner to the project before adding assets.')
+      }
+      const resolvedClientId=ownerIds[0]
       const payload={
         organization_id:deploy.organization_id,
-        client_id:siteRow?.client_id||link?.client_id||null,
+        client_id:resolvedClientId,
         site_id:link?automaticSiteId:null,
         category_id:categoryId,
         name_ar:typeRow?.name_ar||typeRow?.name_en||'جهاز طبي',
@@ -528,6 +560,8 @@ export default function MedicalAssetCockpit(){
         </button>
       </div>
     </Panel>
+
+    <div id="medical-asset-deploy" />
 
     <Panel title={ar?'إضافة جهاز من المكتبة إلى المشروع':'Add Asset from Library to Project'}>
       <div className="form-grid">
@@ -959,5 +993,21 @@ export default function MedicalAssetCockpit(){
       })}
     </div>
 
+    <Panel title={ar?'\u0627\u062e\u062a\u064a\u0627\u0631 \u062c\u0647\u0627\u0632 \u0645\u0646 \u0627\u0644\u0645\u0643\u062a\u0628\u0629':'Choose Device from Library'}>
+      <p className="muted">{ar?'\u0627\u062e\u062a\u0631 \u0627\u0644\u062c\u0647\u0627\u0632 \u0644\u062a\u0639\u0628\u0626\u0629 \u0627\u0644\u0646\u0645\u0648\u0630\u062c \u0623\u0639\u0644\u0627\u0647.':'Choose an item to populate the form above.'}</p>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:10}}>
+        {(deployCtx.master?.options||[]).filter(o=>o.status!=='archived').map(o=>{
+          const type=(deployCtx.master?.types||[]).find(t=>String(t.id)===String(o.asset_type_id))
+          const maker=(deployCtx.master?.manufacturers||[]).find(m=>String(m.id)===String(o.manufacturer_id))
+          return <button key={o.id} type="button" className="btn" style={{textAlign:ar?'right':'left',height:'auto',minHeight:64,whiteSpace:'normal'}}
+            onClick={()=>chooseDeviceFromLibrary(o.asset_type_id,o.manufacturer_id,o.id)}>
+            <strong>{ar?(type?.name_ar||type?.name_en):(type?.name_en||type?.name_ar)}</strong>
+            <span style={{display:'block',fontSize:12}}>{maker?.short_name||maker?.name||''} - {o.model_family||'-'}</span>
+          </button>
+        })}
+        {!(deployCtx.master?.options||[]).length&&(deployCtx.master?.types||[]).map(t=><button key={t.id} type="button" className="btn"
+          onClick={()=>chooseDeviceFromLibrary(t.id)}>{ar?(t.name_ar||t.name_en):(t.name_en||t.name_ar)}</button>)}
+      </div>
+    </Panel>
   </section>
 }
