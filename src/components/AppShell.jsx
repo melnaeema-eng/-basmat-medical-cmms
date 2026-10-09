@@ -21,7 +21,7 @@ const groups=[
  ]},
  {title:'Core Operations | العمليات الأساسية',items:[
   ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
-  ['/medical-asset-cockpit','Medical Asset Operations | تشغيل الأجهزة الطبية','assets.view','asset'],
+  ['/medical-asset-cockpit','Medical Asset Cockpit | لوحة إدارة الأجهزة الطبية','assets.view','asset'],
 
   ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
   ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
@@ -40,7 +40,8 @@ const groups=[
   ['/sites','Facilities / Sites | الأجهزة الطبية والمواقع','sites.view','building'],
   ['/locations','Locations | المواقع','locations.view','pin'],
   ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
-  ['/asset-library','Medical Asset Library | مكتبة الأجهزة الطبية','assets.view','grid'],
+  ['/asset-library','Medical Asset Library | مكتبة الأجهزة الطبية','assets.view','grid'],
+
   ['/medical-devices','Device Passport / Traceability | جواز وسجل الجهاز','medical.assets.view','asset'],
   ['/assets','Medical Devices | الأجهزة الطبية','assets.view','asset'],
   ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],

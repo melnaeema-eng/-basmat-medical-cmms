@@ -140,11 +140,12 @@ export default function App(){
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="/roles-permissions" element={guard('roles.view',<RolesPermissions/>)}/>
    <Route path="/medical-devices" element={guard('medical.assets.view',<MedicalDeviceTraceability/>)} />
-   <Route path="*" element={<Navigate to="/" replace/>}/>
+
+   <Route path="/medical-asset-cockpit" element={guard('assets.view',<MedicalAssetCockpit/>)}/>
+    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
        <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />
       <Route path="/technician-execution" element={guard('maintenance.execute', <TechnicianExecution />)} />
-   <Route path="/medical-asset-cockpit" element={guard('assets.view',<MedicalAssetCockpit/>)}/>
 </Routes></BrowserRouter></AuthProvider></LanguageProvider>
 }
 
