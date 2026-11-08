@@ -330,7 +330,7 @@ export default function MedicalAssetCockpit(){
       let woId=null
       if(fault.create_wo)woId=await convertRequestToWorkOrder(req)
       setSuccess(ar?`تم إنشاء البلاغ${woId?' وأمر العمل':''}.`:`Fault request${woId?' and work order':''} created.`)
-      setMode('history')
+      setMode('journey')
       await refresh()
     }catch(e){
       setError(e.message)
@@ -346,7 +346,7 @@ export default function MedicalAssetCockpit(){
     try{
       await createDirectWorkOrder({asset,...wo})
       setSuccess(ar?'تم إنشاء أمر العمل للجهاز.':'Work order created for asset.')
-      setMode('history')
+      setMode('journey')
       await refresh()
     }catch(e){
       setError(e.message)
@@ -679,7 +679,7 @@ export default function MedicalAssetCockpit(){
             boxShadow:'0 2px 10px rgba(15,23,42,.04)'
           }}
         >
-          <div style={{display:'grid',gridTemplateColumns:'1.2fr 1fr 1fr auto',gap:14,alignItems:'center'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:14,alignItems:'center'}}>
             <div>
               <div style={{fontSize:12,color:'#64748b',marginBottom:4}}>
                 {ar?'رقم الأصل':'Asset Tag'}
@@ -706,25 +706,14 @@ export default function MedicalAssetCockpit(){
             </div>
 
             <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
-              <ActionButton primary={isSelected&&mode==='journey'} onClick={()=>openAsset(a,'journey')}>{ar?'ملف الجهاز والإنجاز':'Device & completion'}</ActionButton>
-              <ActionButton primary={isSelected&&mode==='ppm'} onClick={async()=>{await openAsset(a,'ppm');await loadLibraryForAsset(a)}}>PPM</ActionButton>
-              <ActionButton primary={isSelected&&mode==='fault'} onClick={()=>openAsset(a,'fault')}>
-                {ar?'عطل':'Fault'}
-              </ActionButton>
-              <ActionButton primary={isSelected&&mode==='wo'} onClick={()=>openAsset(a,'wo')}>WO</ActionButton>
-              <ActionButton primary={isSelected&&mode==='spares'} onClick={()=>openAsset(a,'spares')}>
-                {ar?'قطع الغيار':'Spares'}
-              </ActionButton>
-              <ActionButton primary={isSelected&&mode==='history'} onClick={()=>openAsset(a,'history')}>
-                {ar?'السجل':'History'}
-              </ActionButton>
+              <ActionButton primary onClick={()=>openAsset(a,'journey')}>{isSelected?(ar?'تحديث الملف':'Refresh device'):(ar?'فتح الجهاز':'Open device')}</ActionButton>
             </div>
           </div>
 
           {isSelected&&!busy&&actions&&<div style={{marginTop:16,display:'grid',gap:14,borderTop:'1px solid #e2e8f0',paddingTop:16}}>
 
       <Panel title={`${asset.asset_tag} — ${txt(ar?asset.asset_type_ar:asset.asset_type_en)}`}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(6,minmax(0,1fr))',gap:10}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
           <Stat label={ar?'المصنع':'Manufacturer'} value={asset.manufacturer_name}/>
           <Stat label={ar?'الموديل':'Model'} value={asset.model}/>
           <Stat label={ar?'الصيانة القادمة':'Next PPM'} value={nextJob?date(nextJob.due_date):'—'}/>
@@ -734,12 +723,14 @@ export default function MedicalAssetCockpit(){
         </div>
       </Panel>
 
-      <div className="medical-asset-tabs">{[['journey',ar?'دورة الإنجاز':'Completion journey'],['identity',ar?'بيانات الجهاز':'Device identity'],['history',ar?'سجل الصيانة':'Maintenance history']].map(([key,label])=><button key={key} className={'btn '+(mode===key?'primary':'')} onClick={()=>setMode(key)}>{label}</button>)}</div>
+      <div className="medical-asset-tabs">{[['journey',ar?'الصيانة الحالية':'Current maintenance'],['new',ar?'صيانة جديدة':'New maintenance'],['identity',ar?'بيانات الجهاز':'Device details']].map(([key,label])=><button key={key} className={'btn '+(mode===key?'primary':'')} onClick={()=>setMode(key)}>{label}</button>)}</div>
+      {mode==='new'&&<Panel title={ar?'ما المطلوب للجهاز؟':'What does this device need?'}><div className="row-actions"><button className="btn primary" onClick={async()=>{setMode('ppm');await loadLibraryForAsset(asset)}}>{ar?'صيانة وقائية':'Preventive maintenance'}</button><button className="btn primary" onClick={()=>setMode('fault')}>{ar?'إصلاح عطل':'Repair a fault'}</button></div></Panel>}
+      <details><summary>{ar?'السجل وخيارات إضافية':'History and more options'}</summary><div className="row-actions">{[['history',ar?'سجل الصيانة':'Maintenance history'],['spares',ar?'قطع الغيار':'Spare parts'],['wo',ar?'أمر عمل مباشر':'Direct work order']].map(([key,label])=><button className="btn" key={key} onClick={()=>setMode(key)}>{label}</button>)}<button className="btn" onClick={()=>nav('/qr-scan')}>{ar?'مسح رمز الجهاز':'Scan device QR'}</button></div></details>
       {mode==='journey'&&<MedicalWorkJourney key={asset.asset_id} asset={asset} jobs={jobs} workOrders={workOrders} onRefresh={refresh}/>}
       {mode==='identity'&&<Panel title={ar?'بيانات الجهاز والموقع':'Device identity and location'}><div className="form-grid">{[[ar?'الرقم التسلسلي':'Serial number',asset.serial_number],[ar?'المصنع':'Manufacturer',asset.manufacturer_name],[ar?'الموديل':'Model',asset.exact_model||asset.model],[ar?'شركة الصيانة':'Service provider',asset.maintenance_company_name],[ar?'العقد':'Contract',asset.contract_number],[ar?'الموقع':'Location',asset.location_path||asset.location_name_ar||asset.location_name_en]].map(([label,value])=><Stat key={label} label={label} value={value}/>)}</div><div className="row-actions" style={{marginTop:16}}><button className="btn" onClick={()=>nav('/assets/'+asset.asset_id)}>{ar?'تعديل ملف الجهاز وموقعه':'Edit device and location'}</button><button className="btn" onClick={()=>nav('/asset-passport/'+asset.asset_id)}>{ar?'جواز الجهاز وQR':'Device passport and QR'}</button></div></Panel>}
       {mode==='ppm'&&<Panel title={ar?'PPM من المكتبة للجهاز الحالي':'Library PPM for Current Asset'}>
         <div style={{display:'grid',gap:12}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:10}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
             <Stat label={ar?'المنظمة':'Organization'} value={libraryCtx.organizationName||'—'}/>
             <Stat label={ar?'المشروع الحالي':'Current Project'} value={libraryCtx.projectName||'—'}/>
             <Stat label={ar?'الموقع الحالي':'Current Site'} value={libraryCtx.siteName||asset.site_name||'—'}/>
@@ -1006,6 +997,7 @@ export default function MedicalAssetCockpit(){
       })}
     </div>
 
+    <details className="medical-registration"><summary>{ar?'استعراض مكتبة الأجهزة':'Browse the device library'}</summary>
     <Panel title={ar?'\u0627\u062e\u062a\u064a\u0627\u0631 \u062c\u0647\u0627\u0632 \u0645\u0646 \u0627\u0644\u0645\u0643\u062a\u0628\u0629':'Choose Device from Library'}>
       <p className="muted">{ar?'\u0627\u062e\u062a\u0631 \u0627\u0644\u062c\u0647\u0627\u0632 \u0644\u062a\u0639\u0628\u0626\u0629 \u0627\u0644\u0646\u0645\u0648\u0630\u062c \u0623\u0639\u0644\u0627\u0647.':'Choose an item to populate the form above.'}</p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:10}}>
@@ -1021,6 +1013,6 @@ export default function MedicalAssetCockpit(){
         {!(deployCtx.master?.options||[]).length&&(deployCtx.master?.types||[]).map(t=><button key={t.id} type="button" className="btn"
           onClick={()=>chooseDeviceFromLibrary(t.id)}>{ar?(t.name_ar||t.name_en):(t.name_en||t.name_ar)}</button>)}
       </div>
-    </Panel>
+    </Panel></details>
   </section>
 }

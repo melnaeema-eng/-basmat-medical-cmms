@@ -12,7 +12,8 @@ const bilingual=(en,ar)=><>{en}<span className="bafm-bi">{ar}</span></>
 export default function Dashboard(){
  const {profile,can}=useAuth(),{lang}=useLanguage()
  const [data,setData]=useState({total:0,completed:0,progress:0,overdue:0,open:0,critical:0,assets:0,ppmTotal:0,ppmCompleted:0,ppmOverdue:0,ppmPending:0,rows:[],assetsById:{}})
- const [error,setError]=useState('')
+ const [error,setError]=useState('')
+
  const [workTab,setWorkTab]=useState('all')
  useEffect(()=>{
   let alive=true
@@ -107,12 +108,9 @@ const ppmTotal=ppmJobs.length
   [data.ppmOverdue,'preventive jobs overdue','صيانة وقائية متأخرة','warning'],
  ]
  const quick=[
-  ['/corrective','＋','Create Work Order','إنشاء أمر عمل','corrective.manage'],
-  ['/ppm','◫','Schedule PM','جدولة صيانة وقائية','ppm.manage'],
-  ['/procurement','□','Request Spare Part','طلب قطعة غيار','procurement.view'],
-  ['/corrective','◎','New Service Request','طلب خدمة جديد','corrective.request'],
-  ['/hse','△','Report Equipment Incident','بلاغ حادث جهاز','hse.view'],
-  ['/reports','▥','Open Reports','فتح التقارير','reports.view'],
+  ['/medical-asset-cockpit','＋','Open Device & Start Maintenance','فتح جهاز وبدء الصيانة','assets.view'],
+  ['/approvals','✓','Review Completed Work','مراجعة الإنجاز','approvals.view'],
+  ['/documents','▥','Reports & Certificates','التقارير والشهادات','documents.view'],
  ].filter(x=>can(x[4]))
  return <section className="bafm-dashboard">
    <DashboardIdentity/>

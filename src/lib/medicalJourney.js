@@ -14,3 +14,15 @@ export function journeyState(record, owner, documents=[]){
   const steps=[true,assigned,submitted,reviewed,!!accepted,!!certificate,!!certificate&&record.status==='closed']
   return {steps,cancelled,certificate,next:cancelled?-1:steps.findIndex(x=>!x)}
 }
+
+// Resume safely if certificate creation succeeded but closing was rejected.
+export async function finishMedicalJourney({record,owner,read,generate,close}){
+  if(!['approved','closed'].includes(record.status)||owner?.status!=='approved')throw Error('Owner acceptance is required before certification.')
+  const {documents,eligible}=await read()
+  const exists=documents.some(d=>d.document_type==='approval_certificate'&&d.entity_type==='approval'&&d.entity_id===owner.id&&d.status==='final')
+  if(!exists){
+    if(!eligible.some(e=>e.document_type==='approval_certificate'&&e.entity_type==='approval'&&e.entity_id===owner.id))throw Error('Certificate generation permission is required.')
+    await generate()
+  }
+  if(record.status!=='closed')await close()
+}

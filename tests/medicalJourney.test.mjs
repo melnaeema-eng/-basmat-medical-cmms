@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {latestOwnerApproval,journeyState} from '../src/lib/medicalJourney.js'
+import {latestOwnerApproval,journeyState,finishMedicalJourney} from '../src/lib/medicalJourney.js'
 
 test('Supervisor approval and legacy closure do not imply owner acceptance or a certificate',()=>{
  for(const status of ['approved','closed']){
@@ -31,4 +31,23 @@ test('Only a final certificate for the accepted approval completes certification
 test('Cancelled work does not advertise an actionable next stage',()=>{
  assert.equal(journeyState({status:'cancelled'},null).next,-1)
  assert.equal(journeyState({status:'cancelled'},null).cancelled,true)
+})
+
+test('Combined closeout generates the certificate before closing and resumes without duplication',async()=>{
+ const record={status:'approved'},owner={id:'a',status:'approved'},calls=[]
+ const cert={document_type:'approval_certificate',entity_type:'approval',entity_id:'a',status:'final'}
+ let documents=[]
+ const read=async()=>({documents,eligible:[cert]})
+ const generate=async()=>{calls.push('certificate');documents=[cert]}
+ await assert.rejects(finishMedicalJourney({record,owner,read,generate,close:async()=>{calls.push('close');throw Error('close rejected')}}),/close rejected/)
+ await finishMedicalJourney({record,owner,read,generate,close:async()=>{calls.push('close')}})
+ assert.deepEqual(calls,['certificate','close','close'])
+})
+test('Closeout refuses missing acceptance, eligibility, and failed certificate generation',async()=>{
+ let closed=false
+ const base={record:{status:'approved'},owner:{id:'a',status:'approved'},read:async()=>({documents:[],eligible:[]}),generate:async()=>{},close:async()=>{closed=true}}
+ await assert.rejects(finishMedicalJourney({...base,owner:{status:'pending'}}),/Owner acceptance/)
+ await assert.rejects(finishMedicalJourney(base),/permission/)
+ await assert.rejects(finishMedicalJourney({...base,read:async()=>({documents:[],eligible:[{document_type:'approval_certificate',entity_type:'approval',entity_id:'a'}]}),generate:async()=>{throw Error('generation failed')}}),/generation failed/)
+ assert.equal(closed,false)
 })

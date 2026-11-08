@@ -18,7 +18,8 @@ export default function ApprovalPortal(){
    const read=async(scope)=>{const approvals=[],entities=[],clients=[];for(let offset=0;;offset+=200){const page=await loadApprovalPortal({...scope,limit:200,offset});approvals.push(...(page.approvals||[]));entities.push(...(page.entities||[]));clients.push(...(page.clients||[]));if((page.approvals||[]).length<200)break}return {approvals,entities:[...new Map(entities.map(e=>[e.entity_type+e.entity_id,e])).values()],clients:[...new Map(clients.map(c=>[c.organization_id+'|'+c.client_id,c])).values()]}}
    const result=await read(next)
    setData(result)
-   const first=result.clients?.[0]
+   const target=[...(result.approvals||[]),...(result.entities||[])].find(r=>r.entity_id===sourceEntity)
+   const first=(target&&(result.clients||[]).find(c=>c.organization_id===target.organization_id&&c.client_id===target.client_id))||result.clients?.[0]
    if(first&&!next.organization_id){
     const scoped={...next,organization_id:first.organization_id,client_id:first.client_id}
     setFilters(scoped)

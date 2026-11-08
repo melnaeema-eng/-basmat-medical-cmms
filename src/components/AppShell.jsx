@@ -3,76 +3,30 @@ import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
-import GuidedWorkflowBar from './GuidedWorkflowBar'
 import {useSmartLanguageInputs} from '../lib/smartLanguage'
 import '../bafm-theme.css'
 
 const groups=[
- {title:'Dashboard | لوحة التحكم',items:[
-  ['/', 'Dashboard | لوحة التحكم', null,'home'],
- ]},
- {title:'Administration | الإدارة',items:[
-  ['/project-setup','Project Setup | إعداد المشروع','organizations.view','check'],
-  ['/organizations','Organizations | المنظمات','organizations.view','org'],
-  ['/enterprise-structure','Structure | الهيكل التشغيلي','enterprise-structure.view','tree'],
-  ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
-  ['/security-readiness','Security | الأمن','security.view','lock'],
-  ['/release-readiness','System Readiness | جاهزية النظام','release.view','check'],
- ]},
- {title:'Core Operations | العمليات الأساسية',items:[
+ {title:'Work | التشغيل',items:[
+  ['/', 'Dashboard | الرئيسية',null,'home'],
+  ['/medical-asset-cockpit','Devices & Maintenance | الأجهزة والصيانة','assets.view','asset'],
   ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
-  ['/medical-asset-cockpit','Medical Asset Cockpit | لوحة إدارة الأجهزة الطبية','assets.view','asset'],
-
-  ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
-  ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
-  ['/qr-scan','Scan Medical Device QR | مسح QR للجهاز الطبي','mobile-field.view','mobile'],
-  ['/soft-fm','Soft FM | الخدمات المساندة','soft-fm.view','services'],
-  ['/workforce','Workforce | القوى العاملة','workforce.view','users'],
-  ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
+  ['/ppm','Preventive Schedule | جدول الصيانة الوقائية','ppm.view','calendar'],
+  ['/approvals','Pending Approvals | بانتظار الاعتماد','approvals.view','check'],
+  ['/documents','Reports & Certificates | التقارير والشهادات','documents.view','doc'],
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
-  ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
-  ['/medical-tenant-admin','Medical Tenant Admin','organization-onboarding.manage','building'],
-  ['/medical-owner-report','Owner Service Report','medical.workorders','work'],
-  ['/medical-smart-onboarding','Medical Smart Onboarding','organization-onboarding.manage','building'],
-  ['/medical-knowledge-library','Medical Knowledge Library','organization-onboarding.manage','building'],
  ]},
- {title:'Assets & Facilities | الأجهزة الطبية',items:[
-  ['/sites','Facilities / Sites | الأجهزة الطبية والمواقع','sites.view','building'],
-  ['/locations','Locations | المواقع','locations.view','pin'],
-  ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
-  ['/asset-library','Medical Asset Library | مكتبة الأجهزة الطبية','assets.view','grid'],
-
-  ['/medical-devices','Device Passport / Traceability | جواز وسجل الجهاز','medical.assets.view','asset'],
-  ['/assets','Medical Devices | الأجهزة الطبية','assets.view','asset'],
-  ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],
-  ['/utilities','Utilities | الأجهزة الطبية الخدمية','utilities.view','bolt'],
- ]},
- {title:'Supply & Commercial | الإمداد والتجاري',items:[
-  ['/inventory','Inventory | المخزون','inventory.view','box'],
-  ['/advanced-stock','Advanced Stock | المخزون المتقدم','inventory.view','stack'],
-  ['/procurement','Procurement | المشتريات','procurement.view','cart'],
-  ['/supplier-performance','Vendors | الموردون','supplier-performance.view','truck'],
-  ['/medical-service-library','Medical Maintenance Companies | شركات صيانة الأجهزة الطبية','supplier-performance.view','truck'],
-  ['/maintenance-costing','Maintenance Cost | تكاليف الصيانة','costing.view','money'],
+ {title:'Setup | الإعداد',items:[
+  ['/project-setup','Project Setup | إعداد المشروع','organizations.view','building'],
+  ['/asset-library','Device Library | مكتبة الأجهزة','assets.view','grid'],
   ['/contracts','Contracts | العقود','contracts.view','contract'],
-  ['/medical-operational-setup','Medical Operations Setup','contracts.view','contract'],
-  ['/contract-renewal','Contract Renewal | تجديد العقود','contract-renewal.view','renew'],
+  ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
+  ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
  ]},
- {title:'Safety & Compliance | السلامة والامتثال',items:[
-  ['/hse','HSE | السلامة والصحة المهنية','hse.view','shield'],
-  ['/permits','Permits | التصاريح','permit.view','permit'],
-  ['/compliance','Compliance | الامتثال','compliance.view','check'],
-  ['/documents','Documents | المستندات','documents.view','doc'],
-  ['/document-control','Document Control | ضبط المستندات','document-control.view','folder'],
-  ['/approvals','Approvals | الاعتمادات','approvals.view','approve'],
-  ['/audit','Audit Log | سجل التدقيق','audit.view','audit'],
- ]},
- {title:'Performance & Analytics | الأداء والتحليلات',items:[
-  ['/reports','Reports | التقارير','reports.view','report'],
-  ['/kpi','KPIs | مؤشرات الأداء','kpi.view','chart'],
-  ['/backlog','Backlog | الأعمال المتراكمة','backlog.view','list'],
-  ['/reliability','Reliability | الاعتمادية','reliability.view','pulse'],
-  ['/executive','Executive Dashboard | اللوحة التنفيذية','executive.view','dashboard'],
+ {title:'Support | المساندة',items:[
+  ['/inventory','Inventory | المخزون','inventory.view','box'],
+  ['/procurement','Procurement | المشتريات','procurement.view','cart'],
+  ['/reports','Management Reports | تقارير الإدارة','reports.view','report'],
  ]}
 ]
 function NavIcon({type}){
@@ -297,7 +251,7 @@ export default function AppShell(){
     {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
       <strong>{lang==='ar'?'وضع إعداد المشروع':'Project Setup Mode'}</strong>
       <button type="button" className="btn secondary" onClick={()=>navigate(sessionStorage.getItem('bafm-project-setup-return')||'/project-setup')}>{lang==='ar'?'العودة إلى إعداد المشروع':'Back to Project Setup'}</button>
-    </div>}<GuidedWorkflowBar/><Outlet/></main>
+    </div>}<Outlet/></main>
   </div>
  </div>
 }
