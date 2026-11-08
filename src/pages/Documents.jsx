@@ -1,3 +1,4 @@
+import {useSearchParams} from 'react-router-dom'
 import {useEffect,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadDocuments,generateDocument,voidDocument} from '../lib/documents'
@@ -22,11 +23,14 @@ function detailBlocks(s){
 
 export default function Documents(){
  const {t,lang}=useLanguage()
+ const [searchParams]=useSearchParams()
+ const sourceEntity=searchParams.get('entity'),approvalId=searchParams.get('approval')
  const [data,setData]=useState({documents:[],eligible:[]}),[type,setType]=useState('technical_report')
  const [entity,setEntity]=useState(''),[title,setTitle]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[msg,setMsg]=useState('')
- const load=async()=>{setBusy(true);setError('');try{setData(await loadDocuments({document_type:null}))}catch(e){setError(e.message)}finally{setBusy(false)}}
+ const load=async()=>{setBusy(true);setError('');try{const documents=[],eligible=[];for(let offset=0;;offset+=200){const page=await loadDocuments({document_type:null,limit:200,offset});documents.push(...(page.documents||[]));eligible.push(...(page.eligible||[]));if((page.documents||[]).length<200)break}setData({documents,eligible:[...new Map(eligible.map(e=>[e.document_type+e.entity_type+e.entity_id,e])).values()]})}catch(e){setError(e.message)}finally{setBusy(false)}}
  useEffect(()=>{load()},[])
- const eligible=(data.eligible||[]).filter(x=>x.document_type===type)
+ const visibleDocuments=(data.documents||[]).filter(d=>!sourceEntity||d.entity_id===sourceEntity||d.entity_id===approvalId)
+ const eligible=(data.eligible||[]).filter(x=>x.document_type===type&&(!sourceEntity||x.entity_id===sourceEntity||x.entity_id===approvalId))
  const create=async e=>{e.preventDefault();const x=eligible.find(v=>v.entity_id===entity);if(!x)return;setBusy(true);setError('');setMsg('');try{await generateDocument(type,x.entity_type,x.entity_id,title);setEntity('');setTitle('');setMsg(t('documentCreated'));await load()}catch(e){setError(e.message)}finally{setBusy(false)}}
  const voidIt=async d=>{const reason=prompt(t('documentVoidReason'));if(!reason)return;setBusy(true);setError('');try{await voidDocument(d.id,reason);setMsg(t('documentVoided'));await load()}catch(e){setError(e.message)}finally{setBusy(false)}}
 
@@ -65,6 +69,6 @@ export default function Documents(){
    </div>
    <button className="btn primary" disabled={busy||!entity}>{t('documentGenerate')}</button>
   </form>
-  <div className="facility-panel"><h2>{t('documents')}</h2>{!data.documents?.length?<p>{t('documentNoData')}</p>:data.documents.map(d=><article className="facility-panel" key={d.id} style={{marginBlock:10}}><div className="page-head"><div><strong>{d.document_number} — {d.title}</strong><p className="muted">{d.client_name} / {d.site_name}</p></div><strong>{d.status==='final'?t('documentFinal'):t('documentVoid')}</strong></div><p>{new Date(d.generated_at).toLocaleString(lang)}</p><div className="row-actions"><button className="btn primary" type="button" onClick={()=>printDoc(d)}>{t('documentPrint')}</button>{d.can_manage&&d.status==='final'&&<button className="btn secondary" type="button" onClick={()=>voidIt(d)}>{t('documentVoid')}</button>}</div></article>)}</div>
+  <div className="facility-panel"><h2>{t('documents')}</h2>{!visibleDocuments.length?<p>{t('documentNoData')}</p>:visibleDocuments.map(d=><article className="facility-panel" key={d.id} style={{marginBlock:10}}><div className="page-head"><div><strong>{d.document_number} — {d.title}</strong><p className="muted">{d.client_name} / {d.site_name}</p></div><strong>{d.status==='final'?t('documentFinal'):t('documentVoid')}</strong></div><p>{new Date(d.generated_at).toLocaleString(lang)}</p><div className="row-actions"><button className="btn primary" type="button" onClick={()=>printDoc(d)}>{t('documentPrint')}</button>{d.can_manage&&d.status==='final'&&<button className="btn secondary" type="button" onClick={()=>voidIt(d)}>{t('documentVoid')}</button>}</div></article>)}</div>
  </section>
 }

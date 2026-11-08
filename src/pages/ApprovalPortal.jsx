@@ -1,3 +1,4 @@
+import {useSearchParams} from 'react-router-dom'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {Field,Select,Notice,Status} from '../components/FacilityFields'
@@ -6,19 +7,22 @@ import {loadApprovalPortal,approvalAction,findConsultant,manageConsultant} from 
 const blankRequest={entity_id:'',reviewer_type:'owner',subject:'',request_comment:'',due_at:''}
 export default function ApprovalPortal(){
  const {t,lang}=useLanguage()
+ const [searchParams]=useSearchParams()
+ const sourceEntity=searchParams.get('entity')
  const [data,setData]=useState(null),[filters,setFilters]=useState({organization_id:'',client_id:'',status:''})
  const [form,setForm]=useState(blankRequest),[decision,setDecision]=useState({}),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [email,setEmail]=useState(''),[found,setFound]=useState(null)
  const load=async(next=filters)=>{
   setBusy(true);setError('')
   try{
-   const result=await loadApprovalPortal(next)
+   const read=async(scope)=>{const approvals=[],entities=[],clients=[];for(let offset=0;;offset+=200){const page=await loadApprovalPortal({...scope,limit:200,offset});approvals.push(...(page.approvals||[]));entities.push(...(page.entities||[]));clients.push(...(page.clients||[]));if((page.approvals||[]).length<200)break}return {approvals,entities:[...new Map(entities.map(e=>[e.entity_type+e.entity_id,e])).values()],clients:[...new Map(clients.map(c=>[c.organization_id+'|'+c.client_id,c])).values()]}}
+   const result=await read(next)
    setData(result)
    const first=result.clients?.[0]
    if(first&&!next.organization_id){
     const scoped={...next,organization_id:first.organization_id,client_id:first.client_id}
     setFilters(scoped)
-    const scopedResult=await loadApprovalPortal(scoped)
+    const scopedResult=await read(scoped)
     setData(scopedResult)
    }
   }catch(e){setError(e.message)}finally{setBusy(false)}
@@ -27,7 +31,7 @@ export default function ApprovalPortal(){
  const clients=data?.clients||[]
  const selected=clients.find(c=>c.organization_id===filters.organization_id&&c.client_id===filters.client_id)||clients[0]
  const entities=(data?.entities||[]).filter(e=>(!selected||e.organization_id===selected.organization_id&&e.client_id===selected.client_id))
- const requests=data?.approvals||[]
+ const requests=(data?.approvals||[]).filter(r=>!sourceEntity||r.entity_id===sourceEntity)
  const roleLabel=role=>t(role==='staff'?'approvalRoleStaff':role==='owner'?'approvalRoleOwner':'approvalRoleConsultant')
  const statusLabel=status=>t(status==='pending'?'approvalPending':status==='approved'?'approvalApproved':status==='rejected'?'approvalRejected':'approvalCancelled')
  const setFilter=(key,value)=>{

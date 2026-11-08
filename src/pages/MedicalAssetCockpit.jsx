@@ -1,3 +1,5 @@
+import {useRef} from 'react'
+import MedicalWorkJourney from '../components/MedicalWorkJourney'
 import {useEffect,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -53,8 +55,9 @@ export default function MedicalAssetCockpit(){
   const {lang}=useLanguage()
   const ar=lang==='ar'
   const nav=useNavigate()
-  const {can,profile,access}=useAuth()
-  const canCreateAsset=org=>!!org&&(!!profile?.is_super_admin||!!access?.super_admin||can('medical.assets.manage',org)||can('assets.manage',org))
+  const {can}=useAuth()
+  const assetLoad=useRef(0)
+  const canCreateAsset=org=>!!org&&(can('medical.assets.manage',org)||can('assets.manage',org))
 
   const [query,setQuery]=useState('')
   const [assets,setAssets]=useState([])
@@ -137,7 +140,9 @@ export default function MedicalAssetCockpit(){
 
   useEffect(()=>{loadDeployment()},[])
 
-  const openAsset=async(row,nextMode='')=>{
+  const openAsset=async(row,nextMode='journey')=>{
+    const loadId=++assetLoad.current
+    setCtx(null);setActions(null);setSpares([])
     setAsset(row)
     setMode(nextMode)
     setError('')
@@ -149,15 +154,16 @@ export default function MedicalAssetCockpit(){
         loadAssetActionData(row),
         loadMedicalSpareUsage(row.asset_id)
       ])
+      if(loadId!==assetLoad.current)return
       setCtx(c)
       setActions(a)
       setSpares(s)
       setFault(v=>({...v,title:`${ar?'عطل جهاز':'Asset Fault'} - ${row.asset_tag}`}))
       setWo(v=>({...v,title:`${ar?'أمر عمل':'Work Order'} - ${row.asset_tag}`}))
     }catch(e){
-      setError(e.message)
+      if(loadId===assetLoad.current)setError(e.message)
     }finally{
-      setBusy(false)
+      if(loadId===assetLoad.current)setBusy(false)
     }
   }
 
@@ -531,8 +537,8 @@ export default function MedicalAssetCockpit(){
         </h1>
         <p className="muted" style={{margin:0}}>
           {ar
-            ?'تشغيل الجهاز من مكان واحد: الصيانة الوقائية، الأعطال، أوامر العمل، قطع الغيار والسجل.'
-            :'Operate the asset from one place: PPM, faults, work orders, spares and history.'}
+            ?'ملف جهاز موحد من الصيانة الوقائية والبلاغ حتى المراجعة وقبول المالك وشهادة الإنجاز.'
+            :'One device record from preventive maintenance and faults through review, owner acceptance and certification.'}
         </p>
       </div>
       <button className="btn" onClick={()=>nav('/ppm')}>
@@ -563,6 +569,7 @@ export default function MedicalAssetCockpit(){
 
     <div id="medical-asset-deploy" />
 
+    <details className="medical-registration"><summary>{ar?'إضافة جهاز جديد من المكتبة':'Register a new device from the library'}</summary>
     <Panel title={ar?'إضافة جهاز من المكتبة إلى المشروع':'Add Asset from Library to Project'}>
       <div className="form-grid">
         <Field label={ar?'المنظمة':'Organization'}>
@@ -657,6 +664,8 @@ export default function MedicalAssetCockpit(){
       </div>}
     </Panel>
 
+    </details>
+    {!busy&&!assets.length&&<Panel>{ar?'لا توجد أجهزة مطابقة للبحث.':'No matching devices found.'}</Panel>}
     <div style={{display:'grid',gap:12}}>
       {assets.map(a=>{
         const isSelected=asset?.asset_id===a.asset_id
@@ -697,6 +706,7 @@ export default function MedicalAssetCockpit(){
             </div>
 
             <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
+              <ActionButton primary={isSelected&&mode==='journey'} onClick={()=>openAsset(a,'journey')}>{ar?'ملف الجهاز والإنجاز':'Device & completion'}</ActionButton>
               <ActionButton primary={isSelected&&mode==='ppm'} onClick={async()=>{await openAsset(a,'ppm');await loadLibraryForAsset(a)}}>PPM</ActionButton>
               <ActionButton primary={isSelected&&mode==='fault'} onClick={()=>openAsset(a,'fault')}>
                 {ar?'عطل':'Fault'}
@@ -711,7 +721,7 @@ export default function MedicalAssetCockpit(){
             </div>
           </div>
 
-          {isSelected&&<div style={{marginTop:16,display:'grid',gap:14,borderTop:'1px solid #e2e8f0',paddingTop:16}}>
+          {isSelected&&!busy&&actions&&<div style={{marginTop:16,display:'grid',gap:14,borderTop:'1px solid #e2e8f0',paddingTop:16}}>
 
       <Panel title={`${asset.asset_tag} — ${txt(ar?asset.asset_type_ar:asset.asset_type_en)}`}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(6,minmax(0,1fr))',gap:10}}>
@@ -724,6 +734,9 @@ export default function MedicalAssetCockpit(){
         </div>
       </Panel>
 
+      <div className="medical-asset-tabs">{[['journey',ar?'دورة الإنجاز':'Completion journey'],['identity',ar?'بيانات الجهاز':'Device identity'],['history',ar?'سجل الصيانة':'Maintenance history']].map(([key,label])=><button key={key} className={'btn '+(mode===key?'primary':'')} onClick={()=>setMode(key)}>{label}</button>)}</div>
+      {mode==='journey'&&<MedicalWorkJourney key={asset.asset_id} asset={asset} jobs={jobs} workOrders={workOrders} onRefresh={refresh}/>}
+      {mode==='identity'&&<Panel title={ar?'بيانات الجهاز والموقع':'Device identity and location'}><div className="form-grid">{[[ar?'الرقم التسلسلي':'Serial number',asset.serial_number],[ar?'المصنع':'Manufacturer',asset.manufacturer_name],[ar?'الموديل':'Model',asset.exact_model||asset.model],[ar?'شركة الصيانة':'Service provider',asset.maintenance_company_name],[ar?'العقد':'Contract',asset.contract_number],[ar?'الموقع':'Location',asset.location_path||asset.location_name_ar||asset.location_name_en]].map(([label,value])=><Stat key={label} label={label} value={value}/>)}</div><div className="row-actions" style={{marginTop:16}}><button className="btn" onClick={()=>nav('/assets/'+asset.asset_id)}>{ar?'تعديل ملف الجهاز وموقعه':'Edit device and location'}</button><button className="btn" onClick={()=>nav('/asset-passport/'+asset.asset_id)}>{ar?'جواز الجهاز وQR':'Device passport and QR'}</button></div></Panel>}
       {mode==='ppm'&&<Panel title={ar?'PPM من المكتبة للجهاز الحالي':'Library PPM for Current Asset'}>
         <div style={{display:'grid',gap:12}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:10}}>
@@ -934,7 +947,7 @@ export default function MedicalAssetCockpit(){
               <tbody>
                 {jobs.length
                   ?jobs.map(j=><tr key={j.id}>
-                      <td>{j.job_number}</td>
+                      <td><button className="btn" onClick={()=>nav('/ppm/job/'+j.id)}>{j.job_number}</button></td>
                       <td>{date(j.due_date)}</td>
                       <td>{j.status}</td>
                     </tr>)
@@ -978,7 +991,7 @@ export default function MedicalAssetCockpit(){
               <tbody>
                 {workOrders.length
                   ?workOrders.map(w=><tr key={w.id}>
-                      <td>{w.work_order_number}</td>
+                      <td><button className="btn" onClick={()=>nav('/corrective/work_order/'+w.id)}>{w.work_order_number}</button></td>
                       <td>{w.title}</td>
                       <td>{w.status}</td>
                     </tr>)
