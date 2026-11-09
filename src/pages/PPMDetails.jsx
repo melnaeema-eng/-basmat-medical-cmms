@@ -32,7 +32,12 @@ export default function PPMDetails(){
    if(command==='revise'){navigate('/ppm/procedure/'+result);return}
    await load();setSuccess(t('saved'))
    if(['add_step','update_step','delete_step'].includes(command)){setStep(blankStep);setEditingStep(null)}
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){
+   if(e.message==='Invalid job transition'){
+    await load()
+    setError(lang==='ar'?'تغيّرت حالة المهمة منذ فتح الصفحة. تم تحديثها؛ اتبع الإجراء المتاح للحالة الحالية.':'The job status changed after this page opened. It has been refreshed; use the action available for its current status.')
+   }else setError(e.message)
+  }finally{setBusy(false)}
  }
  const button=(command,enabled,payload={},primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload)}>{t(command)}</button>:null
  const details=(items)=><div className="form-grid">{items.map(([key,value])=><div key={key}><span className="muted">{t(key)}</span><p>{value??'—'}</p></div>)}</div>
@@ -109,7 +114,8 @@ export default function PPMDetails(){
 
    if(isLastStep&&result!=='fail'){
     await ppmAction('job',id,'complete',{})
-    navigate('/reports?section=ppm&job='+encodeURIComponent(id))
+    await load()
+    setSuccess(lang==='ar'?'اكتمل التنفيذ. الخطوة التالية مراجعة المشرف ثم قبول المالك وإصدار الشهادة.':'Execution completed. Next: supervisor review, owner acceptance, then certificate issuance.')
     return
    }
 
