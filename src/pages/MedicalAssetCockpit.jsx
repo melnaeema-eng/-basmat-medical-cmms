@@ -55,8 +55,11 @@ export default function MedicalAssetCockpit(){
   const {lang}=useLanguage()
   const ar=lang==='ar'
   const nav=useNavigate()
-  const {can}=useAuth()
+  const {can,access}=useAuth()
   const assetLoad=useRef(0)
+  const listLoad=useRef(0)
+  const [selectedOrganization,setSelectedOrganization]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
+  const organizationId=access?.super_admin?selectedOrganization:(access?.home_organization?.organization_id||access?.home_organization?.id||'')
   const canCreateAsset=org=>!!org&&(can('medical.assets.manage',org)||can('assets.manage',org))
 
   const [query,setQuery]=useState('')
@@ -92,18 +95,31 @@ export default function MedicalAssetCockpit(){
   const [wo,setWo]=useState({title:'',description:'',priority:'P3'})
 
   const reloadList=async()=>{
+    const loadId=++listLoad.current
     setBusy(true)
     setError('')
     try{
-      setAssets(await searchMedicalAssets(query))
+      const rows=await searchMedicalAssets(query,organizationId)
+      if(loadId===listLoad.current)setAssets(rows)
     }catch(e){
-      setError(e.message)
+      if(loadId===listLoad.current)setError(e.message)
     }finally{
-      setBusy(false)
+      if(loadId===listLoad.current)setBusy(false)
     }
   }
 
-  useEffect(()=>{reloadList()},[])
+  useEffect(()=>{
+    const changed=e=>setSelectedOrganization(e.detail?.organization_id||'')
+    window.addEventListener('basmat-organization-changed',changed)
+    return()=>window.removeEventListener('basmat-organization-changed',changed)
+  },[])
+
+  useEffect(()=>{
+    ++assetLoad.current
+    setAssets([]);setAsset(null);setCtx(null);setActions(null);setSpares([])
+    reloadList()
+    return()=>{++listLoad.current;++assetLoad.current}
+  },[organizationId])
 
   const loadDeployment=async()=>{
     setDeployCtx(v=>({...v,loading:true}))
