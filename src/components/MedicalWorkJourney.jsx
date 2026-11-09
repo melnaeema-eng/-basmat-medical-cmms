@@ -47,8 +47,16 @@ export default function MedicalWorkJourney({asset,jobs=[],workOrders=[],onRefres
   try{await fn();setBundle(null);setRevision(n=>n+1);await onRefresh?.()}catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const sendToOwner=async(r,report)=>{
-  if(report&&!bundle.documents.some(d=>d.entity_type===r.entityType&&d.entity_id===r.id&&d.document_type==='technical_report'&&d.status==='final'))await generateDocument('technical_report',r.entityType,r.id)
-  await approvalAction('create',null,{organization_id:r.organization_id,client_id:r.client_id,site_id:r.site_id,entity_type:r.entityType,entity_id:r.id,reviewer_type:'owner',subject:`${l('قبول إنجاز الصيانة','Maintenance completion acceptance')} — ${r.reference||asset.asset_tag}`,request_comment:'',due_at:''})
+  // Re-read after a failed approval request so retrying reuses its final report.
+  let existing=false
+  if(report)for(let offset=0;;offset+=200){
+   const page=await loadDocuments({organization_id:r.organization_id,client_id:r.client_id,limit:200,offset})
+   existing=(page.documents||[]).some(d=>d.entity_type===r.entityType&&d.entity_id===r.id&&d.document_type==='technical_report'&&d.status==='final')
+   if(existing||(page.documents||[]).length<200)break
+  }
+  const training=String(asset.serial_number||'').startsWith('TEST-')
+  if(report&&!existing)await generateDocument('technical_report',r.entityType,r.id,training?`TEST ONLY — Technical Report — ${r.reference||asset.asset_tag}`:'')
+  await approvalAction('create',null,{organization_id:r.organization_id,client_id:r.client_id,site_id:r.site_id,entity_type:r.entityType,entity_id:r.id,reviewer_type:'owner',subject:`${training?'TEST ONLY — ':''}${l('قبول إنجاز الصيانة','Maintenance completion acceptance')} — ${r.reference||asset.asset_tag}`,request_comment:training?'TEST ONLY — virtual training workflow; no actual clinical maintenance or release.':'',due_at:''})
  }
  const finish=(r,owner)=>finishMedicalJourney({record:r,owner,
   read:async()=>{const documents=[],eligible=[];for(let offset=0;;offset+=200){const d=await loadDocuments({organization_id:r.organization_id,client_id:r.client_id,limit:200,offset});documents.push(...(d.documents||[]));eligible.push(...(d.eligible||[]));if(!d.has_more)break}return {documents,eligible}},
@@ -56,7 +64,8 @@ export default function MedicalWorkJourney({asset,jobs=[],workOrders=[],onRefres
   close:()=>r.entityType==='ppm_job'?ppmAction('job',r.id,'close'):action('work_order',r.id,'close')
  })
  // PPM jobs have their own review/approval identity, even when linked to a WO.
- const records=[...jobs.map(r=>({...r,entityType:'ppm_job',href:`/ppm/job/${r.id}`,reference:r.job_number,kind:l('وقائية','Preventive')})),...workOrders.map(r=>({...r,entityType:'work_order',href:`/corrective/work_order/${r.id}`,reference:r.work_order_number,kind:l('أمر عمل','Work order')}))]
+ const linkedWorkOrders=new Set(jobs.map(j=>j.work_order_id).filter(Boolean))
+ const records=[...jobs.map(r=>({...r,entityType:'ppm_job',href:`/ppm/job/${r.id}`,reference:r.job_number,kind:l('وقائية','Preventive')})),...workOrders.filter(r=>!linkedWorkOrders.has(r.id)).map(r=>({...r,entityType:'work_order',href:`/corrective/work_order/${r.id}`,reference:r.work_order_number,kind:l('أمر عمل','Work order')}))]
  return <div className="medical-journey" aria-busy={busy}>
   <div className="medical-journey-heading"><div><span className="medical-eyebrow">{l('دورة تشغيل الجهاز','DEVICE SERVICE JOURNEY')}</span><h2>{l('الصيانة في ثلاث خطوات','Maintenance in three steps')}</h2><p>{l('نفّذ الصيانة، راجع الإنجاز، ثم أصدر الشهادة وأغلق العمل.','Perform the work, review completion, then issue the certificate and close.')}</p></div><button className="btn" disabled={busy} onClick={()=>{setBundle(null);setError('');setRevision(n=>n+1)}}>{l('تحديث الاعتمادات','Refresh approvals')}</button></div>
   {error&&<p className="alert error" role="alert">{error}</p>}
