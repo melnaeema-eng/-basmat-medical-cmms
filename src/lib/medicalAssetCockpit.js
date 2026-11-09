@@ -1,5 +1,6 @@
 ﻿import {supabase} from './supabaseClient'
 import {ppmAction} from './ppm'
+import {medicalProcedureMatchesAsset} from './medicalProcedureCompatibility'
 
 const today=()=>new Date().toISOString().slice(0,10)
 const addMonths=(date,months)=>{
@@ -63,14 +64,7 @@ export async function loadAssetActionData(asset){
   for(const x of [p,j,r,w])if(x.error)throw x.error
 
   const all=p.data||[]
-  const compatible=all.filter(proc=>{
-    if(proc.category_id && asset.category_id && String(proc.category_id)!==String(asset.category_id))return false
-    if(proc.manufacturer && String(proc.manufacturer).trim() &&
-       String(proc.manufacturer).trim().toLowerCase()!==String(asset.manufacturer_name||'').trim().toLowerCase())return false
-    if(proc.model && String(proc.model).trim() &&
-       String(proc.model).trim().toLowerCase()!==String(asset.model||'').trim().toLowerCase())return false
-    return true
-  })
+  const compatible=all.filter(proc=>medicalProcedureMatchesAsset(proc,asset))
 
   return {
     procedures:compatible,
