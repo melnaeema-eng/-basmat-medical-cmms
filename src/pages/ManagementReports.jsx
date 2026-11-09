@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {Field,Select,Notice} from '../components/FacilityFields'
 import {reportScopes,reportQuery,reportExport,reportSections,reportColumns,reportDefinitions,percentage,formatValue} from '../lib/reporting'
+import {displayReportValue,prepareReportDisplay} from '../lib/reportDisplay'
 import {exportXlsx,printReport,printCurrentReport} from '../lib/reportExport'
 
 const labels={overview:'reportOverview',work_orders:'reportWorkOrders',ppm:'reportPPM',technicians:'reportTechnicians',materials:'reportMaterials',monthly:'reportMonthly',quality:'reportQuality'}
@@ -77,8 +78,8 @@ export default function ManagementReports({capabilities}){
    const exportedCols=section==='overview'?['metric','value']:cols
    const names=Object.fromEntries(exportedCols.map(c=>[c,label(c)]))
    const filename='Basmat-'+section+'-'+applied.start_date+'-'+applied.end_date
-   if(kind==='xlsx')exportXlsx(report,exportedCols,names,filename)
-   else printReport(report,exportedCols,names,title,lang)
+   if(kind==='xlsx')exportXlsx(prepareReportDisplay(report,exportedCols,lang),exportedCols,names,filename)
+   else printReport(prepareReportDisplay(report,exportedCols,lang),exportedCols,names,title,lang)
   }catch(e){setError(e.message)}finally{setExporting(false)}
  }
  const totals=result?.totals||{}
@@ -102,13 +103,14 @@ export default function ManagementReports({capabilities}){
    : {...result,context,rows:rows}
   const outCols=section==='overview'?['metric','value']:cols
   const outNames=section==='overview'?{metric:t('reportMetric'),value:t('reportValue')}:names
-  printCurrentReport(report,outCols,outNames,title,lang)
+  printCurrentReport(prepareReportDisplay(report,outCols,lang),outCols,outNames,title,lang)
  }
  const technicianSummary=section==='technicians'?totals.technicians||[]:[]
  const monthlyMax=section==='monthly'?Math.max(1,...rows.map(x=>Number(x.created)||0)):1
  return <section className="facility-module">
   <div className="page-head"><div><h1>{t('reports')}</h1><p className="muted">{t('reportSnapshot')}</p></div></div>
   <Notice error={error}/>
+  {result?.reference_lookup_unavailable&&<p role="status" className="muted">{lang==='ar'?'تعذر جلب بعض الأسماء. تظهر شرطة مكان الاسم غير المتاح.':'Some names could not be retrieved. Unavailable names are shown as a dash.'}</p>}
   <form className="facility-panel" onSubmit={apply}>
    <div className="form-grid">
     <Field label={t('reportCompany')} required><Select required value={org} onChange={v=>set('organization_id',v)} options={options(scopes?.organizations||[],false)}/></Field>
@@ -123,7 +125,7 @@ export default function ManagementReports({capabilities}){
    {reportSections.map(key=><button type="button" key={key} className={'btn '+(section===key?'primary':'secondary')} onClick={()=>changeSection(key)}>{t(labels[key])}</button>)}
   </div>
   {result&&<div className="facility-panel">
-   <div className="page-head"><div><h2>{title}</h2><p className="muted">{applied.start_date} — {applied.end_date} · {t('reportGenerated')}: {new Date(result.generated_at).toLocaleString(lang)}</p></div>
+   <div className="page-head"><div><h2>{title}</h2><p className="muted">{applied.start_date} — {applied.end_date} · {t('reportGenerated')}: {displayReportValue(result.generated_at,'generated_at',lang)}</p></div>
     <div className="row-actions">
      <button type="button" className="btn primary" disabled={busy} onClick={printCurrent}>{t('reportPrint')}</button>
      <button type="button" className="btn primary" disabled={exporting||busy||!canExport} title={!canExport?t('reportExportPermission'):''} onClick={()=>exportData('xlsx')}>{t('reportExportExcel')}</button>
@@ -145,7 +147,7 @@ export default function ManagementReports({capabilities}){
     <h3>{t('reportTechnicians')}</h3>
     <div style={{overflowX:'auto'}}><table className="facility-table" style={{width:'100%'}}>
      <thead><tr><th>{t('technician')}</th><th>{t('reportLabor')}</th><th>{t('fieldVisits')}</th><th>{t('reportWorkOrders')}</th></tr></thead>
-     <tbody>{technicianSummary.map(x=><tr key={x.technician_id}><td>{x.full_name||x.technician_id}</td><td>{formatValue(Number(x.minutes)/60,lang)} {t('reportHours')}</td><td>{x.visits}</td><td>{x.work_orders}</td></tr>)}</tbody>
+     <tbody>{technicianSummary.map(x=><tr key={x.technician_id}><td>{x.full_name||'—'}</td><td>{formatValue(Number(x.minutes)/60,lang)} {t('reportHours')}</td><td>{x.visits}</td><td>{x.work_orders}</td></tr>)}</tbody>
     </table></div>
    </div>}
    {section==='overview'?<>
@@ -158,7 +160,7 @@ export default function ManagementReports({capabilities}){
     <div style={{overflowX:'auto'}}><table className="facility-table" style={{width:'100%',borderCollapse:'collapse'}}>
      <thead><tr>{displayCols.map(c=><th key={c} style={{padding:8,textAlign:'start',borderBottom:'1px solid #ccc'}}>{label(c)}</th>)}</tr></thead>
      <tbody>{rows.map((row,i)=><tr key={row.id||row.month||i}>{displayCols.map(c=><td key={c} style={{padding:8,borderBottom:'1px solid #ddd'}}>
-      {c==='work_order_number'&&row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{row[c]}</Link>:formatValue(row[c],lang)}
+      {c==='work_order_number'&&row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{row[c]}</Link>:formatValue(displayReportValue(row[c],c,lang),lang)}
      </td>)}</tr>)}</tbody>
     </table></div>
     {!rows.length&&<p>{t('reportNoData')}</p>}

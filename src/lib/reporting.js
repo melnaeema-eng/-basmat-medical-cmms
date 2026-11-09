@@ -1,4 +1,5 @@
 import {supabase} from './supabaseClient'
+import {resolveReportReferences} from './reportDisplay'
 export async function reportScopes(){
  const {data,error}=await supabase.rpc('bf10_scopes')
  if(error)throw error
@@ -10,16 +11,17 @@ export async function reportQuery(filters,section='overview',limit=200,offset=0,
   p_limit:limit,p_offset:offset}
  const {data,error}=await supabase.rpc(exporting?'bf10_export':'bf10_report',args)
  if(error)throw error
- return data
+ return resolveReportReferences(data,filters.organization_id,supabase)
 }
 export async function reportExport(filters,section,onProgress){
- const rows=[];let offset=0;let first=null
+ const rows=[];let offset=0;let first=null;let referencesUnavailable=false
  while(true){
   const result=await reportQuery(filters,section,500,offset,true)
   if(!first)first=result
+  referencesUnavailable=referencesUnavailable||result.reference_lookup_unavailable
   rows.push(...result.rows)
   onProgress?.(rows.length)
-  if(!result.has_more)return {...first,rows,exported_at:new Date().toISOString()}
+  if(!result.has_more)return {...first,rows,reference_lookup_unavailable:referencesUnavailable,exported_at:new Date().toISOString()}
   if(rows.length>=50000)throw Error('Export limit of 50,000 rows reached. Narrow the date range.')
   offset+=result.rows.length
   if(!result.rows.length)throw Error('Report pagination did not advance')
@@ -27,12 +29,12 @@ export async function reportExport(filters,section,onProgress){
 }
 export const reportSections=['overview','work_orders','ppm','technicians','materials','monthly','quality']
 export const reportColumns={
- work_orders:['work_order_number','title','priority','status','approval_status','sla_status','created_at','started_at','completed_at','closed_at','completion_due_at','response_minutes','completion_minutes','diagnosis','root_cause','work_performed','client_id','site_id','asset_id'],
- ppm:['job_number','due_date','status','assigned_to','started_at','completed_at','approved_at','closed_at','failed_steps','corrective_followups','asset_id','client_id','site_id'],
- technicians:['work_order_number','full_name','started_at','ended_at','minutes','activity','technician_id','visit_id','client_id','site_id'],
- materials:['work_order_number','sku','name_ar','name_en','unit','owner_client_id','lot_code','serial_number','consumed_qty','currency','unit_cost','actual_cost','work_order_id'],
+ work_orders:['work_order_number','title','priority','status','approval_status','sla_status','created_at','started_at','completed_at','closed_at','completion_due_at','response_minutes','completion_minutes','diagnosis','root_cause','work_performed','owner_name','site_name','asset_name'],
+ ppm:['job_number','due_date','status','assigned_technician_name','started_at','completed_at','approved_at','closed_at','failed_steps','corrective_followups','asset_name','owner_name','site_name'],
+ technicians:['work_order_number','full_name','started_at','ended_at','minutes','activity','visit_number','owner_name','site_name'],
+ materials:['work_order_number','sku','name_ar','name_en','unit','stock_owner_name','lot_code','serial_number','consumed_qty','currency','unit_cost','actual_cost'],
  monthly:['month','created','currently_closed','currently_breached'],
- quality:['work_order_number','action','from_status','to_status','created_at','client_id','site_id']
+ quality:['work_order_number','action','from_status','to_status','created_at','owner_name','site_name']
 }
 export const reportDefinitions={
  overview:{work_orders:'WO created in period',open_work_orders:'Currently open',closed_work_orders:'Currently closed',cancelled_work_orders:'Currently cancelled',sla_breached:'Currently marked breached',ppm_due:'PPM jobs due',ppm_closed:'PPM currently closed',ppm_overdue:'PPM overdue today',labor_minutes:'Recorded labor minutes'},

@@ -1,5 +1,6 @@
 export const reportDict={
 en:{
+ owner_name:"Owner",site_name:"Site / hospital",asset_name:"Device",visit_number:"Visit number",assigned_technician_name:"Assigned technician",stock_owner_name:"Stock owner",
  reportDefOverview:"Work orders are counted by creation date, PPM by due date, and labor by interval start. Statuses are current, not historical.",
  reportDefWorkOrders:"Work orders created in the selected period. Current statuses and recorded response/completion durations are shown; SLA compliance is not inferred.",
  reportDefPPM:"Generated, non-cancelled PPM jobs due in the period. Closed / due is not a full contractual compliance measure because missing schedules are not inferred.",
@@ -73,7 +74,7 @@ en:{
  reports:'Management reports',reportOverview:'Executive overview',reportWorkOrders:'Work orders',reportPPM:'Preventive maintenance',
  reportTechnicians:'Technician performance',reportMaterials:'Material consumption',reportMonthly:'Monthly trends',reportQuality:'Quality & rework',
  reportMetric:'Metric',reportWorkOrderNo:'Work order no.',reportCurrentStatus:'Current status',
- reportCompany:'Company',reportClient:'Client',reportSite:'Site',reportStart:'From',reportEnd:'To',
+ reportCompany:'Company',reportClient:'Owner',reportSite:'Site',reportStart:'From',reportEnd:'To',
  reportApply:'Apply filters',reportPrintHint:'Print and PDF use the branded BAMM report layout.',reportPrint:'Print',reportExportPermission:'Export permission required',reportMetric:'Metric',reportValue:'Value',reportExportExcel:'Export Excel',reportExportPDF:'Print / Save PDF',
  reportExporting:'Preparing export...',reportRows:'Rows',reportNoData:'No data for the selected filters',
  reportDefinition:'Metric definition',reportCurrent:'Current status',reportGenerated:'Generated',reportPeriod:'Reporting period',
@@ -91,6 +92,7 @@ en:{
  reportUnknown:'Unknown',reportOpenDetails:'Open work order'
 },
 ar:{
+ owner_name:"الجهة المالكة",site_name:"الموقع / المستشفى",asset_name:"الجهاز",visit_number:"رقم الزيارة",assigned_technician_name:"الفني المسند",stock_owner_name:"مالك المخزون",
  reportDefOverview:"تُحسب أوامر العمل حسب تاريخ الإنشاء، والصيانة الوقائية حسب الاستحقاق، وساعات العمل حسب بداية الفترة. الحالات حالية وليست تاريخية.",
  reportDefWorkOrders:"أوامر العمل المنشأة خلال الفترة. تظهر الحالات الحالية وأزمنة الاستجابة والإكمال المسجلة، دون افتراض الالتزام باتفاقيات SLA.",
  reportDefPPM:"مهام الصيانة الوقائية المجدولة وغير الملغاة والمستحقة خلال الفترة. نسبة المغلقة إلى المستحقة ليست مؤشر التزام تعاقدي كاملًا لعدم احتساب الجداول غير المنشأة.",
@@ -164,7 +166,7 @@ ar:{
  reports:'التقارير الإدارية',reportOverview:'الملخص التنفيذي',reportWorkOrders:'أوامر العمل',reportPPM:'الصيانة الوقائية',
  reportTechnicians:'أداء الفنيين',reportMaterials:'استهلاك المواد',reportMonthly:'الاتجاهات الشهرية',reportQuality:'الجودة وإعادة العمل',
  reportMetric:'المؤشر',reportWorkOrderNo:'رقم أمر العمل',reportCurrentStatus:'الحالة الحالية',
- reportCompany:'الشركة',reportClient:'العميل',reportSite:'الموقع',reportStart:'من تاريخ',reportEnd:'إلى تاريخ',
+ reportCompany:'الشركة',reportClient:'الجهة المالكة',reportSite:'الموقع',reportStart:'من تاريخ',reportEnd:'إلى تاريخ',
  reportApply:'تطبيق الفلاتر',reportPrintHint:'الطباعة وPDF يستخدمان قالب تقرير BAMM المعتمد.',reportPrint:'طباعة',reportExportPermission:'تحتاج صلاحية تصدير التقارير',reportMetric:'المؤشر',reportValue:'القيمة',reportExportExcel:'تصدير Excel',reportExportPDF:'طباعة / حفظ PDF',
  reportExporting:'جارٍ تجهيز التصدير...',reportRows:'صف',reportNoData:'لا توجد بيانات للفلاتر المختارة',
  reportDefinition:'تعريف المؤشر',reportCurrent:'الحالة الحالية',reportGenerated:'تاريخ التقرير',reportPeriod:'فترة التقرير',
