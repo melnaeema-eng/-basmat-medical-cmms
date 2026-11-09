@@ -1,12 +1,15 @@
 import {useSearchParams} from 'react-router-dom'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
+import {useAuth} from '../context/AuthContext'
 import {Field,Select,Notice,Status} from '../components/FacilityFields'
 import {loadApprovalPortal,approvalAction,findConsultant,manageConsultant} from '../lib/approvals'
 
 const blankRequest={entity_id:'',reviewer_type:'owner',subject:'',request_comment:'',due_at:''}
 export default function ApprovalPortal(){
  const {t,lang}=useLanguage()
+ const {access}=useAuth()
+ const preferredOrganization=access?.super_admin?localStorage.getItem('basmat.active.organization'):(access?.home_organization?.organization_id||access?.home_organization?.id)
  const [searchParams]=useSearchParams()
  const sourceEntity=searchParams.get('entity')
  const [data,setData]=useState(null),[filters,setFilters]=useState({organization_id:'',client_id:'',status:''})
@@ -17,14 +20,15 @@ export default function ApprovalPortal(){
   try{
    const read=async(scope)=>{const approvals=[],entities=[],clients=[];for(let offset=0;;offset+=200){const page=await loadApprovalPortal({...scope,limit:200,offset});approvals.push(...(page.approvals||[]));entities.push(...(page.entities||[]));clients.push(...(page.clients||[]));if((page.approvals||[]).length<200)break}return {approvals,entities:[...new Map(entities.map(e=>[e.entity_type+e.entity_id,e])).values()],clients:[...new Map(clients.map(c=>[c.organization_id+'|'+c.client_id,c])).values()]}}
    const result=await read(next)
-   setData(result)
+   const mergeClients=(a=[],b=[])=>[...new Map([...a,...b].map(c=>[c.organization_id+'|'+c.client_id,c])).values()]
+   setData(previous=>({...result,clients:mergeClients(previous?.clients,result.clients)}))
    const target=[...(result.approvals||[]),...(result.entities||[])].find(r=>r.entity_id===sourceEntity)
-   const first=(target&&(result.clients||[]).find(c=>c.organization_id===target.organization_id&&c.client_id===target.client_id))||result.clients?.[0]
+   const first=(target&&(result.clients||[]).find(c=>c.organization_id===target.organization_id&&c.client_id===target.client_id))||(result.clients||[]).find(c=>c.organization_id===preferredOrganization)||result.clients?.[0]
    if(first&&!next.organization_id){
     const scoped={...next,organization_id:first.organization_id,client_id:first.client_id}
     setFilters(scoped)
     const scopedResult=await read(scoped)
-    setData(scopedResult)
+    setData(previous=>({...scopedResult,clients:mergeClients(previous?.clients,result.clients)}))
    }
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
