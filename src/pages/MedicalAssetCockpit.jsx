@@ -8,6 +8,7 @@ import {supabase} from '../lib/supabaseClient'
 import {loadMasterAssetLibrary,adoptMasterTemplates} from '../lib/masterAssetLibrary'
 import {loadPPM,ppmAction} from '../lib/ppm'
 import {save} from '../lib/facility'
+import {medicalProcedureMatchesAsset} from '../lib/medicalProcedureCompatibility'
 import {
   searchMedicalAssets,loadMedicalAssetCockpit,loadAssetActionData,
   createAssetPPM,assignPPMJob,createFaultRequest,convertRequestToWorkOrder,
@@ -220,10 +221,7 @@ export default function MedicalAssetCockpit(){
         (!manufacturerId||!t.manufacturer_id||t.manufacturer_id===manufacturerId)
       )
 
-      const procedures=(ppmData?.procedures||[]).filter(p=>
-        p.organization_id===row.organization_id &&
-        p.status!=='archived'
-      )
+      const procedures=(ppmData?.procedures||[]).filter(p=>medicalProcedureMatchesAsset(p,row))
 
       setLibraryCtx({
         loading:false,
@@ -270,6 +268,10 @@ export default function MedicalAssetCockpit(){
 
   const createOfficialPlan=async(procedureId)=>{
     if(!asset||!procedureId)return
+    if(!libraryCtx.procedures.some(p=>p.id===procedureId&&medicalProcedureMatchesAsset(p,asset))){
+      setError(ar?'اختر إجراء صيانة معتمدًا مطابقًا لتصنيف هذا الجهاز ومصنّعه وموديله.':'Select an approved procedure matching this device category, manufacturer and model.')
+      return
+    }
     if(!asset.site_id){
       setError(ar?'الجهاز غير مرتبط بموقع حالي.':'Asset is not linked to a current site.')
       return
@@ -823,7 +825,7 @@ export default function MedicalAssetCockpit(){
                 </div>)}
               </div>
               :<div className="muted">
-                {ar?'لا يوجد إجراء رسمي بعد. اضغط اعتماد/تحديث PPM من المكتبة أولاً.':'No official procedure yet. Adopt from library first.'}
+                {ar?'لا يوجد إجراء معتمد مطابق لتصنيف هذا الجهاز ومصنّعه وموديله. جهّز إجراءً مطابقًا واعتمده من مركز الصيانة الوقائية.':'No approved procedure matches this device category, manufacturer and model. Prepare and approve a matching procedure in the PPM Center.'}
               </div>}
           </div>
         </div>
