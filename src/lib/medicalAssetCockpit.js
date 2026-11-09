@@ -15,10 +15,12 @@ export async function loadMedicalAssetCockpit(assetId){
   return data
 }
 
-export async function searchMedicalAssets(query=''){
+export async function searchMedicalAssets(query='',organizationId){
+  if(!organizationId)return []
   const {data,error}=await supabase
     .from('bf_med_asset_service_overview')
     .select('*')
+    .eq('organization_id',organizationId)
     .order('asset_tag',{ascending:true})
     .limit(2000)
 
