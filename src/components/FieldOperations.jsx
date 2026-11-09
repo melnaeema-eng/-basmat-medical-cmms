@@ -6,7 +6,7 @@ import {Field,Select,Notice,Status} from './FacilityFields'
 import {loadField,fieldAction,uploadEvidence,openEvidence,enableField,localDateTime} from '../lib/fieldOperations'
 
 const emptyVisit={diagnosis:'',work_performed:'',tests_performed:'',notes:''}
-export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
+export default function FieldOperations({workOrder,onRefresh,canExecute=false,staff=[]}){
  const {can,user}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [form,setForm]=useState(emptyVisit),[labor,setLabor]=useState({started_at:'',ended_at:'',activity:''})
@@ -15,6 +15,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  const wo=workOrder?.id
  const manager=can('corrective.manage',workOrder?.organization_id)
  const executor=canExecute
+ const personName=id=>staff.find(p=>(p.id||p.user_id)===id)?.full_name||staff.find(p=>(p.id||p.user_id)===id)?.name||(id===user?.id?(lang==='ar'?'المستخدم الحالي':'Current user'):(lang==='ar'?'مستخدم مسند':'Assigned user'))
  const [ownVisit,setOwnVisit]=useState(null)
  const load=async()=>{
   if(!wo)return
@@ -86,7 +87,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
    </div>}
    {data?.visits.map(v=><div className="facility-panel" key={v.id} style={{marginBlock:'12px'}}>
     <div className="row-actions"><strong>{v.visit_number}</strong><Status value={v.status}/></div>
-    <p>{t('technician')}: {v.technician_id}</p>
+    <p>{t('technician')}: {personName(v.technician_id)}</p>
     <p>{t('startedAt')}: {localDate(v.started_at)} · {t('finishedAt')}: {localDate(v.finished_at)}</p>
     {v.diagnosis&&<p><strong>{t('diagnosis')}:</strong> {v.diagnosis}</p>}
     {v.work_performed&&<p><strong>{t('workPerformed')}:</strong> {v.work_performed}</p>}
@@ -107,7 +108,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
    <div className="facility-panel"><strong>{t('duration')}: {(data?.labor.reduce((n,l)=>n+Number(l.minutes||0),0)||0)} {t('minutes')}</strong></div>
    {data?.labor.map(l=><div className="facility-panel" key={l.id} style={{marginBlock:'8px'}}>
     <div className="row-actions"><strong>{l.activity}</strong><span>{l.minutes} {t('minutes')}</span></div>
-    <p>{localDate(l.started_at)} — {localDate(l.ended_at)}</p><p className="muted">{l.technician_id}</p>
+    <p>{localDate(l.started_at)} — {localDate(l.ended_at)}</p><p className="muted">{personName(l.technician_id)}</p>
    </div>)}
   </>}
   {tab==='evidence'&&<>
@@ -120,7 +121,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
    </form>}
    {data?.evidence.map(e=><div className="facility-panel" key={e.id} style={{marginBlock:'8px'}}>
     <div className="row-actions"><strong>{e.file_name}</strong><Status value={e.status}/></div>
-    <p>{e.caption}</p><p className="muted">{localDate(e.created_at)} · {e.uploaded_by}</p>
+    <p>{e.caption}</p><p className="muted">{localDate(e.created_at)} · {personName(e.uploaded_by)}</p>
     {e.status==='ready'&&<button type="button" className="btn secondary" onClick={()=>openFile(e.id)}>{t('openEvidence')}</button>}
    </div>)}
   </>}
