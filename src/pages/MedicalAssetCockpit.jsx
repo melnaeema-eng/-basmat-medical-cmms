@@ -1,7 +1,7 @@
 import {useRef} from 'react'
 import MedicalWorkJourney from '../components/MedicalWorkJourney'
 import {useEffect,useState} from 'react'
-import {useNavigate} from 'react-router-dom'
+import {useNavigate,useLocation} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {useAuth} from '../context/AuthContext'
 import {supabase} from '../lib/supabaseClient'
@@ -55,6 +55,8 @@ export default function MedicalAssetCockpit(){
   const {lang}=useLanguage()
   const ar=lang==='ar'
   const nav=useNavigate()
+  const registrationPick=useLocation().state?.registration
+  const [registrationOpen,setRegistrationOpen]=useState(!!registrationPick)
   const {can,access}=useAuth()
   const assetLoad=useRef(0)
   const listLoad=useRef(0)
@@ -85,9 +87,9 @@ export default function MedicalAssetCockpit(){
     loading:true,master:null,ppm:null,projects:[],projectSites:[],sites:[]
   })
   const [deploy,setDeploy]=useState({
-    organization_id:'',project_id:'',site_id:'',
-    asset_type_id:'',manufacturer_id:'',option_id:'',
-    serial_number:'',exact_model:''
+    organization_id:organizationId,project_id:'',site_id:'',
+    asset_type_id:registrationPick?.typeId||'',manufacturer_id:registrationPick?.manufacturerId||'',option_id:registrationPick?.optionId||'',
+    serial_number:'',exact_model:registrationPick?.model||''
   })
 
   const [ppm,setPpm]=useState({procedure_id:'',start_date:today(),months:12,job_id:'',user_id:''})
@@ -400,6 +402,7 @@ export default function MedicalAssetCockpit(){
   )
 
   const chooseDeviceFromLibrary=(typeId,manufacturerId='',optionId='')=>{
+    setRegistrationOpen(true)
     const option=(deployCtx.master?.options||[]).find(o=>String(o.id)===String(optionId))
     setDeploy(v=>({
       ...v,
@@ -585,7 +588,7 @@ export default function MedicalAssetCockpit(){
 
     <div id="medical-asset-deploy" />
 
-    <details className="medical-registration"><summary>{ar?'إضافة جهاز جديد من المكتبة':'Register a new device from the library'}</summary>
+    <details className="medical-registration" open={registrationOpen} onToggle={e=>setRegistrationOpen(e.currentTarget.open)}><summary>{ar?'إضافة جهاز جديد من المكتبة':'Register a new device from the library'}</summary>
     <Panel title={ar?'إضافة جهاز من المكتبة إلى المشروع':'Add Asset from Library to Project'}>
       <div className="form-grid">
         <Field label={ar?'المنظمة':'Organization'}>
