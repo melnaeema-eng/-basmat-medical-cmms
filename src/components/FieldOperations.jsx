@@ -59,6 +59,9 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  return <div className="facility-panel">
   <div className="page-head"><h2>{t('fieldOperations')}</h2><button type="button" className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
+  {!allowed&&<p className="alert warning" role="status">{lang==='ar'
+   ?(!executor?'التسجيل متاح للفني المسند إلى أمر العمل. راجع الإسناد أو ادخل بحساب الفني المسند.':workOrder.status==='assigned'?'اقبل أمر العمل أولًا، ثم ابدأ التنفيذ لتسجيل الزيارة والوقت.':'التسجيل غير متاح في الحالة الحالية لأمر العمل.')
+   :(!executor?'Recording is available to the assigned technician. Check the assignment or sign in as that technician.':workOrder.status==='assigned'?'Accept the work order, then start execution before recording the visit and time.':'Recording is unavailable in the current work-order status.')}</p>}
   <p className="muted">{t('fieldNotice')}</p>
   <div className="row-actions">
    {[['visits','fieldVisits'],['labor','fieldLabor'],['evidence','fieldEvidence']].map(([key,label])=><button type="button" key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>setTab(key)}>{t(label)}</button>)}
@@ -93,6 +96,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   </>}
   {tab==='labor'&&<>
    <p className="muted">{t('laborNotice')}</p>
+   {allowed&&!ownVisit&&<div className="facility-panel"><p>{lang==='ar'?'ابدأ زيارة ميدانية أولًا، ثم سجّل وقت العمل داخل الزيارة.':'Start a field visit first, then record labor within the visit.'}</p><button type="button" className="btn primary" disabled={busy} onClick={()=>run('start_visit')}>{t('startVisit')}</button></div>}
    {ownVisit&&<form className="facility-form" onSubmit={e=>{e.preventDefault();run('labor',ownVisit.id,{...labor,started_at:new Date(labor.started_at).toISOString(),ended_at:new Date(labor.ended_at).toISOString()})}}>
     <div className="form-grid">
      <Field label={t('startedAt')} required><input type="datetime-local" step="1" required value={labor.started_at} onChange={e=>setLabor(f=>({...f,started_at:e.target.value}))}/></Field>
@@ -108,6 +112,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   </>}
   {tab==='evidence'&&<>
    <p className="muted">{t('evidenceNotice')}</p>
+   {allowed&&!ownVisit&&<div className="facility-panel"><p>{lang==='ar'?'ابدأ زيارة ميدانية لرفع أدلة التنفيذ وربطها بالزيارة.':'Start a field visit to upload execution evidence against that visit.'}</p><button type="button" className="btn primary" disabled={busy} onClick={()=>run('start_visit')}>{t('startVisit')}</button></div>}
    {ownVisit&&<form className="facility-form" onSubmit={upload}>
     <Field label={t('file')} required><input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" required onChange={e=>setFile(e.target.files?.[0]||null)}/></Field>
     <Field label={t('caption')}><input value={caption} onChange={e=>setCaption(e.target.value)}/></Field>
