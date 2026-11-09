@@ -388,6 +388,7 @@ export default function MedicalAssetCockpit(){
     (!deploy.project_id||deployProjectSiteIds.has(String(s.id)))
   )
   const automaticSiteId=deploy.project_id&&deploySites.length===1?String(deploySites[0].id):''
+  const registrationSiteId=deploySites.some(s=>String(s.id)===String(deploy.site_id||automaticSiteId))?String(deploy.site_id||automaticSiteId):''
   const deployTypes=(deployCtx.master?.types||[]).filter(t=>t.status!=='archived')
   const deployManufacturers=(deployCtx.master?.manufacturers||[]).filter(m=>
     m.status!=='archived' &&
@@ -423,14 +424,16 @@ export default function MedicalAssetCockpit(){
       setError(['البيانات الناقصة:', !deploy.organization_id&&'المنظمة', !deploy.project_id&&'المشروع', !deploy.asset_type_id&&'نوع الجهاز'].filter(Boolean).join(' '))
       return
     }
-    // An asset belongs to the selected organization even when its project has
-    // multiple sites. Do not invent a site or a room.
-    const link=automaticSiteId?(deployCtx.projectSites||[]).find(x=>
+    if(!registrationSiteId){
+      setError(ar?(deploySites.length?'اختر المستشفى أو الموقع التابع للمشروع.':'اربط مستشفى أو موقعًا بهذا المشروع أولًا من إعداد المشروع.'):(deploySites.length?'Select the hospital or site for this project.':'Link a hospital or site to this project in Project Setup first.'))
+      return
+    }
+    const link=(deployCtx.projectSites||[]).find(x=>
       String(x.project_id)===String(deploy.project_id)&&
-      String(x.site_id)===String(automaticSiteId)&&
+      String(x.site_id)===String(registrationSiteId)&&
       String(x.organization_id)===String(deploy.organization_id)
-    ):null
-    const siteRow=link?(deployCtx.sites||[]).find(s=>String(s.id)===String(automaticSiteId)):null
+    )
+    if(!link){setError(ar?'الموقع غير مرتبط بالمشروع والشركة المختارين.':'The site is not linked to the selected project and company.');return}
 
     const typeRow=(deployCtx.master?.types||[]).find(t=>String(t.id)===String(deploy.asset_type_id))
     const manufacturerRow=(deployCtx.master?.manufacturers||[]).find(m=>String(m.id)===String(deploy.manufacturer_id))
@@ -438,44 +441,6 @@ export default function MedicalAssetCockpit(){
 
     setBusy(true);setError('');setSuccess('')
     try{
-      const adopted=await adoptMasterTemplates(
-        deploy.organization_id,
-        deploy.asset_type_id,
-        deploy.manufacturer_id||null
-      )
-
-      let categoryId=adopted?.category_id||null
-
-      if(!categoryId){
-        const {data:found,error:lookupError}=await supabase
-          .from('bf_asset_categories')
-          .select('id')
-          .eq('organization_id',deploy.organization_id)
-          .eq('master_asset_type_id',deploy.asset_type_id)
-          .eq('status','active')
-          .limit(1)
-
-        if(lookupError)throw lookupError
-        categoryId=found?.[0]?.id||null
-      }
-
-      if(!categoryId){
-        const newCategory={
-          organization_id:deploy.organization_id,
-          tenant_id:deploy.organization_id,
-          master_asset_type_id:null,
-          code:'MED-'+crypto.randomUUID().slice(0,12).toUpperCase(),
-          name_ar:typeRow?.name_ar||typeRow?.name_en||'جهاز طبي',
-          name_en:typeRow?.name_en||typeRow?.name_ar||'Medical Device',
-          status:'active'
-        }
-        const {data:created,error:createError}=await supabase
-          .from('bf_asset_categories')
-          .insert(newCategory).select('id').single()
-
-        if(createError)throw createError
-        categoryId=created.id
-      }
       const projectRow=(deployCtx.projects||[]).find(p=>
         String(p.id||p.project_id)===String(deploy.project_id) &&
         String(p.organization_id)===String(deploy.organization_id)
@@ -496,10 +461,45 @@ export default function MedicalAssetCockpit(){
         throw Error('Project owner is missing or ambiguous. Assign one owner to the project before adding assets.')
       }
       const resolvedClientId=ownerIds[0]
+
+      // Registering an asset does not approve or activate a maintenance program.
+      // Medical master types are separate from the Facilities master catalog.
+      let categoryId=null
+
+      if(!categoryId){
+        const {data:found,error:lookupError}=await supabase
+          .from('bf_asset_categories')
+          .select('id')
+          .eq('organization_id',deploy.organization_id)
+          .eq('name_en',typeRow?.name_en||typeRow?.name_ar||'Medical Device')
+          .eq('status','active')
+          .limit(1)
+
+        if(lookupError)throw lookupError
+        categoryId=found?.[0]?.id||null
+      }
+
+      if(!categoryId){
+        const newCategory={
+          organization_id:deploy.organization_id,
+          tenant_id:deploy.organization_id,
+          master_asset_type_id:null,
+          code:'MED-'+deploy.asset_type_id.replaceAll('-','').slice(0,12).toUpperCase(),
+          name_ar:typeRow?.name_ar||typeRow?.name_en||'جهاز طبي',
+          name_en:typeRow?.name_en||typeRow?.name_ar||'Medical Device',
+          status:'active'
+        }
+        const {data:created,error:createError}=await supabase
+          .from('bf_asset_categories')
+          .insert(newCategory).select('id').single()
+
+        if(createError)throw createError
+        categoryId=created.id
+      }
       const payload={
         organization_id:deploy.organization_id,
         client_id:resolvedClientId,
-        site_id:link?automaticSiteId:null,
+        site_id:registrationSiteId,
         category_id:categoryId,
         name_ar:typeRow?.name_ar||typeRow?.name_en||'جهاز طبي',
         name_en:typeRow?.name_en||typeRow?.name_ar||'Medical Asset',
@@ -518,8 +518,8 @@ export default function MedicalAssetCockpit(){
       }
 
       setSuccess(ar
-        ?`تم حفظ الجهاز ضمن أصول المنظمة${link?' وربطه بموقع المشروع':''}${tag?` برقم ${tag}`:''}. يمكن استكمال موقعه ورقمه التسلسلي الحقيقي لاحقاً.`
-        :`Asset registered under the organization${link?' and linked to the project site':''}${tag?` as ${tag}`:''}. Complete the real serial/site later if needed.`)
+        ?`تم حفظ الجهاز وربطه بموقع المشروع${tag?` برقم ${tag}`:''}.`
+        :`Asset registered and linked to the project site${tag?` as ${tag}`:''}.`)
 
       setDeploy(v=>({...v,serial_number:'',exact_model:'',option_id:''}))
       await Promise.all([reloadList(),loadDeployment()])
@@ -616,6 +616,14 @@ export default function MedicalAssetCockpit(){
               {p.name||p.project_name||p.project_code||p.id}
             </option>)}
           </select>
+        </Field>
+
+        <Field label={ar?'المستشفى / الموقع':'Hospital / Site'}>
+          <select value={registrationSiteId} disabled={!deploy.project_id||deploySites.length===1} onChange={e=>setDeploy(v=>({...v,site_id:e.target.value}))}>
+            <option value="">{ar?'اختر المستشفى / الموقع':'Select hospital / site'}</option>
+            {deploySites.map(s=><option key={s.id} value={s.id}>{s.name||s.name_ar||s.name_en||s.code}</option>)}
+          </select>
+          {deploy.project_id&&!deploySites.length&&<small>{ar?'اربط موقعًا بالمشروع من إعداد المشروع أولًا.':'Link a site in Project Setup first.'}</small>}
         </Field>
 
         <Field label={ar?'نوع الجهاز من المكتبة':'Library Asset Type'}>
