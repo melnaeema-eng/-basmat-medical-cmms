@@ -2,6 +2,55 @@
 -- omer's EXISTING active role grants. No memberships or role grants are added.
 -- Validate canonical medical keys through bf_acl_has_permission, not the legacy alias bridge.
 begin;
+
+-- Fix only the exact legacy mappings supplied from the live database.
+-- Every mapped capability remains subject to bf_acl_has_permission.
+do $bridge$
+declare
+  v_definition text;
+  v_original text;
+  v_corrective text := $old_cm$elsif k in ('corrective.execute','corrective.manage','work_orders.manage') then$old_cm$;
+  v_ppm text := $old_pm$elsif k in ('ppm.execute','ppm.manage','ppm.approve') then$old_pm$;
+begin
+  select pg_get_functiondef('public.bf_acl_legacy_can(uuid,text,uuid)'::regprocedure)
+  into v_definition;
+  v_original := v_definition;
+  if position('-- ACL bridge v20261109' in v_definition)=0 then
+    if position(v_corrective in v_definition)=0 or position(v_ppm in v_definition)=0 then
+      raise exception 'Live legacy mappings have changed; nothing was overwritten';
+    end if;
+
+    v_definition := replace(v_definition,v_corrective,$new_cm$elsif k='corrective.execute' then
+    return public.bf_acl_has_permission(p_org,'facilities.work_orders.execute',p_user)
+        or public.bf_acl_has_permission(p_org,'medical.work_orders.execute',p_user);
+  elsif k in ('corrective.approve','corrective.review') then
+    return public.bf_acl_has_permission(p_org,'facilities.work_orders.review',p_user)
+        or public.bf_acl_has_permission(p_org,'medical.work_orders.review',p_user);
+  elsif k in ('corrective.manage','work_orders.manage') then$new_cm$);
+
+    v_definition := replace(v_definition,v_ppm,$new_pm$elsif k='ppm.execute' then
+    return public.bf_acl_has_permission(p_org,'facilities.ppm.execute',p_user)
+        or public.bf_acl_has_permission(p_org,'medical.ppm.execute',p_user);
+  elsif k in ('ppm.approve','ppm.review') then
+    return public.bf_acl_has_permission(p_org,'facilities.ppm.review',p_user)
+        or public.bf_acl_has_permission(p_org,'medical.ppm.review',p_user);
+  elsif k='ppm.manage' then$new_pm$);
+
+    v_definition := replace(v_definition,'-- Shared administration.',$canonical$
+  -- ACL bridge v20261109: canonical domain keys use the same ACL gate.
+  if k like 'medical.%' or k like 'facilities.%' then
+    return public.bf_acl_has_permission(p_org,k,p_user);
+  end if;
+
+  -- Shared administration.$canonical$);
+    if position('-- ACL bridge v20261109' in v_definition)=0 or v_definition=v_original then
+      raise exception 'Expected legacy bridge marker not found; nothing changed';
+    end if;
+    execute v_definition;
+  end if;
+end
+$bridge$;
+
 do $fix$
 declare
   v_org uuid;
