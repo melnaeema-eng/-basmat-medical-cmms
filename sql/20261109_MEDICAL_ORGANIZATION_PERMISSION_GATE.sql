@@ -1,5 +1,6 @@
 -- MEDICAL project only. Enable the company's medical workflow gate using
 -- omer's EXISTING active role grants. No memberships or role grants are added.
+-- Validate canonical medical keys through bf_acl_has_permission, not the legacy alias bridge.
 begin;
 do $fix$
 declare
@@ -57,10 +58,10 @@ begin
     where op.organization_id=v_org and op.permission_key=k
   );
 
-  if not coalesce(public.bf_acl_legacy_can(v_org,'medical.assets.view',v_user),false)
-     or not coalesce(public.bf_acl_legacy_can(v_org,'medical.work_orders.view',v_user),false)
-     or not coalesce(public.bf_acl_legacy_can(v_org,'medical.ppm.view',v_user),false) then
-    raise exception 'Backend access check still fails. All changes rolled back; inspect bf_acl_legacy_can';
+  if not coalesce(public.bf_acl_has_permission(v_org,'medical.assets.view',v_user),false)
+     or not coalesce(public.bf_acl_has_permission(v_org,'medical.work_orders.view',v_user),false)
+     or not coalesce(public.bf_acl_has_permission(v_org,'medical.ppm.view',v_user),false) then
+    raise exception 'Direct medical permission check still fails. All changes rolled back; inspect bf_acl_has_permission';
   end if;
 end
 $fix$;
