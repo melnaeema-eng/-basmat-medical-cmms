@@ -1,6 +1,7 @@
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {resolveMedicalPermission} from '../lib/medicalPermissionAliases'
+import {loadEffectiveAccess} from '../lib/accessContext'
 
 const Context=createContext(null)
 
@@ -40,31 +41,12 @@ export function AuthProvider({children}){
    payload?.super_admin===true ||
    payload?.is_super_admin===true
 
+  const effective=p.data?.status==='active'
+   ?await loadEffectiveAccess({...payload,super_admin:isSuperAdmin},(name,args)=>supabase.rpc(name,args))
+   :empty
   return {
-   profile:p.data
-    ?{
-      ...p.data,
-      is_super_admin:isSuperAdmin
-     }
-    :null,
-
-   access:{
-    ...payload,
-
-    // Canonical platform-level flag
-    super_admin:isSuperAdmin,
-
-    role_assignments:payload.roles||[],
-
-    roles:(payload.permissions||[]).map(x=>({
-     organization_id:x.organization_id,
-     permission:x.permission_key
-    })),
-
-    organizations:payload.organizations||[],
-    projects:payload.projects||[],
-    permissions:payload.permissions||[]
-   }
+   profile:p.data?{...p.data,is_super_admin:isSuperAdmin}:null,
+   access:{...effective,super_admin:isSuperAdmin}
   }
  }
 
@@ -115,7 +97,8 @@ export function AuthProvider({children}){
 
   const {data:sub}=supabase.auth.onAuthStateChange(
    (_event,next)=>{
-    if(active)load(next)
+    // Leave the auth callback before making authenticated database requests.
+    setTimeout(()=>{if(active)load(next)},0)
    }
   )
 

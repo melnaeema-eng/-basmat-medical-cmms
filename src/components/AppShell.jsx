@@ -63,10 +63,10 @@ export default function AppShell(){
  const {lang,setLang}=useLanguage()
  const navigate=useNavigate(),location=useLocation()
  const [query,setQuery]=useState('')
- const [organizations,setOrganizations]=useState([])
+ const [organizations,setOrganizations]=useState(access?.organizations||[])
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
  useSmartLanguageInputs()
- const visible=permission=>!!(profile?.is_super_admin||access?.super_admin)||permission===null||permission==='__client__'||can(permission)
+ const visible=permission=>!!(profile?.is_super_admin||access?.super_admin)||permission===null||permission==='__client__'||can(permission,access?.home_organization_id||null)
  const isPlatformAdmin=!!(profile?.is_super_admin||access?.super_admin)
  const homeOrganizationId=access?.home_organization_id||null
 
@@ -78,7 +78,7 @@ export default function AppShell(){
      .select('id,name,name_ar,name_en,code,status,logo_url,organization_type')
      .order('name')
     if(!isPlatformAdmin){
-     if(!homeOrganizationId){if(alive)setOrganizations([]);return}
+     if(!homeOrganizationId){if(alive)setOrganizations(access?.organizations||[]);return}
      const home=access?.home_organization
      if(home){
       const normalized={...home,id:home.id||home.organization_id||homeOrganizationId}
@@ -96,11 +96,11 @@ export default function AppShell(){
   }
   if(user)loadOrganizations()
   return()=>{alive=false}
- },[user,isPlatformAdmin,homeOrganizationId])
+ },[user,isPlatformAdmin,homeOrganizationId,access])
 
  const activeOrganization=useMemo(()=>{
   if(!organizations.length)return null
-  if(!isPlatformAdmin)return organizations.find(x=>x.id===homeOrganizationId)||organizations[0]
+  if(!isPlatformAdmin)return organizations.find(x=>x.id===homeOrganizationId)||null
   const selected=organizations.find(x=>x.id===activeOrgId)
   return selected||null
  },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
@@ -137,10 +137,12 @@ export default function AppShell(){
    return lang==='ar'?'الإدارة العامة · جميع المنظمات':'General Administration · All Organizations'
   }
   if(!activeOrganization){
-   return lang==='ar'?'لا توجد منظمة مسندة للمستخدم':'No organization assigned to this user'
+   return access?.organizations?.length>1
+    ?(lang==='ar'?'عضوية في عدة منظمات':'Multiple organization memberships')
+    :(lang==='ar'?'لا توجد منظمة مسندة للمستخدم':'No organization assigned to this user')
   }
   return activeOrganization.name||activeOrganization.code||''
- },[activeOrganization,isPlatformAdmin,lang])
+ },[activeOrganization,isPlatformAdmin,lang,access])
 
  const welcomeText=lang==='ar'
   ? `مرحباً ${displayName} — ${organizationLabel}`
