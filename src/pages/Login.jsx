@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
 export default function Login() {
   const { signIn, user } = useAuth()
   const { t, lang, setLang } = useLanguage()
+  const { state } = useLocation()
   const [form, setForm] = useState({ email:'', password:'' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  if (user) return <Navigate to="/" replace />
+  const requestedPath=typeof state?.from==='string'?state.from:''
+  const returnTo=requestedPath.startsWith('/')&&!requestedPath.startsWith('//')&&!requestedPath.startsWith('/login')?requestedPath:'/'
+  if (user) return <Navigate to={returnTo} replace />
 
   const submit = async (e) => {
     e.preventDefault()

@@ -1,6 +1,9 @@
 import {useEffect,useMemo,useState} from 'react'
-import {Link,useParams} from 'react-router-dom'
+import {Link,useParams,useSearchParams} from 'react-router-dom'
+import QRCode from 'qrcode'
 import {supabase} from '../lib/supabaseClient'
+import {PUBLIC_ASSET_COLUMNS} from '../lib/facility'
+import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 
 const fmt=v=>v?new Date(v).toLocaleDateString(): '—'
@@ -26,19 +29,34 @@ async function safeMany(table,assetId,orderCol='created_at'){
 
 export default function AssetPassport(){
  const {id}=useParams()
+ const [params]=useSearchParams()
+ const tagView=params.get('view')==='tag'
  const {lang}=useLanguage()
+ const {can}=useAuth()
  const ar=lang==='ar'
  const [asset,setAsset]=useState(null)
  const [related,setRelated]=useState({})
  const [assets,setAssets]=useState([])
  const [loading,setLoading]=useState(true)
  const [error,setError]=useState('')
+ const [qr,setQr]=useState('')
+ const [qrError,setQrError]=useState(false)
+ const [cost,setCost]=useState(null)
+
+ useEffect(()=>{
+  let alive=true
+  setQr('');setQrError(false)
+  if(id)QRCode.toDataURL(`${window.location.origin}/asset-passport/${id}`,{width:600,margin:4,errorCorrectionLevel:'M'})
+   .then(value=>{if(alive)setQr(value)})
+   .catch(()=>{if(alive)setQrError(true)})
+  return()=>{alive=false}
+ },[id])
 
  useEffect(()=>{
   let alive=true
   ;(async()=>{
    try{
-    setLoading(true);setError('')
+    setLoading(true);setError('');setCost(null)
     if(!id){
      const {data,error}=await supabase.from('bf_assets')
       .select('id,asset_tag,name_ar,name_en,manufacturer,model,status,operational_status,criticality')
@@ -47,8 +65,12 @@ export default function AssetPassport(){
      if(alive)setAssets(data||[])
      return
     }
-    const {data:a,error:e}=await supabase.from('bf_assets').select('*').eq('id',id).single()
+    const {data:a,error:e}=await supabase.from('bf_assets').select(PUBLIC_ASSET_COLUMNS).eq('id',id).single()
     if(e)throw e
+    if(can('assets.manage',a.organization_id)){
+     const c=await supabase.rpc('bf3_asset_cost',{p_id:id})
+     if(alive&&!c.error)setCost(c.data)
+    }
     const [org,client,site,category,building,floor,zone,room,wo,ppm,inspections,warranty]=await Promise.all([
      safeOne('bf_organizations',a.organization_id),
      safeOne('bf_clients',a.client_id),
@@ -79,7 +101,7 @@ export default function AssetPassport(){
    related.zone?.name||related.zone?.name_en||related.zone?.name_ar,
    related.room?.name||related.room?.name_en||related.room?.name_ar
   ].filter(Boolean)
-  return vals.length?vals.join(' / '):(asset.location_node_id||'—')
+  return vals.length?vals.join(' / '):'—'
  },[asset,related])
 
  if(loading)return <section className="facility-module"><div className="facility-panel">{ar?'جاري التحميل...':'Loading...'}</div></section>
@@ -99,7 +121,26 @@ export default function AssetPassport(){
  </section>
 
  const wo=related.wo||[], ppm=related.ppm||[], inspections=related.inspections||[], warranty=related.warranty||[]
- const qrData=encodeURIComponent(`${window.location.origin}/asset-passport/${asset.id}`)
+ const deviceName=(ar?asset.name_ar:asset.name_en)||asset.name_en||asset.name_ar||asset.asset_tag
+ const qrImage=qr?<img alt={ar?'رمز QR لجواز الجهاز':'Device passport QR code'} width="150" height="150" src={qr}/>:<p role="status">{qrError?(ar?'تعذر إنشاء QR؛ أعد تحميل الصفحة.':'Could not generate QR. Reload the page.'):(ar?'جارٍ تجهيز QR…':'Preparing QR…')}</p>
+ if(tagView)return <section className="facility-module">
+  <style>{`
+   .device-tag{box-sizing:border-box;width:90mm;min-height:60mm;padding:4mm;border:1px solid #17324d;border-radius:3mm;background:#fff;color:#10273f;display:grid;grid-template-columns:minmax(0,1fr) 29mm;gap:3mm;align-items:center;font-family:Arial,sans-serif}
+   .device-tag h2{font-size:20px;margin:4px 0}.device-tag p{margin:4px 0;font-size:11px;overflow-wrap:anywhere}.device-tag img{display:block;width:29mm;height:29mm}.device-tag .device-tag-brand{grid-column:1/-1;font-size:11px;font-weight:700;border-bottom:2px solid #f28c28;padding-bottom:2mm}
+   @media screen and (max-width:450px){.device-tag{width:100%;grid-template-columns:minmax(0,1fr) 29mm}}
+   @media print{@page{size:90mm 60mm;margin:0}body *{visibility:hidden!important}.device-tag,.device-tag *{visibility:visible!important}.device-tag{position:absolute;inset:0 auto auto 0;width:90mm;height:60mm;min-height:0;box-shadow:none;border:0;border-radius:0;print-color-adjust:exact}}
+  `}</style>
+  <div className="page-head no-print"><div><h1>{ar?'تاق الجهاز':'Device tag'} — {asset.asset_tag}</h1><p>{ar?'ملصق 90 × 60 مم. رمز QR يفتح جواز الجهاز بعد تسجيل الدخول.':'90 × 60 mm label. Scan QR to open the device passport after signing in.'}</p></div><div className="row-actions">
+   <Link className="btn" to="/medical-asset-cockpit">{ar?'الأجهزة والصيانة':'Devices and maintenance'}</Link>
+   <Link className="btn" to={`/asset-passport/${asset.id}`}>{ar?'جواز الجهاز':'Device passport'}</Link>
+   <button className="btn primary" disabled={!qr} onClick={()=>window.print()}>{ar?'طباعة التاق / PDF':'Print tag / PDF'}</button>
+  </div></div>
+  <div className="device-tag" dir={ar?'rtl':'ltr'}>
+   <div className="device-tag-brand">{(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name||'Basmat Alnawabigh'} · {ar?'جهاز طبي':'Medical device'}</div>
+   <div><h2 dir="ltr">{asset.asset_tag}</h2><p><strong>{deviceName}</strong></p><p>{asset.manufacturer} {asset.exact_model||asset.model}</p><p>{ar?'السيريال':'Serial'}: <b dir="ltr">{asset.serial_number||'—'}</b></p><p>{(ar?related.site?.name_ar:related.site?.name_en)||related.site?.name||''}</p></div>
+   <div>{qrImage}<p style={{textAlign:'center',fontSize:10}}>{ar?'امسح لفتح الجواز':'Scan for passport'}</p></div>
+  </div>
+ </section>
  return <section className="facility-module asset-passport">
   <style>{`
    .passport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
@@ -119,6 +160,7 @@ export default function AssetPassport(){
    <div className="no-print" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
     <Link className="btn" to="/asset-passport">{ar?'كل الجوازات':'All passports'}</Link>
     <Link className="btn" to={`/assets/${asset.id}`}>{ar?'سجل الجهاز':'Device record'}</Link>
+    <Link className="btn primary" to={`/asset-passport/${asset.id}?view=tag`}>{ar?'طباعة التاق وQR':'Print device tag and QR'}</Link>
     <button className="btn" onClick={()=>window.print()}>{ar?'طباعة / PDF':'Print / PDF'}</button>
    </div>
   </div>
@@ -131,6 +173,8 @@ export default function AssetPassport(){
      <span className={'passport-status '+statusClass(asset.criticality)}>{asset.criticality}</span>
     </div>
     <div className="passport-grid">
+     <Info l={ar?'شركة الصيانة':'Service provider'} v={(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name}/>
+     <Info l={ar?'المالك':'Owner'} v={(ar?related.client?.name_ar:related.client?.name_en)||related.client?.name}/>
      <Info l={ar?'الشركة المصنعة':'Manufacturer'} v={asset.manufacturer}/>
      <Info l={ar?'الموديل':'Model'} v={asset.model}/>
      <Info l={ar?'الرقم التسلسلي':'Serial number'} v={asset.serial_number}/>
@@ -140,7 +184,7 @@ export default function AssetPassport(){
     </div>
    </div>
    <div style={{textAlign:'center'}}>
-    <img alt="Asset QR" width="150" height="150" src={`https://quickchart.io/qr?size=150&text=${qrData}`}/>
+    {qrImage}
     <div style={{fontSize:10,marginTop:4}}>{asset.asset_tag}</div>
    </div>
   </div>
@@ -153,8 +197,8 @@ export default function AssetPassport(){
    <Info l={ar?'بداية الضمان':'Warranty start'} v={fmt(asset.warranty_start)}/>
    <Info l={ar?'نهاية الضمان':'Warranty end'} v={fmt(asset.warranty_end)}/>
    <Info l={ar?'مزود الضمان':'Warranty provider'} v={asset.warranty_provider}/>
-   <Info l={ar?'تكلفة الشراء':'Purchase cost'} v={money(asset.purchase_cost)}/>
-   <Info l={ar?'تكلفة الاستبدال':'Replacement cost'} v={money(asset.replacement_cost)}/>
+   {can('assets.manage',asset.organization_id)&&<Info l={ar?'تكلفة الشراء':'Purchase cost'} v={money(cost?.purchase_cost)}/>}
+   {can('assets.manage',asset.organization_id)&&<Info l={ar?'تكلفة الاستبدال':'Replacement cost'} v={money(cost?.replacement_cost)}/>}
    <Info l={ar?'العمر المتوقع':'Expected life'} v={asset.expected_life_years?`${asset.expected_life_years} ${ar?'سنة':'years'}`:'—'}/>
   </div>
 
