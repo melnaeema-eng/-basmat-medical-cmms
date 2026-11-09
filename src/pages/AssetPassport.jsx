@@ -5,6 +5,7 @@ import {supabase} from '../lib/supabaseClient'
 import {PUBLIC_ASSET_COLUMNS} from '../lib/facility'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
+import {loadPassportLocation,passportLocationFields} from '../lib/passportLocation'
 
 const fmt=v=>v?new Date(v).toLocaleDateString(): '—'
 const money=v=>v==null?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:2})
@@ -71,21 +72,17 @@ export default function AssetPassport(){
      const c=await supabase.rpc('bf3_asset_cost',{p_id:id})
      if(alive&&!c.error)setCost(c.data)
     }
-    const [org,client,site,category,building,floor,zone,room,wo,ppm,inspections,warranty]=await Promise.all([
+    const [org,client,locationRecords,category,wo,ppm,inspections,warranty]=await Promise.all([
      safeOne('bf_organizations',a.organization_id),
      safeOne('bf_clients',a.client_id),
-     safeOne('bf_sites',a.site_id),
+     loadPassportLocation(a,safeOne),
      safeOne('bf_asset_categories',a.category_id),
-     safeOne('bf_buildings',a.building_id),
-     safeOne('bf_floors',a.floor_id),
-     safeOne('bf_zones',a.zone_id),
-     safeOne('bf_rooms',a.room_id),
      safeMany('bf_work_orders',a.id),
      safeMany('bf_ppm_jobs',a.id,'due_date'),
      safeMany('bf14_asset_inspections',a.id,'inspected_at'),
      safeMany('bf14_warranty_claims',a.id,'created_at')
     ])
-    if(alive){setAsset(a);setRelated({org,client,site,category,building,floor,zone,room,wo,ppm,inspections,warranty})}
+    if(alive){setAsset(a);setRelated({org,client,...locationRecords,category,wo,ppm,inspections,warranty})}
    }catch(ex){if(alive)setError(ex.message||String(ex))}
    finally{if(alive)setLoading(false)}
   })()
@@ -94,15 +91,9 @@ export default function AssetPassport(){
 
  const location=useMemo(()=>{
   if(!asset)return '—'
-  const vals=[
-   related.site?.name||related.site?.name_en||related.site?.name_ar,
-   related.building?.name||related.building?.name_en||related.building?.name_ar,
-   related.floor?.name||related.floor?.name_en||related.floor?.name_ar,
-   related.zone?.name||related.zone?.name_en||related.zone?.name_ar,
-   related.room?.name||related.room?.name_en||related.room?.name_ar
-  ].filter(Boolean)
+  const vals=passportLocationFields(related,lang).map(field=>field.value).filter(Boolean)
   return vals.length?vals.join(' / '):'—'
- },[asset,related])
+ },[asset,related,lang])
 
  if(loading)return <section className="facility-module"><div className="facility-panel">{ar?'جاري التحميل...':'Loading...'}</div></section>
  if(error)return <section className="facility-module"><div className="facility-panel" style={{color:'#b42318'}}>{error}</div></section>
@@ -180,13 +171,20 @@ export default function AssetPassport(){
      <Info l={ar?'الرقم التسلسلي':'Serial number'} v={asset.serial_number}/>
      <Info l={ar?'السعة':'Capacity'} v={[asset.capacity,asset.unit].filter(Boolean).join(' ')}/>
      <Info l={ar?'التصنيف':'Category'} v={related.category?.name_ar||related.category?.name_en||related.category?.code}/>
-     <Info l={ar?'الموقع':'Location'} v={location}/>
     </div>
    </div>
    <div style={{textAlign:'center'}}>
     {qrImage}
     <div style={{fontSize:10,marginTop:4}}>{asset.asset_tag}</div>
    </div>
+  </div>
+
+  <div className="facility-panel" style={{marginTop:16,borderInlineStart:'4px solid #96c975'}}>
+   <h2 style={{marginTop:0}}>{ar?'موقع الجهاز بالتفصيل':'Device location'}</h2>
+   <p style={{color:'#52677b'}}>{location}</p>
+   <div className="passport-grid">{passportLocationFields(related,lang).map(field=><Info key={field.key} l={field.label} v={field.value||(ar?'غير محدد':'Not specified')}/>)}</div>
+   {passportLocationFields(related,lang).some(field=>field.missing)&&<p role="status">{ar?'بعض تفاصيل الموقع غير مسجلة أو غير متاحة للعرض.':'Some location details are not recorded or are unavailable.'}</p>}
+   {can('assets.manage',asset.organization_id)&&<Link className="btn no-print" style={{marginTop:12}} to={`/assets/${asset.id}`}>{ar?'استكمال / تعديل موقع الجهاز':'Complete / edit device location'}</Link>}
   </div>
 
   <h2>{ar?'التركيب والتشغيل والضمان':'Installation, Commissioning & Warranty'}</h2>
