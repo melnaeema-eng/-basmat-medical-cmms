@@ -10,11 +10,13 @@ export const medicalPermissionAliases={
   'ppm.view':'medical.ppm.view',
   'ppm.execute':'medical.ppm.execute',
   'ppm.review':'medical.ppm.review',
+  'ppm.approve':'medical.ppm.review',
   'ppm.manage':'medical.ppm.manage',
 
   'corrective.view':'medical.work_orders.view',
   'corrective.execute':'medical.work_orders.execute',
   'corrective.review':'medical.work_orders.review',
+  'corrective.approve':'medical.work_orders.review',
   'corrective.assign':'medical.work_orders.assign',
   'corrective.manage':'medical.work_orders.manage',
 
