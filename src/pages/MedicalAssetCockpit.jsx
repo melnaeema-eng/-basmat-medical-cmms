@@ -1,6 +1,7 @@
 import {useRef} from 'react'
 import MedicalWorkJourney from '../components/MedicalWorkJourney'
-import {useEffect,useState} from 'react'
+import {useEffect,useMemo,useState} from 'react'
+import {findMedicalLibraryModels} from '../lib/medicalLibrarySearch'
 import {useNavigate,useLocation} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {useAuth} from '../context/AuthContext'
@@ -66,6 +67,8 @@ export default function MedicalAssetCockpit(){
   const canCreateAsset=org=>!!org&&(can('medical.assets.manage',org)||can('assets.manage',org))
 
   const [query,setQuery]=useState('')
+  const [libraryQuery,setLibraryQuery]=useState('')
+  const [libraryLimit,setLibraryLimit]=useState(24)
   const [assets,setAssets]=useState([])
   const [asset,setAsset]=useState(null)
   const [ctx,setCtx]=useState(null)
@@ -97,12 +100,14 @@ export default function MedicalAssetCockpit(){
   const [fault,setFault]=useState({title:'',description:'',priority:'P3',create_wo:true})
   const [wo,setWo]=useState({title:'',description:'',priority:'P3'})
 
-  const reloadList=async()=>{
+  const reloadList=async(needle=query)=>{
+    setLibraryQuery(needle)
+    setLibraryLimit(24)
     const loadId=++listLoad.current
     setBusy(true)
     setError('')
     try{
-      const rows=await searchMedicalAssets(query,organizationId)
+      const rows=await searchMedicalAssets(needle,organizationId)
       if(loadId===listLoad.current)setAssets(rows)
     }catch(e){
       if(loadId===listLoad.current)setError(e.message)
@@ -128,7 +133,7 @@ export default function MedicalAssetCockpit(){
     setDeployCtx(v=>({...v,loading:true}))
     try{
       const [masterData,ppmData,projectSitesRes,sitesRes]=await Promise.all([
-        loadMasterAssetLibrary(),
+        loadMasterAssetLibrary().then(master=>{setDeployCtx(v=>({...v,master}));return master}),
         loadPPM(),
         supabase.from('bf35_project_sites').select('project_id,organization_id,site_id,client_id'),
         supabase.from('bf_sites').select('*').eq('status','active').order('name')
@@ -376,6 +381,8 @@ export default function MedicalAssetCockpit(){
   }
 
 
+  const libraryMatches=useMemo(()=>findMedicalLibraryModels(deployCtx.master,libraryQuery),[deployCtx.master,libraryQuery])
+
   const deployOrgs=(deployCtx.ppm?.organizations||[]).filter(x=>x.status!=='archived')
   const deployProjects=(deployCtx.projects||[]).filter(
     p=>!deploy.organization_id||String(p.organization_id)===String(deploy.organization_id)
@@ -573,20 +580,41 @@ export default function MedicalAssetCockpit(){
 
     <Panel>
       <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:12,alignItems:'end'}}>
-        <Field label={ar?'البحث عن الجهاز':'Find Asset'}>
+        <Field label={ar?'البحث في الأجهزة المسجلة والمكتبة':'Search registered devices and library'}>
           <input
             value={query}
             onChange={e=>setQuery(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&reloadList()}
-            placeholder={ar?'رقم الأصل / السيريال / المصنع / الموديل':'Asset Tag / Serial / Manufacturer / Model'}
+            placeholder={ar?'رقم الأصل / السيريال / اسم الجهاز / البراند / الموديل':'Asset Tag / Serial / Device / Brand / Model'}
             style={{height:46,fontSize:16}}
           />
         </Field>
-        <button className="btn primary" style={{height:46,minWidth:110}} disabled={busy} onClick={reloadList}>
+        <button className="btn primary" style={{height:46,minWidth:110}} disabled={busy} onClick={()=>reloadList()}>
           {ar?'بحث':'Search'}
         </button>
       </div>
     </Panel>
+
+
+    <details className="medical-registration" open={!!libraryQuery}>
+      <summary>{ar?'نتائج مكتبة الموديلات':'Device model library results'} ({libraryMatches.length})</summary>
+      <Panel title={ar?'موديلات المكتبة — اختر لتسجيل جهاز بالمشروع':'Library models — select to register a project device'}>
+        <p className="muted">{ar?'هذه موديلات مرجعية؛ تظهر ضمن أجهزة المشروع بعد تسجيل الجهاز وموقعه ورقمه التسلسلي.':'These are catalog models. Register the device, location and serial number to include it in project devices.'}</p>
+        {!deployCtx.master?<p role="status">{deployCtx.loading?(ar?'جاري تحميل المكتبة…':'Loading library…'):(ar?'تعذر تحميل المكتبة. أعد المحاولة.':'Library could not be loaded. Please retry.')}</p>:<>
+          <p role="status" aria-live="polite">{libraryQuery?(ar?`نتائج المكتبة للبحث «${libraryQuery}»: ${libraryMatches.length} موديل`:`Library results for “${libraryQuery}”: ${libraryMatches.length} models`):(ar?`${libraryMatches.length} موديل متاح`:`${libraryMatches.length} models available`)}</p>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:10}}>
+            {libraryMatches.slice(0,libraryLimit).map(({option,type,maker})=><div key={option.id} style={{border:'1px solid #dbe3ee',borderRadius:12,padding:14,background:'#fff'}}>
+              <strong>{ar?(type.name_ar||type.name_en):(type.name_en||type.name_ar)}</strong>
+              <div>{maker.name||maker.short_name}</div>
+              <div style={{fontWeight:800,overflowWrap:'anywhere'}}>{option.model_family||'—'}</div>
+              <button type="button" className="btn primary" style={{marginTop:10}} onClick={()=>chooseDeviceFromLibrary(option.asset_type_id,option.manufacturer_id,option.id)}>{ar?'اختيار وإضافة للمشروع':'Select and register'}</button>
+            </div>)}
+          </div>
+          {!libraryMatches.length&&<p>{ar?'لا توجد موديلات مطابقة في المكتبة. جرّب اسم الجهاز أو البراند أو الموديل.':'No catalog models match. Try a device name, brand or model.'}</p>}
+          {libraryMatches.length>libraryLimit&&<button type="button" className="btn" style={{marginTop:12}} onClick={()=>setLibraryLimit(v=>v+24)}>{ar?'عرض المزيد':'Show more'}</button>}
+        </>}
+      </Panel>
+    </details>
 
     <div id="medical-asset-deploy" />
 
@@ -694,7 +722,8 @@ export default function MedicalAssetCockpit(){
     </Panel>
 
     </details>
-    {!busy&&!assets.length&&<Panel>{ar?'لا توجد أجهزة مطابقة للبحث.':'No matching devices found.'}</Panel>}
+    <h2>{ar?'أجهزة المشروع المسجلة':'Registered project devices'} ({assets.length})</h2>
+    {!busy&&!assets.length&&<Panel>{ar?'لا توجد أجهزة مسجلة مطابقة ضمن نطاقك الحالي. يمكنك اختيار موديل من نتائج المكتبة أعلاه وتسجيل الجهاز بالمشروع.':'No registered devices match in your current scope. Select a catalog model above to register a project device.'}</Panel>}
     <div style={{display:'grid',gap:12}}>
       {assets.map(a=>{
         const isSelected=asset?.asset_id===a.asset_id
@@ -1028,22 +1057,6 @@ export default function MedicalAssetCockpit(){
       })}
     </div>
 
-    <details className="medical-registration"><summary>{ar?'استعراض مكتبة الأجهزة':'Browse the device library'}</summary>
-    <Panel title={ar?'\u0627\u062e\u062a\u064a\u0627\u0631 \u062c\u0647\u0627\u0632 \u0645\u0646 \u0627\u0644\u0645\u0643\u062a\u0628\u0629':'Choose Device from Library'}>
-      <p className="muted">{ar?'\u0627\u062e\u062a\u0631 \u0627\u0644\u062c\u0647\u0627\u0632 \u0644\u062a\u0639\u0628\u0626\u0629 \u0627\u0644\u0646\u0645\u0648\u0630\u062c \u0623\u0639\u0644\u0627\u0647.':'Choose an item to populate the form above.'}</p>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:10}}>
-        {(deployCtx.master?.options||[]).filter(o=>o.status!=='archived').map(o=>{
-          const type=(deployCtx.master?.types||[]).find(t=>String(t.id)===String(o.asset_type_id))
-          const maker=(deployCtx.master?.manufacturers||[]).find(m=>String(m.id)===String(o.manufacturer_id))
-          return <button key={o.id} type="button" className="btn" style={{textAlign:ar?'right':'left',height:'auto',minHeight:64,whiteSpace:'normal'}}
-            onClick={()=>chooseDeviceFromLibrary(o.asset_type_id,o.manufacturer_id,o.id)}>
-            <strong>{ar?(type?.name_ar||type?.name_en):(type?.name_en||type?.name_ar)}</strong>
-            <span style={{display:'block',fontSize:12}}>{maker?.short_name||maker?.name||''} - {o.model_family||'-'}</span>
-          </button>
-        })}
-        {!(deployCtx.master?.options||[]).length&&(deployCtx.master?.types||[]).map(t=><button key={t.id} type="button" className="btn"
-          onClick={()=>chooseDeviceFromLibrary(t.id)}>{ar?(t.name_ar||t.name_en):(t.name_en||t.name_ar)}</button>)}
-      </div>
-    </Panel></details>
+
   </section>
 }
