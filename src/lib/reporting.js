@@ -1,3 +1,4 @@
+import {loadOwnerIdentity} from './ownerIdentity'
 import {supabase} from './supabaseClient'
 import {resolveReportReferences} from './reportDisplay'
 export async function reportScopes(){
@@ -11,7 +12,8 @@ export async function reportQuery(filters,section='overview',limit=200,offset=0,
   p_limit:limit,p_offset:offset}
  const {data,error}=await supabase.rpc(exporting?'bf10_export':'bf10_report',args)
  if(error)throw error
- return resolveReportReferences(data,filters.organization_id,supabase)
+ const [report,owner_identity]=await Promise.all([resolveReportReferences(data,filters.organization_id,supabase),loadOwnerIdentity({organizationId:filters.organization_id,clientId:filters.client_id||undefined,siteId:filters.site_id||undefined}).catch(()=>null)])
+ return {...report,owner_identity}
 }
 export async function reportExport(filters,section,onProgress){
  const rows=[];let offset=0;let first=null;let referencesUnavailable=false

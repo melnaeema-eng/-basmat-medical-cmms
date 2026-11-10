@@ -1,3 +1,4 @@
+import {ownerLogoSource} from './ownerLogo'
 import {supabase} from './supabaseClient'
 
 export const MASTER_TABLES={
@@ -30,7 +31,7 @@ export async function readMasterBundle(){
 export function normalizeMaster(key,form){
  const fields={
   organizations:['name','code','status'],
-  clients:['organization_id','name','code','email','phone','status'],
+  clients:['organization_id','name','code','email','phone','status','logo_url'],
   contracts:['organization_id','client_id','contract_number','contract_type','start_date','end_date','contract_value','status'],
   sites:['organization_id','client_id','contract_id','name','code','city','address','latitude','longitude','location_source','status']
  }
@@ -39,6 +40,8 @@ export function normalizeMaster(key,form){
  if(key==='clients'){
   if(!form.organization_id)throw Error('Organization is required')
   p.tenant_id=form.organization_id
+  p.logo_url=ownerLogoSource(form.logo_url)||null
+  if(form.logo_url&&!p.logo_url)throw Error('Invalid owner logo / شعار المالك غير صالح')
  }
 
  delete p.code

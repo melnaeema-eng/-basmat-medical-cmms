@@ -1,3 +1,4 @@
+import {ownerLogoSource} from './ownerLogo.js'
 // Dependency-free XLSX writer: ZIP store method, inline strings, no formula execution.
 const encoder=new TextEncoder()
 const xml=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'')
@@ -92,8 +93,8 @@ function human(v){
  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
 
-export function printReport(report,columns,labels,title,lang='en'){
- const win=window.open('','_blank')
+export function printReport(report,columns,labels,title,lang='en',targetWindow=null){
+ const win=targetWindow||window.open('','_blank')
  if(!win)throw Error('Allow pop-ups to print the report')
  const doc=win.document
  const dir=lang==='ar'?'rtl':'ltr'
@@ -140,6 +141,7 @@ body::after{content:"BAMM | Basmat Alnawabigh";position:fixed;left:12mm;right:12
            <span>Basmat Alnawabigh Medical Equipment Maintenance Management System</span>
          </div>
        </div>
+       ${report.owner_identity?`<div style="text-align:center;max-width:180px">${ownerLogoSource(report.owner_identity.logo_url)?`<img src="${human(ownerLogoSource(report.owner_identity.logo_url))}" alt="Owner logo" style="width:90px;height:65px;object-fit:contain;border-radius:0;box-shadow:none"/>`:''}<div>${human(report.owner_identity.name)}</div></div>`:''}
        <div class="report-title">
          <h1>${title}</h1>
          <p>${lang==='ar'?'تقرير تشغيلي احترافي':'Professional operational report'}</p>

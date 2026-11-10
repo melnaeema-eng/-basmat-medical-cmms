@@ -1,4 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
+import {supabase} from '../lib/supabaseClient'
+import {readOwnerLogo} from '../lib/ownerLogo'
+import {ownerLogoSource} from '../lib/ownerLogo'
 import {useAuth} from '../context/AuthContext'
 import {ownerReportPeriod} from '../lib/ownerReportModel'
 import {displayReportValue} from '../lib/reportDisplay'
@@ -46,7 +49,7 @@ function printSamePage(node){
 
 export default function OwnerReports(){
  const {lang}=useLanguage(),ar=lang==='ar'
- const {access}=useAuth()
+ const {access,can}=useAuth()
  const [activeOrganization,setActiveOrganization]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
  const organizationId=access?.super_admin?activeOrganization:(access?.home_organization?.organization_id||access?.home_organization?.id||'')
  const [reportMode,setReportMode]=useState('contract'),[ownerId,setOwnerId]=useState('')
@@ -59,6 +62,8 @@ export default function OwnerReports(){
  const [report,setReport]=useState(null),[branding,setBranding]=useState(null),[archives,setArchives]=useState([])
  const [loading,setLoading]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState('')
  const [editBrand,setEditBrand]=useState(false)
+ const [ownerLogoDraft,setOwnerLogoDraft]=useState(null),[editingOwnerLogo,setEditingOwnerLogo]=useState(false)
+ useEffect(()=>{setEditingOwnerLogo(false);setOwnerLogoDraft(null)},[ownerId,contractId,organizationId])
  const [archiveFilter,setArchiveFilter]=useState('all')
  const [selectedRun,setSelectedRun]=useState(null),[events,setEvents]=useState([])
  const [sendRun,setSendRun]=useState(null),[sendTo,setSendTo]=useState(''),[sendNotes,setSendNotes]=useState('')
@@ -101,13 +106,24 @@ export default function OwnerReports(){
   try{setLoading(true);setError('');setSaved('');setReport(null);setReport(await loadOwnerReportData({contractId:reportMode==='contract'?contractId:null,organizationId,clientId:ownerId,start,end,lang,reportType}))}
   catch(e){setError(e.message)}finally{setLoading(false)}
  }
- const currentBrand=branding||{
+ const currentBrand={...{
   organization_id:selectedContract?.organization_id,contract_id:contractId,
   project_name_ar:selectedContract?.name_ar||report?.labels?.client||'',project_name_en:selectedContract?.name_en||report?.labels?.client||'',
   owner_name_ar:owner?.name_ar||owner?.name||'',owner_name_en:owner?.name_en||owner?.name||'',
   contractor_name_ar:org?.name_ar||org?.name||'',contractor_name_en:org?.name_en||org?.name||'',
   owner_logo_data:'',contractor_logo_data:'',primary_color:'#0b2b4b',secondary_color:'#b8892d',
   prepared_by:'',reviewed_by:'',approved_by:'',report_prefix:'MED'
+ },...(branding||{}),owner_logo_data:ownerLogoSource(owner?.logo_url)||ownerLogoSource(branding?.owner_logo_data)}
+ const saveSharedOwnerLogo=async()=>{
+  if(!owner?.id||!organizationId||ownerLogoDraft===null)return
+  try{
+   setLoading(true);setError('')
+   const {data,error}=await supabase.from('bf_clients').update({logo_url:ownerLogoSource(ownerLogoDraft)||null}).eq('id',owner.id).eq('organization_id',organizationId).select('id,logo_url').single()
+   if(error)throw error
+   setDirectory(d=>({...d,clients:d.clients.map(c=>c.id===data.id?{...c,logo_url:data.logo_url}:c)}))
+   setOwnerLogoDraft(null);setEditingOwnerLogo(false)
+   setSaved(ar?'تم حفظ شعار المالك لجميع المخرجات الجديدة.':'Owner logo saved for all new outputs.')
+  }catch(e){setError(e.message)}finally{setLoading(false)}
  }
  const patchBrand=(k,v)=>setBranding({...currentBrand,[k]:v})
  const saveBrand=async()=>{
@@ -213,6 +229,7 @@ export default function OwnerReports(){
 
   <div className="page-head"><div><h1>{ar?'مركز تقارير المالك للأجهزة الطبية':'Medical Owner Reporting Center'}</h1><p>{ar?'تقارير صيانة الأجهزة الطبية الأسبوعية والشهرية والسنوية مع الأرشيف وتتبع الطباعة والإرسال.':'Weekly, monthly and annual medical-equipment maintenance reports with archive and report-only printing.'}</p></div></div>
   {error&&<div className="facility-panel" style={{color:'#b42318'}}>{error}</div>}
+  {editingOwnerLogo&&<div className="facility-panel no-print"><h3>{ar?'شعار المالك للتقارير والجواز والتاق والمستندات':'Owner logo for reports, passports, tags and documents'}</h3><input type="file" accept="image/png,image/jpeg,image/webp" onChange={async e=>{try{const file=e.target.files?.[0];if(file)setOwnerLogoDraft(await readOwnerLogo(file))}catch(e){setError(e.message)}}}/>{ownerLogoSource(ownerLogoDraft)&&<img src={ownerLogoSource(ownerLogoDraft)} alt={ar?'معاينة الشعار':'Logo preview'} style={{display:'block',width:100,height:70,objectFit:'contain',margin:10}}/>}<div className="row-actions"><button className="btn primary" disabled={loading||ownerLogoDraft===null} onClick={saveSharedOwnerLogo}>{ar?'حفظ شعار المالك':'Save owner logo'}</button><button className="btn" onClick={()=>setOwnerLogoDraft('')}>{ar?'إزالة':'Remove'}</button><button className="btn" onClick={()=>setEditingOwnerLogo(false)}>{ar?'إلغاء':'Cancel'}</button></div></div>}
   {brandingError&&<p className="muted no-print" role="status">{brandingError}</p>}
   {archiveError&&<div className="facility-panel no-print" role="status" style={{borderInlineStart:'4px solid #f28c28',color:'#735521'}}>{archiveError}</div>}
   {saved&&<div className="facility-panel" style={{color:'#067647'}}>{saved}</div>}
@@ -227,6 +244,7 @@ export default function OwnerReports(){
    </div>
    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
     <button className="btn primary" disabled={(reportMode==='contract'?!contractId:!ownerId||!organizationId)||loading} onClick={make}>{loading?(ar?'جاري التحميل...':'Loading...'):(ar?'إنشاء التقرير':'Generate report')}</button>
+    {owner?.id&&can('clients.manage',organizationId)&&<button className="btn" onClick={()=>{setOwnerLogoDraft(owner.logo_url||'');setEditingOwnerLogo(!editingOwnerLogo)}}>{ar?'شعار المالك العام':'Shared owner logo'}</button>}
     <button className="btn" disabled={!contractId} onClick={()=>setEditBrand(!editBrand)}>{ar?'هوية التقرير':'Report branding'}</button>
     {report&&<><button className="btn" onClick={printCurrent}>{ar?'طباعة التقرير فقط / PDF':'Print Report Only / PDF'}</button><button className="btn" disabled={loading||!report.contract||!archiveAvailable} title={!report.contract?(ar?'الأرشفة النهائية متاحة لتقرير عقد محدد':'Final archiving requires a specific contract'):undefined} onClick={archive}>{ar?'اعتماد وأرشفة':'Finalize & Archive'}</button></>}
    </div>

@@ -5,7 +5,7 @@ const all=(...args)=>ownerReportRows(supabase,...args)
 
 export async function loadOwnerReportDirectory(){
  const [organizations,clients,sites,contracts]=await Promise.all([
-  all('bf_organizations',[],'id,name,name_ar,name_en,code,status'),all('bf_clients',[],'id,organization_id,name,code,status'),all('bf_sites',[],'id,organization_id,client_id,contract_id,name,code,status'),all('bf_contracts',[],'id,organization_id,client_id,contract_number,status,start_date,end_date')
+  all('bf_organizations',[],'id,name,name_ar,name_en,code,status'),all('bf_clients',[],'id,organization_id,name,code,status,logo_url'),all('bf_sites',[],'id,organization_id,client_id,contract_id,name,code,status'),all('bf_contracts',[],'id,organization_id,client_id,contract_number,status,start_date,end_date')
  ])
  return {organizations,clients,sites,contracts}
 }

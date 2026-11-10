@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import {useMasterRecords} from '../lib/useMasterRecords'
 import {isActive,labelFor} from '../lib/masterRecords'
+import {ownerLogoSource,readOwnerLogo} from '../lib/ownerLogo'
 import SiteGeoFields from '../components/SiteGeoFields'
 
 const configs={
@@ -13,7 +14,7 @@ const configs={
   fields:[['name','text',true],['code','reference'],['status','status']]
  },
  clients:{
-  permission:'clients',empty:{organization_id:'',name:'',code:'',email:'',phone:'',status:'active'},
+  permission:'clients',empty:{organization_id:'',name:'',code:'',email:'',phone:'',logo_url:'',status:'active'},
   fields:[['organization_id','organization',true],['name','text',true],['code','reference'],['email','email'],['phone','tel'],['status','status']]
  },
  contracts:{
@@ -36,7 +37,7 @@ export default function MasterManagement({kind}){
  const {rows,bundle,loading,busy,error,success,setError,setSuccess,refresh,persist}=state
  const [form,setForm]=useState(cfg.empty),[editing,setEditing]=useState(null),[open,setOpen]=useState(false)
  const [search,setSearch]=useState(''),[filterOrg,setFilterOrg]=useState(''),[filterClient,setFilterClient]=useState(''),[filterStatus,setFilterStatus]=useState('')
- const name=(key)=>t(fieldNames[key]||key)
+ const name=(key)=>key==='logo_url'?(lang==='ar'?'شعار المالك':'Owner logo'):t(fieldNames[key]||key)
  const orgs=bundle.organizations||[],clients=bundle.clients||[],contracts=bundle.contracts||[]
  const allowedOrg=o=>can(cfg.permission+'.view',o.id)||can(cfg.permission+'.manage',o.id)
  const canManage=r=>can(cfg.permission+'.manage',kind==='organizations'?r.id:r.organization_id)
@@ -123,6 +124,7 @@ export default function MasterManagement({kind}){
    <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     {error&&<div className="alert error span-2" role="alert">{error}</div>}
     {cfg.fields.map(renderField)}
+    {kind==='clients'&&<div className="span-2"><label>{lang==='ar'?'شعار المالك — يظهَر في التقارير والجواز والتاق والمستندات':'Owner logo — shared by reports, passports, tags and documents'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async e=>{try{const file=e.target.files?.[0];if(file)set('logo_url',await readOwnerLogo(file))}catch(e){setError(e.message)}}}/></label><label>{lang==='ar'?'أو رابط HTTPS للشعار':'Or logo HTTPS URL'}<input type="url" value={String(form.logo_url||'').startsWith('data:')?'':form.logo_url||''} disabled={busy} onChange={e=>set('logo_url',e.target.value)} placeholder="https://…"/></label>{ownerLogoSource(form.logo_url)&&<div style={{display:'flex',alignItems:'center',gap:12,marginTop:10}}><img src={ownerLogoSource(form.logo_url)} alt={lang==='ar'?'معاينة شعار المالك':'Owner logo preview'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn" onClick={()=>set('logo_url','')}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}</div>}
     <div className="form-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setOpen(false)}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>
    </form>
   </Modal>

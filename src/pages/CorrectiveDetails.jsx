@@ -1,3 +1,4 @@
+import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
 import FieldOperations from '../components/FieldOperations'
 import {useEffect,useState} from 'react'
 import {Link,useParams,useNavigate} from 'react-router-dom'
@@ -20,6 +21,7 @@ export default function CorrectiveDetails(){
  }
  useEffect(()=>{load()},[kind,id])
  const row=(kind==='request'?data?.requests:data?.workOrders)?.find(x=>x.id===id)
+ const ownerIdentity=useOwnerIdentity({organizationId:row?.organization_id,clientId:row?.client_id,contractId:row?.contract_id,siteId:row?.site_id,assetId:row?.asset_id})
  const assigned=data?.assignments.filter(x=>x.work_order_id===id)||[]
  const manager=row&&can('corrective.manage',row.organization_id),approver=row&&can('corrective.approve',row.organization_id)
  const executor=row&&can('corrective.execute',row.organization_id)&&assigned.some(x=>x.user_id===user?.id)
@@ -43,6 +45,7 @@ export default function CorrectiveDetails(){
  return <section className="facility-module">
   <div className="page-head"><div><Link to="/corrective">← {t('corrective')}</Link><h1>{row?.request_number||row?.work_order_number||t('loading')}</h1><p className="muted">{row?.title}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
+  <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
    <div className="stats-grid facility-stats">{[['priority',t(row.priority)],['status',t(row.status)],...(kind==='work_order'?[['approvalStatus',t(row.approval_status)],['slaStatus',t(row.sla_status)]]:[])].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v}</strong></div>)}</div>
    <div className="facility-panel"><h3>{t('requestDetails')}</h3><div className="form-grid">{fields.map(([key,label,table])=><div key={key}><span className="muted">{t(label)}</span><p>{key==='asset_id'?data?.assets.find(x=>x.id===row[key])?.asset_tag:key==='contract_id'?data?.contracts.find(x=>x.id===row[key])?.contract_number:value(data?.[table].find(x=>x.id===row[key]))||'—'}</p></div>)}</div><p>{row.description}</p></div>

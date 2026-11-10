@@ -1,3 +1,4 @@
+import OwnerBrand from '../components/OwnerBrand'
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -110,6 +111,7 @@ export default function ManagementReports({capabilities}){
  return <section className="facility-module">
   <div className="page-head"><div><h1>{t('reports')}</h1><p className="muted">{t('reportSnapshot')}</p></div></div>
   <Notice error={error}/>
+  <OwnerBrand identity={result?.owner_identity} lang={lang}/>
   {result?.reference_lookup_unavailable&&<p role="status" className="muted">{lang==='ar'?'تعذر جلب بعض الأسماء. تظهر شرطة مكان الاسم غير المتاح.':'Some names could not be retrieved. Unavailable names are shown as a dash.'}</p>}
   <form className="facility-panel" onSubmit={apply}>
    <div className="form-grid">

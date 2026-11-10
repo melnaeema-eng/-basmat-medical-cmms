@@ -1,5 +1,7 @@
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useParams,useSearchParams} from 'react-router-dom'
+import OwnerBrand from '../components/OwnerBrand'
+import {loadOwnerIdentity} from '../lib/ownerIdentity'
 import QRCode from 'qrcode'
 import {supabase} from '../lib/supabaseClient'
 import {PUBLIC_ASSET_COLUMNS} from '../lib/facility'
@@ -30,6 +32,7 @@ async function safeMany(table,assetId,orderCol='created_at'){
 
 export default function AssetPassport(){
  const {id}=useParams()
+ const [ownerIdentity,setOwnerIdentity]=useState(null)
  const [params]=useSearchParams()
  const tagView=params.get('view')==='tag'
  const {lang}=useLanguage()
@@ -72,7 +75,7 @@ export default function AssetPassport(){
      const c=await supabase.rpc('bf3_asset_cost',{p_id:id})
      if(alive&&!c.error)setCost(c.data)
     }
-    const [org,client,locationRecords,category,wo,ppm,inspections,warranty]=await Promise.all([
+    const [org,client,locationRecords,category,wo,ppm,inspections,warranty,ownerBrand]=await Promise.all([
      safeOne('bf_organizations',a.organization_id),
      safeOne('bf_clients',a.client_id),
      loadPassportLocation(a,safeOne),
@@ -80,9 +83,10 @@ export default function AssetPassport(){
      safeMany('bf_work_orders',a.id),
      safeMany('bf_ppm_jobs',a.id,'due_date'),
      safeMany('bf14_asset_inspections',a.id,'inspected_at'),
-     safeMany('bf14_warranty_claims',a.id,'created_at')
+     safeMany('bf14_warranty_claims',a.id,'created_at'),
+     loadOwnerIdentity({organizationId:a.organization_id,clientId:a.client_id,siteId:a.site_id}).catch(()=>null)
     ])
-    if(alive){setAsset(a);setRelated({org,client,...locationRecords,category,wo,ppm,inspections,warranty})}
+    if(alive){setOwnerIdentity(ownerBrand);setAsset(a);setRelated({org,client,...locationRecords,category,wo,ppm,inspections,warranty})}
    }catch(ex){if(alive)setError(ex.message||String(ex))}
    finally{if(alive)setLoading(false)}
   })()
@@ -117,6 +121,7 @@ export default function AssetPassport(){
  if(tagView)return <section className="facility-module">
   <style>{`
    .device-tag{box-sizing:border-box;width:90mm;min-height:60mm;padding:4mm;border:1px solid #17324d;border-radius:3mm;background:#fff;color:#10273f;display:grid;grid-template-columns:minmax(0,1fr) 29mm;gap:3mm;align-items:center;font-family:Arial,sans-serif}
+   .device-tag .device-tag-brand{display:flex;align-items:center;justify-content:space-between;gap:2mm}.device-tag .device-tag-brand>span{font-size:8px;max-width:35mm}
    .device-tag h2{font-size:20px;margin:4px 0}.device-tag p{margin:4px 0;font-size:11px;overflow-wrap:anywhere}.device-tag img{display:block;width:29mm;height:29mm}.device-tag .device-tag-brand{grid-column:1/-1;font-size:11px;font-weight:700;border-bottom:2px solid #f28c28;padding-bottom:2mm}
    @media screen and (max-width:450px){.device-tag{width:100%;grid-template-columns:minmax(0,1fr) 29mm}}
    @media print{
@@ -135,7 +140,7 @@ export default function AssetPassport(){
    <button className="btn primary" disabled={!qr} onClick={()=>window.print()}>{ar?'طباعة التاق / PDF':'Print tag / PDF'}</button>
   </div></div>
   <div className="device-tag" dir={ar?'rtl':'ltr'}>
-   <div className="device-tag-brand">{(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name||'Basmat Alnawabigh'} · {ar?'جهاز طبي':'Medical device'}</div>
+   <div className="device-tag-brand"><OwnerBrand identity={ownerIdentity} lang={lang} compact/><span>{(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name||'Basmat Alnawabigh'}</span></div>
    <div><h2 dir="ltr">{asset.asset_tag}</h2><p><strong>{deviceName}</strong></p><p>{asset.manufacturer} {asset.exact_model||asset.model}</p><p>{ar?'السيريال':'Serial'}: <b dir="ltr">{asset.serial_number||'—'}</b></p><p>{(ar?related.site?.name_ar:related.site?.name_en)||related.site?.name||''}</p></div>
    <div>{qrImage}<p style={{textAlign:'center',fontSize:10}}>{ar?'امسح لفتح الجواز':'Scan for passport'}</p></div>
   </div>
@@ -164,6 +169,7 @@ export default function AssetPassport(){
    </div>
   </div>
 
+  <div style={{marginBottom:14}}><OwnerBrand identity={ownerIdentity} lang={lang}/></div>
   <div className="facility-panel" style={{display:'grid',gridTemplateColumns:'1fr auto',gap:18,alignItems:'start'}}>
    <div>
     <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>

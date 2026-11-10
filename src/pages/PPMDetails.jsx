@@ -1,3 +1,4 @@
+import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
 import {useEffect,useState} from 'react'
 import {Link,useNavigate,useParams} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -19,6 +20,7 @@ export default function PPMDetails(){
  }
  useEffect(()=>{load()},[kind,id])
  const row=(kind==='procedure'?data?.procedures:kind==='plan'?data?.plans:data?.jobs)?.find(x=>x.id===id)
+ const ownerIdentity=useOwnerIdentity({organizationId:row?.organization_id,clientId:row?.client_id,contractId:row?.contract_id,assetId:row?.asset_id})
  const manager=row&&can('ppm.manage',row.organization_id),approver=row&&can('ppm.approve',row.organization_id)
  const executor=row&&can('ppm.execute',row.organization_id)&&row.assigned_to===user?.id
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
@@ -140,6 +142,7 @@ export default function PPMDetails(){
  return <section className="facility-module">
   <div className="page-head"><div><Link to="/ppm">← {t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
+  <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
    <div className="facility-panel">
     <h3>{t(kind)}</h3>
