@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useParams,useSearchParams} from 'react-router-dom'
 import OwnerBrand from '../components/OwnerBrand'
+import {ownerLogoSource} from '../lib/ownerLogo'
 import {loadOwnerIdentity} from '../lib/ownerIdentity'
 import QRCode from 'qrcode'
 import {supabase} from '../lib/supabaseClient'
@@ -140,7 +141,7 @@ export default function AssetPassport(){
    <button className="btn primary" disabled={!qr} onClick={()=>window.print()}>{ar?'طباعة التاق / PDF':'Print tag / PDF'}</button>
   </div></div>
   <div className="device-tag" dir={ar?'rtl':'ltr'}>
-   <div className="device-tag-brand"><OwnerBrand identity={ownerIdentity} lang={lang} compact/><span>{(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name||'Basmat Alnawabigh'}</span></div>
+   <div className="device-tag-brand"><OwnerBrand identity={ownerIdentity} lang={lang} compact/><span style={{display:'flex',alignItems:'center',gap:4}}>{ownerLogoSource(related.org?.logo_url)&&<img src={ownerLogoSource(related.org.logo_url)} alt={ar?'شعار شركة الصيانة':'Maintenance company logo'} style={{width:'10mm',height:'8mm',objectFit:'contain'}}/>}{(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name||'Basmat Alnawabigh'}</span></div>
    <div><h2 dir="ltr">{asset.asset_tag}</h2><p><strong>{deviceName}</strong></p><p>{asset.manufacturer} {asset.exact_model||asset.model}</p><p>{ar?'السيريال':'Serial'}: <b dir="ltr">{asset.serial_number||'—'}</b></p><p>{(ar?related.site?.name_ar:related.site?.name_en)||related.site?.name||''}</p></div>
    <div>{qrImage}<p style={{textAlign:'center',fontSize:10}}>{ar?'امسح لفتح الجواز':'Scan for passport'}</p></div>
   </div>
@@ -169,7 +170,7 @@ export default function AssetPassport(){
    </div>
   </div>
 
-  <div style={{marginBottom:14}}><OwnerBrand identity={ownerIdentity} lang={lang}/></div>
+  <div style={{marginBottom:14,display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><OwnerBrand identity={ownerIdentity} lang={lang}/><OwnerBrand identity={related.org?{name:(ar?related.org.name_ar:related.org.name_en)||related.org.name,logo_url:related.org.logo_url}:null} lang={lang} label={ar?'شركة الصيانة':'Maintenance company'}/></div>
   <div className="facility-panel" style={{display:'grid',gridTemplateColumns:'1fr auto',gap:18,alignItems:'start'}}>
    <div>
     <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>

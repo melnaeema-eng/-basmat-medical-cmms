@@ -113,7 +113,7 @@ export default function OwnerReports(){
   contractor_name_ar:org?.name_ar||org?.name||'',contractor_name_en:org?.name_en||org?.name||'',
   owner_logo_data:'',contractor_logo_data:'',primary_color:'#0b2b4b',secondary_color:'#b8892d',
   prepared_by:'',reviewed_by:'',approved_by:'',report_prefix:'MED'
- },...(branding||{}),owner_logo_data:ownerLogoSource(owner?.logo_url)||ownerLogoSource(branding?.owner_logo_data)}
+ },...(branding||{}),owner_logo_data:ownerLogoSource(owner?.logo_url)||ownerLogoSource(branding?.owner_logo_data),contractor_logo_data:ownerLogoSource(org?.logo_url)||ownerLogoSource(branding?.contractor_logo_data)}
  const saveSharedOwnerLogo=async()=>{
   if(!owner?.id||!organizationId||ownerLogoDraft===null)return
   try{
