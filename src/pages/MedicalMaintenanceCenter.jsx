@@ -33,6 +33,7 @@ export default function MedicalMaintenanceCenter(){
  const [data,setData]=useState(null),[tab,setTab]=useState('library')
  const [error,setError]=useState(''),[success,setSuccess]=useState('')
  const [query,setQuery]=useState(''),[system,setSystem]=useState('')
+ const [searchText,setSearchText]=useState('')
  const [selectedLibrary,setSelectedLibrary]=useState(null)
  const [typeForm,setTypeForm]=useState(emptyType),[brandForm,setBrandForm]=useState(emptyBrand)
  const load=async()=>{try{setError('');setData(await loadMasterAssetLibrary())}catch(e){setError(e.message)}}
@@ -44,9 +45,14 @@ export default function MedicalMaintenanceCenter(){
   const q=query.trim().toLowerCase()
   return (data?.types||[]).filter(t=>t.status!=='archived').filter(t=>{
    const opts=(data.options||[]).filter(o=>o.asset_type_id===t.id&&o.status!=='archived')
-   const text=[t.code,t.name_ar,t.name_en,t.system_code,...opts.map(o=>mfrMap.get(o.manufacturer_id)?.name||'')].join(' ').toLowerCase()
+   const text=[t.code,t.name_ar,t.name_en,t.system_code,...opts.flatMap(o=>[mfrMap.get(o.manufacturer_id)?.name||'',o.model_family||''])].join(' ').toLowerCase()
    return (!system||t.system_code===system)&&(!q||text.includes(q))
-  }).map(t=>({...t,brands:[...new Map((data.options||[]).filter(o=>o.asset_type_id===t.id&&o.status!=='archived').map(o=>mfrMap.get(o.manufacturer_id)).filter(Boolean).map(m=>[m.id,m])).values()]}))
+  }).map(t=>{
+   const typeMatches=[t.code,t.name_ar,t.name_en,t.system_code].join(' ').toLowerCase().includes(q)
+   const opts=(data.options||[]).filter(o=>o.asset_type_id===t.id&&o.status!=='archived')
+   const matches=opts.filter(o=>!q||typeMatches||[mfrMap.get(o.manufacturer_id)?.name,o.model_family].join(' ').toLowerCase().includes(q))
+   return {...t,brands:[...new Map(matches.map(o=>mfrMap.get(o.manufacturer_id)).filter(Boolean).map(m=>[m.id,m])).values()],matchedModels:q&&!typeMatches?matches.map(o=>o.model_family).filter(Boolean):[]}
+  })
  },[data,query,system,mfrMap])
  const openMedicalManufacturer=(type,manufacturer)=>setSelectedLibrary({type,manufacturer})
  const registerFromLibrary=pick=>nav('/medical-asset-cockpit',{state:{registration:{typeId:pick.type.id,manufacturerId:pick.manufacturer.id,optionId:pick.option?.id||'',model:pick.model||''}}})
@@ -59,17 +65,25 @@ export default function MedicalMaintenanceCenter(){
   <Notice error={error} success={success}/>
   {access?.super_admin&&<div className="row-actions"><button className="btn" onClick={()=>setTab('library')}>{lang==='ar'?'المكتبة':'Library'}</button><button className="btn" onClick={()=>setTab('admin')}>{lang==='ar'?'إدارة المكتبة':'Library Admin'}</button></div>}
   {tab==='library'&&<>
-   <div className="facility-panel">
-    <div className="med-grid">
+   <form className="facility-panel" role="search" onSubmit={e=>{e.preventDefault();setQuery(searchText);setSelectedLibrary(null)}}>
+    <div style={{display:'flex',gap:12,alignItems:'end',flexWrap:'wrap'}}>
+     <div style={{flex:'2 1 300px',minWidth:0}}><Field label={lang==='ar'?'البحث في المكتبة':'Search library'}><input type="search" value={searchText} onChange={e=>{setSearchText(e.target.value);if(!e.target.value){setQuery('');setSelectedLibrary(null)}}} placeholder={lang==='ar'?'اسم الجهاز، الكود، البراند أو الموديل':'Device name, code, brand or model'} style={{width:'100%',boxSizing:'border-box'}}/></Field></div>
+     <div style={{flex:'1 1 200px'}}>
      <Field label={lang==='ar'?'التخصص':'Category'}><select value={system} onChange={e=>setSystem(e.target.value)}><option value="">{lang==='ar'?'الكل':'All'}</option>{systems.map(s=><option value={s} key={s}>{lang==='ar'?(groupLabels[s]?.[0]||s):(groupLabels[s]?.[1]||s)}</option>)}</select></Field>
+     </div>
+     <button type="submit" className="btn primary">{lang==='ar'?'بحث':'Search'}</button>
+     {(searchText||query||system)&&<button type="button" className="btn" onClick={()=>{setSearchText('');setQuery('');setSystem('');setSelectedLibrary(null)}}>{lang==='ar'?'مسح الفلاتر':'Clear filters'}</button>}
     </div>
-   </div>
+    {query&&<p role="status" aria-live="polite" style={{marginBottom:0}}>{lang==='ar'?`نتائج البحث عن «${query}»: ${library.length} نوع جهاز`:`Results for “${query}”: ${library.length} device types`}</p>}
+   </form>
+   {!library.length&&<div className="facility-panel" role="status">{lang==='ar'?'لا توجد نتائج مطابقة. جرّب كلمة أخرى أو امسح الفلاتر.':'No matches. Try another search or clear the filters.'}</div>}
    {Object.entries(library.reduce((g,x)=>((g[x.system_code]??=[]).push(x),g),{})).map(([sys,rows])=><div key={sys}>
     <h2>{lang==='ar'?(groupLabels[sys]?.[0]||sys):(groupLabels[sys]?.[1]||sys)} ({rows.length})</h2>
     <div className="med-grid">{rows.map(t=><div className="med-card" key={t.id}>
      <div style={{display:'flex',gap:9}}><span className="med-icon">{t.icon_text}</span><div><small>{t.code}</small><h3 style={{margin:'2px 0'}}>{lang==='ar'?t.name_ar:t.name_en}</h3></div></div>
      <div><span className="med-badge">{t.default_criticality}</span><span className="med-badge">PM {t.default_pm_months||'—'}m</span><span className="med-badge">CAL {t.default_calibration_months||'—'}m</span>{t.procurement_class==='long_lead'&&<span className="med-badge">⏳ {t.default_lead_time_days}d</span>}</div>
      <div style={{fontSize:10,marginTop:6}}><b>{lang==='ar'?'المصنعون':'Brands'}:</b> {t.brands.slice(0,8).map(b=><button type="button" className="med-badge" key={b.id} style={{cursor:'pointer',pointerEvents:'auto',position:'relative',zIndex:2}} onClick={()=>openMedicalManufacturer(t,b)}>{b.name}</button>)}</div>
+     {!!t.matchedModels.length&&<p style={{fontSize:12,overflowWrap:'anywhere'}}>{lang==='ar'?'الموديلات المطابقة: ':'Matching models: '}{t.matchedModels.slice(0,3).join('، ')}{t.matchedModels.length>3?' …':''}</p>}
     </div>)}</div>
    </div>)}
   </>}
