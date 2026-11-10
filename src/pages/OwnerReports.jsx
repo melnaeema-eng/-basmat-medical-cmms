@@ -1,27 +1,18 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
+import {useAuth} from '../context/AuthContext'
+import {ownerReportPeriod} from '../lib/ownerReportModel'
+import {displayReportValue} from '../lib/reportDisplay'
 import {useLanguage} from '../i18n/LanguageContext'
 import {
  loadOwnerReportDirectory,loadBranding,saveBranding,loadOwnerReportData,archiveOwnerReport,loadArchivedReports,
  markReportPrinted,markReportSent,markReportAcknowledged,loadReportEvents
 } from '../lib/ownerReports'
 
-const iso=d=>d.toISOString().slice(0,10)
-const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x}
-const startOfMonth=d=>new Date(d.getFullYear(),d.getMonth(),1)
-const endOfMonth=d=>new Date(d.getFullYear(),d.getMonth()+1,0)
-const startOfYear=d=>new Date(d.getFullYear(),0,1)
-const endOfYear=d=>new Date(d.getFullYear(),11,31)
 const titleCase=s=>String(s||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase())
-const dateFmt=v=>v?new Date(v).toLocaleDateString():'—'
-const dateTimeFmt=v=>v?new Date(v).toLocaleString():'—'
+const dateFmt=v=>displayReportValue(v,'due_date','ar')
+const dateTimeFmt=v=>displayReportValue(v,'generated_at','ar')
 const safe=v=>v==null||v===''?'—':v
-
-function periodFor(type){
- const now=new Date()
- if(type==='weekly'){const day=now.getDay()||7;const start=addDays(now,1-day);return [iso(start),iso(addDays(start,6))]}
- if(type==='annual')return [iso(startOfYear(now)),iso(endOfYear(now))]
- return [iso(startOfMonth(now)),iso(endOfMonth(now))]
-}
+const periodFor=ownerReportPeriod
 function readLogo(file,setter){
  if(!file)return
  if(file.size>1024*1024){alert('Logo must be 1 MB or less');return}
@@ -55,6 +46,11 @@ function printSamePage(node){
 
 export default function OwnerReports(){
  const {lang}=useLanguage(),ar=lang==='ar'
+ const {access}=useAuth()
+ const [activeOrganization,setActiveOrganization]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
+ const organizationId=access?.super_admin?activeOrganization:(access?.home_organization?.organization_id||access?.home_organization?.id||'')
+ const [reportMode,setReportMode]=useState('contract'),[ownerId,setOwnerId]=useState('')
+ useEffect(()=>{const changed=e=>setActiveOrganization(e.detail?.organization_id||'');window.addEventListener('basmat-organization-changed',changed);return()=>window.removeEventListener('basmat-organization-changed',changed)},[])
  const printRef=useRef(null),archivePrintRef=useRef(null)
  const [directory,setDirectory]=useState(null)
  const [contractId,setContractId]=useState('')
@@ -67,39 +63,51 @@ export default function OwnerReports(){
  const [selectedRun,setSelectedRun]=useState(null),[events,setEvents]=useState([])
  const [sendRun,setSendRun]=useState(null),[sendTo,setSendTo]=useState(''),[sendNotes,setSendNotes]=useState('')
  const [archivePreview,setArchivePreview]=useState(null)
+ const [archiveAvailable,setArchiveAvailable]=useState(false)
+ const [archiveError,setArchiveError]=useState(''),[brandingError,setBrandingError]=useState('')
+ const archiveMessage=e=>(e?.code==='42501'||/permission denied/i.test(e?.message||''))?(ar?'أرشيف التقارير غير متاح لهذا الحساب حالياً. يمكنك إنشاء التقرير ومعاينته وطباعته؛ الحفظ النهائي يحتاج إصلاح صلاحية الأرشيف في قاعدة البيانات.':'The archive is unavailable for this account. Report generation, preview and printing remain available; final saving requires archive access to be restored in the database.'):(ar?'تعذر تحميل الأرشيف. يمكنك متابعة إنشاء التقرير وطباعته.':'The archive could not be loaded. Report generation and printing remain available.')
 
  useEffect(()=>{
-  Promise.all([loadOwnerReportDirectory(),loadArchivedReports()]).then(([d,a])=>{setDirectory(d);setArchives(a)}).catch(e=>setError(e.message))
+  let active=true
+  loadOwnerReportDirectory().then(d=>{if(active)setDirectory(d)}).catch(e=>{if(active)setError(e.message)})
+  loadArchivedReports().then(a=>{if(active){setArchives(a);setArchiveError('');setArchiveAvailable(true)}}).catch(e=>{if(active){setArchiveError(archiveMessage(e));setArchiveAvailable(false)}})
+  return()=>{active=false}
  },[])
  useEffect(()=>{setPeriod(periodFor(reportType));setReport(null)},[reportType])
  useEffect(()=>{
-  if(!contractId){setBranding(null);return}
-  loadBranding(contractId).then(setBranding).catch(e=>setError(e.message))
+  let active=true
+  setBranding(null);setBrandingError('')
+  if(!contractId)return
+  loadBranding(contractId).then(data=>{if(active)setBranding(data)}).catch(()=>{if(active)setBrandingError(ar?'هوية التقرير المحفوظة غير متاحة؛ تُستخدم أسماء الجهات المسجلة.':'Saved branding is unavailable; registered organization names are used.')})
+  return()=>{active=false}
  },[contractId])
 
  const selectedContract=useMemo(()=>directory?.contracts.find(x=>x.id===contractId),[directory,contractId])
- const owner=useMemo(()=>directory?.clients.find(x=>x.id===selectedContract?.client_id),[directory,selectedContract])
- const org=useMemo(()=>directory?.organizations.find(x=>x.id===selectedContract?.organization_id),[directory,selectedContract])
+ const owner=useMemo(()=>directory?.clients.find(x=>x.id===(reportMode==='owner'?ownerId:selectedContract?.client_id)),[directory,selectedContract,ownerId,reportMode])
+ const org=useMemo(()=>directory?.organizations.find(x=>x.id===(reportMode==='owner'?organizationId:selectedContract?.organization_id)),[directory,selectedContract,organizationId,reportMode])
+ useEffect(()=>{setReport(null);setContractId('');setOwnerId('')},[organizationId])
  const filteredArchives=useMemo(()=>{
   let rows=archives
+  if(organizationId)rows=rows.filter(x=>x.organization_id===organizationId)
+  if(reportMode==='owner'&&ownerId){const ids=new Set((directory?.contracts||[]).filter(c=>c.organization_id===organizationId&&c.client_id===ownerId).map(c=>c.id));rows=rows.filter(x=>ids.has(x.contract_id))}
   if(contractId)rows=rows.filter(x=>x.contract_id===contractId)
   if(archiveFilter!=='all')rows=rows.filter(x=>(x.distribution_status||'final')===archiveFilter)
   return rows
- },[archives,archiveFilter,contractId])
+ },[archives,archiveFilter,contractId,organizationId,ownerId,reportMode,directory])
 
- const refreshArchive=async()=>setArchives(await loadArchivedReports())
+ const refreshArchive=async()=>{try{setArchives(await loadArchivedReports());setArchiveError('');setArchiveAvailable(true)}catch(e){setArchiveError(archiveMessage(e));setArchiveAvailable(false)}}
  const make=async()=>{
-  if(!contractId)return
-  try{setLoading(true);setError('');setSaved('');setReport(await loadOwnerReportData({contractId,start,end,lang}))}
+  if(reportMode==='contract'?!contractId:!ownerId||!organizationId)return
+  try{setLoading(true);setError('');setSaved('');setReport(null);setReport(await loadOwnerReportData({contractId:reportMode==='contract'?contractId:null,organizationId,clientId:ownerId,start,end,lang,reportType}))}
   catch(e){setError(e.message)}finally{setLoading(false)}
  }
  const currentBrand=branding||{
   organization_id:selectedContract?.organization_id,contract_id:contractId,
-  project_name_ar:selectedContract?.name_ar||'',project_name_en:selectedContract?.name_en||'',
+  project_name_ar:selectedContract?.name_ar||report?.labels?.client||'',project_name_en:selectedContract?.name_en||report?.labels?.client||'',
   owner_name_ar:owner?.name_ar||owner?.name||'',owner_name_en:owner?.name_en||owner?.name||'',
   contractor_name_ar:org?.name_ar||org?.name||'',contractor_name_en:org?.name_en||org?.name||'',
   owner_logo_data:'',contractor_logo_data:'',primary_color:'#0b2b4b',secondary_color:'#b8892d',
-  prepared_by:'',reviewed_by:'',approved_by:'',report_prefix:'FM'
+  prepared_by:'',reviewed_by:'',approved_by:'',report_prefix:'MED'
  }
  const patchBrand=(k,v)=>setBranding({...currentBrand,[k]:v})
  const saveBrand=async()=>{
@@ -110,14 +118,14 @@ export default function OwnerReports(){
   }catch(e){setError(e.message)}finally{setLoading(false)}
  }
  const archive=async()=>{
-  if(!report)return
+  if(!report?.contract||!archiveAvailable)return
   try{
    setLoading(true);setError('')
    const stamp=new Date().toISOString().replace(/\D/g,'').slice(0,12)
-   const reportNumber=`${currentBrand.report_prefix||'FM'}-${reportType.toUpperCase()}-${stamp}`
+   const reportNumber=`${currentBrand.report_prefix||'MED'}-${reportType.toUpperCase()}-${stamp}`
    const snapshot={
-    metrics:report.metrics,woStatus:report.woStatus,ppmStatus:report.ppmStatus,woPriority:report.woPriority,labels:report.labels,
-    wo:report.wo.slice(0,200),ppm:report.ppm.slice(0,200),reportType,start,end
+    ...report,metrics:report.metrics,woStatus:report.woStatus,ppmStatus:report.ppmStatus,woPriority:report.woPriority,labels:report.labels,
+    wo:report.wo,ppm:report.ppm,reportType,start,end
    }
    const r=await archiveOwnerReport({
     organization_id:report.contract.organization_id,contract_id:contractId,report_type:reportType,
@@ -169,14 +177,15 @@ export default function OwnerReports(){
 
  return <section className="facility-module owner-report-center">
   <style>{`
+   .owner-report-document{font-family:Tahoma,Arial,sans-serif;color:#18324b}.owner-report-document p{line-height:1.85}.owner-report-document thead{display:table-header-group}.owner-report-document tr{break-inside:avoid}
    .or-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-   .or-cover{min-height:520px;display:flex;flex-direction:column;justify-content:space-between;padding:40px;border:1px solid #dfe6ee;border-radius:18px;background:linear-gradient(145deg,#fff,#f8fafc)}
+   .or-cover{min-height:0;gap:24px;display:flex;flex-direction:column;justify-content:space-between;padding:24px;border:1px solid #dfe6ee;border-radius:18px;background:linear-gradient(145deg,#fff,#f8fafc)}
    .or-logos{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}.or-logo{text-align:center}.or-logo img{max-width:190px;max-height:95px;object-fit:contain}
    .or-title{text-align:center;margin:60px 0}.or-title h1{font-size:32px;color:#0b2b4b;margin:0}.or-title h2{font-size:18px;margin:12px 0;color:#475569}
    .or-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 28px;font-size:12px}.or-meta div{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:7px 0}
    .or-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.or-kpi{padding:15px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}.or-kpi span{font-size:10px;color:#64748b;display:block}.or-kpi strong{font-size:24px;color:#0b2b4b}
    .or-chart{display:grid;gap:7px}.or-bar{display:grid;grid-template-columns:130px 1fr 40px;gap:8px;align-items:center;font-size:11px}.or-bar i{height:10px;background:#0b2b4b;border-radius:6px;display:block}
-   .or-table{width:100%;border-collapse:collapse}.or-table th,.or-table td{font-size:10px;padding:7px;border-bottom:1px solid #edf1f5;text-align:start;vertical-align:top}
+   .or-table{width:100%;border-collapse:collapse}.or-table th,.or-table td{font-size:12px;padding:7px;border-bottom:1px solid #edf1f5;text-align:start;vertical-align:top}
    .or-section{margin-top:18px}.or-section h2{color:#0b2b4b;border-bottom:2px solid #0b2b4b;padding-bottom:6px}
    .or-brand-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.or-brand-grid label{display:grid;gap:4px;font-size:11px}.or-brand-grid input{width:100%}
    .or-signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:25px;margin-top:45px}.or-signatures div{border-top:1px solid #64748b;padding-top:8px;text-align:center;font-size:11px}
@@ -197,26 +206,29 @@ export default function OwnerReports(){
     body.owner-report-print-mode .owner-report-print-target .or-cover{
      min-height:270mm!important;border-radius:0!important;page-break-after:always!important
     }
-    body.owner-report-print-mode .owner-report-print-target .or-section{break-inside:avoid!important}
-    @page{size:A4;margin:12mm}
+    body.owner-report-print-mode .owner-report-print-target .or-section{break-inside:auto!important}
+    @page{size:A4 landscape;margin:12mm}
    }
   `}</style>
 
   <div className="page-head"><div><h1>{ar?'مركز تقارير المالك للأجهزة الطبية':'Medical Owner Reporting Center'}</h1><p>{ar?'تقارير صيانة الأجهزة الطبية الأسبوعية والشهرية والسنوية مع الأرشيف وتتبع الطباعة والإرسال.':'Weekly, monthly and annual medical-equipment maintenance reports with archive and report-only printing.'}</p></div></div>
   {error&&<div className="facility-panel" style={{color:'#b42318'}}>{error}</div>}
+  {brandingError&&<p className="muted no-print" role="status">{brandingError}</p>}
+  {archiveError&&<div className="facility-panel no-print" role="status" style={{borderInlineStart:'4px solid #f28c28',color:'#735521'}}>{archiveError}</div>}
   {saved&&<div className="facility-panel" style={{color:'#067647'}}>{saved}</div>}
 
   <div className="facility-panel no-print">
    <div className="or-controls">
-    <label>{ar?'العقد':'Contract'}<select value={contractId} onChange={e=>{setContractId(e.target.value);setReport(null)}}><option value="">{ar?'كل العقود / اختر عقد للتقرير الجديد':'All contracts / select for new report'}</option>{directory?.contracts.map(c=><option key={c.id} value={c.id}>{c.contract_number||c.number||c.code||c.id}</option>)}</select></label>
+    <label>{ar?'نطاق التقرير':'Report scope'}<select value={reportMode} onChange={e=>{setReportMode(e.target.value);setContractId('');setOwnerId('');setReport(null)}}><option value="contract">{ar?'عقد محدد':'Specific contract'}</option><option value="owner">{ar?'كل أعمال المالك لدى الشركة':'All owner work at this company'}</option></select></label>
+    {reportMode==='contract'?<label>{ar?'العقد والمالك':'Contract and owner'}<select value={contractId} onChange={e=>{setContractId(e.target.value);setReport(null)}}><option value="">{ar?'اختر العقد':'Select contract'}</option>{directory?.contracts.filter(c=>!organizationId||c.organization_id===organizationId).map(c=><option key={c.id} value={c.id}>{c.contract_number||c.number||c.code||'—'} — {directory.clients.find(o=>o.id===c.client_id)?.name||'—'}</option>)}</select></label>:<label>{ar?'الجهة المالكة':'Owner'}<select value={ownerId} disabled={!organizationId} onChange={e=>{setOwnerId(e.target.value);setReport(null)}}><option value="">{ar?'اختر المالك للشركة الحالية':'Select an owner at the current company'}</option>{directory?.clients.filter(c=>c.organization_id===organizationId).map(c=><option key={c.id} value={c.id}>{c.name||c.name_ar||c.code}</option>)}</select></label>}
     <label>{ar?'نوع التقرير':'Report type'}<select value={reportType} onChange={e=>setReportType(e.target.value)}><option value="weekly">{ar?'أسبوعي':'Weekly'}</option><option value="monthly">{ar?'شهري':'Monthly'}</option><option value="annual">{ar?'سنوي':'Annual'}</option></select></label>
-    <label>{ar?'من':'From'}<input type="date" value={start} onChange={e=>setPeriod([e.target.value,end])}/></label>
-    <label>{ar?'إلى':'To'}<input type="date" value={end} onChange={e=>setPeriod([start,e.target.value])}/></label>
+    <label>{ar?'من':'From'}<input type="date" value={start} onChange={e=>{setPeriod([e.target.value,end]);setReport(null)}}/></label>
+    <label>{ar?'إلى':'To'}<input type="date" value={end} onChange={e=>{setPeriod([start,e.target.value]);setReport(null)}}/></label>
    </div>
    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
-    <button className="btn primary" disabled={!contractId||loading} onClick={make}>{loading?(ar?'جاري التحميل...':'Loading...'):(ar?'إنشاء التقرير':'Generate report')}</button>
+    <button className="btn primary" disabled={(reportMode==='contract'?!contractId:!ownerId||!organizationId)||loading} onClick={make}>{loading?(ar?'جاري التحميل...':'Loading...'):(ar?'إنشاء التقرير':'Generate report')}</button>
     <button className="btn" disabled={!contractId} onClick={()=>setEditBrand(!editBrand)}>{ar?'هوية التقرير':'Report branding'}</button>
-    {report&&<><button className="btn" onClick={printCurrent}>{ar?'طباعة التقرير فقط / PDF':'Print Report Only / PDF'}</button><button className="btn" disabled={loading} onClick={archive}>{ar?'اعتماد وأرشفة':'Finalize & Archive'}</button></>}
+    {report&&<><button className="btn" onClick={printCurrent}>{ar?'طباعة التقرير فقط / PDF':'Print Report Only / PDF'}</button><button className="btn" disabled={loading||!report.contract||!archiveAvailable} title={!report.contract?(ar?'الأرشفة النهائية متاحة لتقرير عقد محدد':'Final archiving requires a specific contract'):undefined} onClick={archive}>{ar?'اعتماد وأرشفة':'Finalize & Archive'}</button></>}
    </div>
   </div>
 
@@ -234,11 +246,12 @@ export default function OwnerReports(){
     <label>{ar?'أعد بواسطة':'Prepared by'}<input value={currentBrand.prepared_by||''} onChange={e=>patchBrand('prepared_by',e.target.value)}/></label>
     <label>{ar?'راجع بواسطة':'Reviewed by'}<input value={currentBrand.reviewed_by||''} onChange={e=>patchBrand('reviewed_by',e.target.value)}/></label>
     <label>{ar?'اعتمد بواسطة':'Approved by'}<input value={currentBrand.approved_by||''} onChange={e=>patchBrand('approved_by',e.target.value)}/></label>
-    <label>Report Prefix<input value={currentBrand.report_prefix||'FM'} onChange={e=>patchBrand('report_prefix',e.target.value.toUpperCase())}/></label>
+    <label>Report Prefix<input value={currentBrand.report_prefix||'MED'} onChange={e=>patchBrand('report_prefix',e.target.value.toUpperCase())}/></label>
    </div>
    <button className="btn primary" style={{marginTop:12}} disabled={loading} onClick={saveBrand}>{ar?'حفظ الهوية':'Save branding'}</button>
   </div>}
 
+  {reportMode==='owner'&&<p className="muted no-print">{ar?'يشمل عقود المالك والأعمال غير المرتبطة بعقد داخل الشركة الحالية. يمكن طباعته؛ الأرشفة النهائية تتطلب اختيار عقد محدد.':'Includes the owner’s contracts and work without a contract at the current company. Printing is available; final archiving requires a specific contract.'}</p>}
   {report&&<div ref={printRef}><ReportDocument report={report} brand={currentBrand} reportType={reportType} start={start} end={end} ar={ar}/></div>}
 
   <div className="facility-panel no-print" style={{marginTop:16}}>
@@ -273,7 +286,7 @@ export default function OwnerReports(){
       {(x.distribution_status==='sent'||x.sent_at)&&!x.acknowledged_at&&<button className="btn" disabled={loading} onClick={()=>acknowledge(x)}>{ar?'تم الاستلام':'Acknowledge'}</button>}
      </div></td>
     </tr>
-   }):<tr><td colSpan="8">{ar?'لا توجد تقارير مؤرشفة حتى الآن.':'No archived reports yet.'}</td></tr>}</tbody></table></div>
+   }):<tr><td colSpan="8">{archiveError?(ar?'تعذر قراءة الأرشيف؛ هذه الحالة لا تعني عدم وجود تقارير محفوظة.':'The archive is unavailable; this does not mean no saved reports exist.'):(ar?'لا توجد تقارير مؤرشفة حتى الآن.':'No archived reports yet.')}</td></tr>}</tbody></table></div>
   </div>
 
   {archivePreview&&<div className="no-print">
@@ -313,6 +326,7 @@ function reportTitle(ar,type){
 function reportFromRun(run){
  const s=run.snapshot||{}
  return {
+  ...s,
   metrics:s.metrics||{},
   woStatus:s.woStatus||[],
   ppmStatus:s.ppmStatus||[],
@@ -327,35 +341,36 @@ function ArchivedReportDocument({run,ar}){
  const report=reportFromRun(run)
  return <ReportDocument report={report} brand={brand} reportType={run.report_type} start={run.period_start} end={run.period_end} ar={ar} archived/>
 }
-function ReportDocument({report,brand,reportType,start,end,ar,archived=false}){
+export function ReportDocument({report,brand,reportType,start,end,ar,archived=false}){
  const m=report.metrics||{}
- const summary=ar
-  ?`خلال الفترة من ${start} إلى ${end} تم تسجيل ${m.totalWO??0} أمر عمل، أُغلق منها ${m.completedWO??0} بنسبة إنجاز ${m.woClosure??0}%. بلغت نسبة الالتزام بالصيانة الوقائية ${m.ppmCompliance??0}%، مع ${m.overduePPM??0} مهمة PPM متأخرة و${m.overdueWO??0} أمر عمل متأخر.`
-  :`During ${start} to ${end}, ${m.totalWO??0} work orders were recorded and ${m.completedWO??0} were completed, giving a ${m.woClosure??0}% closure rate. PPM compliance was ${m.ppmCompliance??0}%, with ${m.overduePPM??0} overdue PPM jobs and ${m.overdueWO??0} overdue work orders.`
+ const percent=v=>v==null?(ar?'غير متاح':'N/A'):v+'%'
+ const summary=!m.totalWO&&!m.totalPPM
+  ?(ar?'لا توجد أعمال متاحة لهذا الحساب ضمن النطاق والفترة المختارين. لا يمكن اعتبار ذلك نسبة إنجاز صفرية. راجع العقد أو اختر «كل أعمال المالك لدى الشركة» لإدراج أعماله غير المرتبطة بعقد.':'No work is available to this account for the selected scope and period. This does not represent a zero completion rate. Check the contract or select all owner work to include work without a contract.')
+  :(ar?`خلال الفترة ${start} — ${end} سُجل ${m.totalWO??'—'} أمر عمل؛ أُنجز فنياً ${m.completedWO??'—'} وأُغلق ${m.closedWO??'—'}، بنسبة إغلاق ${percent(m.woClosure)} بعد استبعاد الملغى. سُجلت ${m.totalPPM??'—'} مهمة وقائية للفترة، ونسبة تنفيذ المهام المستحقة حتى ${report.asOf||end} هي ${percent(m.ppmCompliance)}. رصيد الأعمال المفتوحة يشمل ${m.openWO??'—'} أمر عمل، منها ${m.overdueWO??'—'} متأخر.`:`During ${start} — ${end}, ${m.totalWO??'—'} work orders were recorded; ${m.completedWO??'—'} were technically completed and ${m.closedWO??'—'} closed (${percent(m.woClosure)}). There are ${m.totalPPM??'—'} preventive jobs in the period; execution of jobs due by ${report.asOf||end} is ${percent(m.ppmCompliance)}. The open backlog is ${m.openWO??'—'}, including ${m.overdueWO??'—'} overdue work orders.`)
  const maxStatus=Math.max(1,...(report.woStatus||[]).map(x=>x[1]))
  return <div className="owner-report-document">
   <div className="or-cover" style={{borderTop:`8px solid ${brand.primary_color||'#0b2b4b'}`}}>
    <div className="or-logos">
-    <div className="or-logo">{brand.owner_logo_data?<img src={brand.owner_logo_data} alt="Owner logo"/>:<div style={{height:95}}/>}<div><b>{ar?brand.owner_name_ar:brand.owner_name_en}</b></div></div>
-    <div className="or-logo">{brand.contractor_logo_data?<img src={brand.contractor_logo_data} alt="Contractor logo"/>:<div style={{height:95}}/>}<div><b>{ar?brand.contractor_name_ar:brand.contractor_name_en}</b></div></div>
+    <div className="or-logo">{brand.owner_logo_data?<img src={brand.owner_logo_data} alt="Owner logo"/>:<div style={{height:12}}/>}<div><b>{ar?brand.owner_name_ar:brand.owner_name_en}</b></div></div>
+    <div className="or-logo">{brand.contractor_logo_data?<img src={brand.contractor_logo_data} alt="Contractor logo"/>:<div style={{height:12}}/>}<div><b>{ar?brand.contractor_name_ar:brand.contractor_name_en}</b></div></div>
    </div>
    <div className="or-title"><h1>{reportTitle(ar,reportType)}</h1><h2>{ar?brand.project_name_ar:brand.project_name_en}</h2><p>{report.labels?.contract||'—'}</p></div>
    <div className="or-meta">
-    <div><span>{ar?'الفترة':'Period'}</span><b>{start} — {end}</b></div>
+    <div><span>{ar?'الفترة':'Period'}</span><b><bdi dir="ltr">{start} — {end}</bdi></b></div>
     <div><span>{ar?'المالك':'Owner'}</span><b>{ar?brand.owner_name_ar:brand.owner_name_en}</b></div>
     <div><span>{ar?'المقاول':'Contractor'}</span><b>{ar?brand.contractor_name_ar:brand.contractor_name_en}</b></div>
     <div><span>{ar?'رقم العقد':'Contract'}</span><b>{report.labels?.contract||'—'}</b></div>
-    <div><span>Revision</span><b>00</b></div>
+    <div><span>{ar?'نطاق البيانات':'Data scope'}</span><b>{report.labels?.organization} · {report.labels?.client}</b></div><div><span>{ar?'المراجعة':'Revision'}</span><b>00</b></div>
    </div>
   </div>
 
   <div className="or-section"><h2>{ar?'الملخص التنفيذي':'Executive Summary'}</h2><div className="facility-panel"><p>{summary}</p>{archived&&!report.wo?.length&&!report.ppm?.length&&<small>{ar?'هذا تقرير قديم تم أرشفته قبل حفظ تفاصيل أوامر العمل؛ مؤشرات الأداء محفوظة ومتاحة.':'This older archive predates detailed WO/PPM snapshots; its KPI snapshot is still available.'}</small>}</div></div>
   <div className="or-section"><h2>{ar?'مؤشرات الأداء الرئيسية':'Key Performance Indicators'}</h2>
    <div className="or-kpis">
-    <Kpi l={ar?'أوامر العمل':'Work Orders'} v={m.totalWO??0}/><Kpi l={ar?'نسبة الإغلاق':'WO Closure'} v={(m.woClosure??0)+'%'} tone={pctTone(m.woClosure??0)}/>
-    <Kpi l={ar?'PPM المنفذة':'PPM Completed'} v={`${m.completedPPM??0}/${m.totalPPM??0}`}/><Kpi l={ar?'التزام PPM':'PPM Compliance'} v={(m.ppmCompliance??0)+'%'} tone={pctTone(m.ppmCompliance??0)}/>
-    <Kpi l={ar?'WO متأخرة':'Overdue WO'} v={m.overdueWO??0}/><Kpi l={ar?'PPM متأخرة':'Overdue PPM'} v={m.overduePPM??0}/>
-    <Kpi l={ar?'أصول حرجة':'Critical Assets'} v={m.criticalAssets??0}/><Kpi l="SLA" v={m.slaRate==null?'N/A':m.slaRate+'%'} tone={m.slaRate==null?null:pctTone(m.slaRate)}/>
+    <Kpi l={ar?'أوامر العمل':'Work Orders'} v={m.totalWO??'—'}/><Kpi l={ar?'نسبة الإغلاق':'WO Closure'} v={percent(m.woClosure)} tone={m.woClosure==null?null:pctTone(m.woClosure)}/>
+    <Kpi l={ar?'PPM المنفذة':'PPM Completed'} v={`${m.completedPPM??0}/${m.totalPPM??0}`}/><Kpi l={ar?'تنفيذ الوقائية المستحقة':'Due PPM execution'} v={percent(m.ppmCompliance)} tone={m.ppmCompliance==null?null:pctTone(m.ppmCompliance)}/>
+    <Kpi l={ar?'WO متأخرة':'Overdue WO'} v={m.overdueWO??'—'}/><Kpi l={ar?'PPM متأخرة':'Overdue PPM'} v={m.overduePPM??'—'}/>
+    <Kpi l={ar?'أصول حرجة':'Critical Assets'} v={m.criticalAssets??'—'}/><Kpi l="SLA" v={m.slaRate==null?(ar?'غير متاح':'N/A'):m.slaRate+'%'} tone={m.slaRate==null?null:pctTone(m.slaRate)}/>
    </div>
   </div>
 
@@ -363,15 +378,51 @@ function ReportDocument({report,brand,reportType,start,end,ar,archived=false}){
    {report.woStatus.map(([k,v])=><div className="or-bar" key={k}><span>{titleCase(k)}</span><div><i style={{width:`${Math.max(3,Math.round(v/maxStatus*100))}%`}}/></div><b>{v}</b></div>)}
   </div></div>}
 
-  {!!report.wo?.length&&<div className="or-section"><h2>{ar?'الأعمال التصحيحية':'Corrective Maintenance'}</h2><ReportTable rows={report.wo.slice(0,30)} cols={[
-   ['work_order_number',ar?'رقم أمر العمل':'WO No.'],['title',ar?'العنوان':'Title'],['priority',ar?'الأولوية':'Priority'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
+  {!!report.wo?.length&&<div className="or-section"><h2>{ar?'تفاصيل أوامر العمل':'Work order details'}</h2><ReportTable rows={report.wo} cols={[
+   ['work_order_number',ar?'رقم أمر العمل':'WO No.'],['title',ar?'العنوان':'Title'],['asset_label',ar?'الجهاز':'Device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['priority',ar?'الأولوية':'Priority'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
   ]}/></div>}
-  {!!report.ppm?.length&&<div className="or-section"><h2>{ar?'الصيانة الوقائية':'Preventive Maintenance'}</h2><ReportTable rows={report.ppm.slice(0,30)} cols={[
-   ['job_number',ar?'رقم المهمة':'Job No.'],['title',ar?'العنوان':'Title'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
+  {!!report.ppm?.length&&<div className="or-section"><h2>{ar?'الصيانة الوقائية':'Preventive Maintenance'}</h2><ReportTable rows={report.ppm} cols={[
+   ['job_number',ar?'رقم المهمة':'Job No.'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
   ]}/></div>}
 
+  <OwnerReportInsights report={report} ar={ar} reportType={reportType}/>
+  <div className="facility-panel" style={{marginTop:20,fontSize:12,color:'#617587'}}><b>{ar?'نطاق ومنهج التقرير':'Report scope and basis'}</b><p>{ar?'أوامر العمل حسب تاريخ الإنشاء، والوقائية حسب تاريخ الاستحقاق. يُستبعد الملغى من مقام نسبة الإغلاق ومن الوقائية. التحليل حسب السجلات المتاحة للحساب؛ الحالة المعروضة حالية وليست لقطة تاريخية لنهاية الفترة. المتأخرات تشمل الرصيد السابق. النسب غير متاحة عند غياب المقام؛ ولا يُفترض وجود خطط أو مهام غير مسجلة.':'Work orders use creation date; preventive work uses due date and excludes cancellations. Cancelled work orders are excluded from the closure denominator. Analysis uses records available to this account. Statuses are current, not historical period-end snapshots. Overdue work includes earlier backlog. Ratios are unavailable with no denominator; missing schedules or jobs are not inferred.'}</p><p>{ar?'صدر في':'Generated'}: {displayReportValue(report.generatedAt,'generated_at',ar?'ar':'en')}</p></div>
   <div className="or-signatures"><div><b>{ar?'أعد بواسطة':'Prepared by'}</b><br/>{safe(brand.prepared_by)}</div><div><b>{ar?'راجع بواسطة':'Reviewed by'}</b><br/>{safe(brand.reviewed_by)}</div><div><b>{ar?'اعتمد بواسطة':'Approved by'}</b><br/>{safe(brand.approved_by)}</div></div>
  </div>
 }
 function Kpi({l,v,tone}){return <div className="or-kpi"><span>{l}</span><strong style={tone?{color:tone}:null}>{v}</strong></div>}
-function ReportTable({rows,cols}){return <div className="facility-panel" style={{overflowX:'auto'}}><table className="or-table"><thead><tr>{cols.map(c=><th key={c[0]}>{c[1]}</th>)}</tr></thead><tbody>{rows.length?rows.map((r,i)=><tr key={r.id||i}>{cols.map(c=><td key={c[0]}>{c[0].includes('date')?dateFmt(r[c[0]]):safe(r[c[0]])}</td>)}</tr>):<tr><td colSpan={cols.length}>—</td></tr>}</tbody></table></div>}
+function ReportTable({rows,cols}){
+ const {lang}=useLanguage(),ar=lang==='ar'
+ const statuses={draft:'مسودة',assigned:'مسند',accepted:'مقبول',in_progress:'قيد التنفيذ',on_hold:'متوقف',completed:'منجز فنياً',approved:'معتمد',closed:'مغلق',cancelled:'ملغى',scheduled:'مجدول',in_service:'في الخدمة',out_of_service:'خارج الخدمة',unknown:'غير مسجل',P1:'حرجة',P2:'عالية',P3:'متوسطة',P4:'منخفضة'}
+ const cell=(row,key)=>{
+  const value=row[key]
+  if(ar&&statuses[value]&&['status','operational_status','priority'].includes(key))return statuses[value]
+  if(/(_date|_at)$/.test(key))return displayReportValue(value,key,lang)
+  return safe(value)
+ }
+ return <div className="facility-panel" style={{overflowX:'auto'}}><table className="or-table"><thead><tr>{cols.map(c=><th key={c[0]}>{c[1]}</th>)}</tr></thead><tbody>{rows.length?rows.map((r,i)=><tr key={r.id||i}>{cols.map(c=><td key={c[0]}>{cell(r,c[0])}</td>)}</tr>):<tr><td colSpan={cols.length}>{ar?'لا توجد سجلات في البيانات المحملة لهذا البند.':'No records were returned for this item.'}</td></tr>}</tbody></table></div>
+}
+function OwnerReportInsights({report,ar,reportType}){
+ if(report.metrics?.totalWO===0&&report.metrics?.totalPPM===0&&!report.backlog?.length&&!report.assets?.length&&!report.upcoming?.length)return <p className="facility-panel">{ar?'لا تتوفر سجلات كافية للتحليل ضمن هذا النطاق. اختر العقد الصحيح أو نطاق جميع أعمال المالك، ثم أعد إنشاء التقرير.':'There are insufficient records to analyze this scope. Select the correct contract or all owner work, then regenerate the report.'}</p>
+ if(!report.trend)return <p className="muted">{ar?'هذه النسخة المؤرشفة لا تتضمن التحليلات التفصيلية الجديدة.':'This archived version does not contain the newer detailed analysis.'}</p>
+ const section=(title,content)=><div className="or-section"><h2>{title}</h2>{content}</div>
+ const refCols=[['work_order_number',ar?'أمر العمل':'Work order'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']]
+ const dueCols=[['job_number',ar?'مهمة الوقائية':'PPM job'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['due_date',ar?'الاستحقاق':'Due']]
+ const overdue=[...(report.overdueWO||[]).map(r=>({...r,reference:r.work_order_number,kind:ar?'أمر عمل':'Work order'})),...(report.overduePPM||[]).map(r=>({...r,reference:r.job_number,kind:ar?'وقائية':'Preventive'}))]
+ const followup=[]
+ if(report.metrics.criticalWO)followup.push(ar?`متابعة ${report.metrics.criticalWO} أمر عمل مفتوح بأولوية حرجة مع المشرف.`:`Follow up ${report.metrics.criticalWO} critical open work orders with the supervisor.`)
+ if(overdue.length)followup.push(ar?`تحديد موعد إغلاق ومسؤول متابعة لكل بند من ${overdue.length} بنداً متأخراً موضحاً أدناه.`:`Assign a target closure date and follow-up owner for each of the ${overdue.length} overdue items below.`)
+ if(report.held?.length)followup.push(ar?'مراجعة أسباب توقف العمل المسجلة وإزالة العوائق مع الجهة المختصة.':'Review recorded hold reasons and resolve blockers with the responsible party.')
+ if(report.awaitingClose?.length)followup.push(ar?'استكمال المراجعات والاعتمادات المطلوبة للأعمال المنجزة فنياً قبل إغلاقها.':'Complete the required reviews and acceptance steps for technically completed work before closure.')
+ if(report.warranty?.length)followup.push(ar?'مراجعة تواريخ انتهاء الضمان المبينة في التقرير قبل تكليف صيانة خارج نطاقه.':'Review the warranty expiry dates before authorizing service outside warranty coverage.')
+ return <>
+  {section(ar?(reportType==='weekly'?'الإنجاز اليومي خلال الأسبوع':reportType==='annual'?'حصيلة الأداء حسب شهور السنة':'اتجاه الإنجاز خلال أسابيع الفترة'):(reportType==='weekly'?'Daily results for the week':reportType==='annual'?'Monthly results for the year':'Weekly results within the period'),<><ReportTable rows={report.trend} cols={[["period",ar?'الفترة':'Period'],['work_orders',ar?'أوامر عمل مسجلة':'Recorded work orders'],['closed',ar?'مغلقة حالياً':'Currently closed'],['ppm_due',ar?'وقائية مجدولة':'Scheduled PPM'],['ppm_done',ar?'وقائية منفذة':'Executed PPM']]}/><p className="muted">{ar?'كل صف يجمع الأعمال وفق تاريخ إنشائها أو استحقاقها؛ الإغلاق حسب الحالة الحالية.':'Rows group work by creation or due date; closure uses current status.'}</p></>)}
+  {section(ar?'المتأخرات التي تتطلب متابعة':'Overdue work requiring follow-up',<ReportTable rows={overdue} cols={[["reference",ar?'المرجع':'Reference'],['kind',ar?'النوع':'Type'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['due_date',ar?'الاستحقاق':'Due']]}/>)}
+  {section(ar?'الأعمال المتوقفة وأسبابها المسجلة':'Work on hold and recorded reasons',<ReportTable rows={report.held||[]} cols={[...refCols,['hold_reason',ar?'سبب التوقف المسجل':'Recorded hold reason']]}/>)}
+  {section(ar?'أعمال منجزة فنياً ولم تُغلق':'Technically completed work awaiting closure',<ReportTable rows={report.awaitingClose||[]} cols={refCols}/>)}
+  {section(ar?(reportType==='weekly'?'خطة الأسبوع التالي المسجلة':reportType==='annual'?'الوقائية المسجلة للفترة التالية':'خطة الشهر التالي المسجلة'):'Recorded preventive work for the next period',<><ReportTable rows={report.upcoming||[]} cols={dueCols}/><p className="muted">{ar?'تُعرض المهام المولدة فعلياً فقط؛ عدم وجود مهام لا يثبت اكتمال خطة الصيانة.':'Only generated jobs are shown. No jobs does not establish that scheduling is complete.'}</p></>)}
+  {reportType!=='weekly'&&section(ar?'أكثر الأجهزة تكراراً لطلبات العمل — أعلى 10':'Devices with repeated work orders — top 10',<><ReportTable rows={report.repeatedAssets||[]} cols={[["asset_label",ar?'الجهاز':'Device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['count',ar?'طلبات غير وقائية':'Non-PPM work orders']]}/><p className="muted">{ar?'التكرار مؤشر للمتابعة، وليس تشخيصاً فنياً أو قياساً للاعتمادية. تُستبعد أوامر العمل المرتبطة بمهام الوقائية من هذا الجدول.':'Repeat work is a follow-up signal, not a diagnosis or a reliability measure. Work orders linked to PPM jobs are excluded.'}</p></>)}
+  {section(ar?'الأجهزة المشمولة بالنطاق وتواريخ الضمان':'Devices within scope and warranty dates',<><div className="or-kpis"><Kpi l={ar?'الأجهزة المسجلة بالنطاق':'Recorded devices in scope'} v={report.metrics.assets}/><Kpi l={ar?'الأجهزة الحرجة':'Critical devices'} v={report.metrics.criticalAssets}/><Kpi l={ar?'ضمان ينتهي خلال الفترة':'Warranty expiring in period'} v={report.metrics.warrantyEnding}/></div><ReportTable rows={report.warranty||[]} cols={[["asset_label",ar?'الجهاز':'Device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['warranty_end',ar?'نهاية الضمان':'Warranty end']]}/>{reportType==='annual'&&<ReportTable rows={(report.assetStatus||[]).map(([operational_status,count])=>({operational_status,count}))} cols={[["operational_status",ar?'حالة الجهاز المسجلة':'Recorded device status'],['count',ar?'العدد':'Count']]}/>}<p className="muted">{ar?'في نطاق العقد تشمل قائمة الأجهزة ما ارتبط بأعماله أو بمواقع مسندة له. يلزم سجل تغطية تعاقدية كامل لتأكيد شمول جميع الأجهزة.':'For a contract, devices are drawn from linked work and contract-assigned sites. A full coverage register is needed to confirm every covered device.'}</p></>)}
+  {section(ar?'أولويات المتابعة المقترحة للمالك':'Suggested owner follow-up priorities',<div className="facility-panel">{followup.length?<ul>{followup.map(item=><li key={item} style={{marginBottom:10}}>{item}</li>)}</ul>:<p>{ar?'لم تظهر أولويات آلية من البنود المحملة. راجع اكتمال السجلات والجدولة قبل الاعتماد.':'No automatic priorities were identified in the returned records. Review data and scheduling completeness before approval.'}</p>}</div>)}
+ </>
+}
