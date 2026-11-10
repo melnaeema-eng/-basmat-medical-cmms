@@ -18,16 +18,20 @@ export async function loadMasterAssetLibrary(){
 
  const out=await Promise.all(
   defs.map(async([key,table])=>{
-   let q=supabase.from(table).select('*')
-
-   if(!['bf_med_master_options','bf_med_master_pm_steps'].includes(table)){
-    q=q.order('created_at',{ascending:true})
+   const rows=[]
+   const pageSize=500
+   for(let offset=0;;offset+=pageSize){
+    let q=supabase.from(table).select('*')
+    if(!['bf_med_master_options','bf_med_master_pm_steps'].includes(table)){
+     q=q.order('created_at',{ascending:true})
+    }
+    q=q.order('id',{ascending:true}).range(offset,offset+pageSize-1)
+    const {data,error}=await q
+    if(error)throw error
+    rows.push(...(data||[]))
+    if((data||[]).length<pageSize)break
    }
-
-   const {data,error}=await q
-   if(error)throw error
-
-   return [key,data||[]]
+   return [key,rows]
   })
  )
 
