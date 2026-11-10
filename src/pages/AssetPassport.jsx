@@ -119,7 +119,15 @@ export default function AssetPassport(){
    .device-tag{box-sizing:border-box;width:90mm;min-height:60mm;padding:4mm;border:1px solid #17324d;border-radius:3mm;background:#fff;color:#10273f;display:grid;grid-template-columns:minmax(0,1fr) 29mm;gap:3mm;align-items:center;font-family:Arial,sans-serif}
    .device-tag h2{font-size:20px;margin:4px 0}.device-tag p{margin:4px 0;font-size:11px;overflow-wrap:anywhere}.device-tag img{display:block;width:29mm;height:29mm}.device-tag .device-tag-brand{grid-column:1/-1;font-size:11px;font-weight:700;border-bottom:2px solid #f28c28;padding-bottom:2mm}
    @media screen and (max-width:450px){.device-tag{width:100%;grid-template-columns:minmax(0,1fr) 29mm}}
-   @media print{@page{size:90mm 60mm;margin:0}body *{visibility:hidden!important}.device-tag,.device-tag *{visibility:visible!important}.device-tag{position:absolute;inset:0 auto auto 0;width:90mm;height:60mm;min-height:0;box-shadow:none;border:0;border-radius:0;print-color-adjust:exact}}
+   @media print{
+    @page{size:90mm 60mm;margin:0}
+    html:has(.device-tag),body:has(.device-tag){width:90mm!important;height:60mm!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#fff!important}
+    body:has(.device-tag) *{visibility:visible!important}
+    body:has(.device-tag) *:not(:has(.device-tag)):not(.device-tag):not(.device-tag *){display:none!important}
+    body:has(.device-tag) *:has(.device-tag){display:block!important;position:static!important;width:90mm!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;transform:none!important;box-shadow:none!important;border:0!important}
+    body:has(.device-tag)::before,body:has(.device-tag)::after,body:has(.device-tag) *:has(.device-tag)::before,body:has(.device-tag) *:has(.device-tag)::after{display:none!important;content:none!important}
+    .device-tag{position:static!important;inset:auto!important;display:grid!important;width:90mm!important;height:60mm!important;min-height:0!important;margin:0!important;box-shadow:none!important;border:0!important;border-radius:0!important;break-inside:avoid;page-break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+   }
   `}</style>
   <div className="page-head no-print"><div><h1>{ar?'تاق الجهاز':'Device tag'} — {asset.asset_tag}</h1><p>{ar?'ملصق 90 × 60 مم. رمز QR يفتح جواز الجهاز بعد تسجيل الدخول.':'90 × 60 mm label. Scan QR to open the device passport after signing in.'}</p></div><div className="row-actions">
    <Link className="btn" to="/medical-asset-cockpit">{ar?'الأجهزة والصيانة':'Devices and maintenance'}</Link>
