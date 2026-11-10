@@ -646,6 +646,11 @@ export default function MedicalAssetCockpit(){
               {p.name||p.project_name||p.project_code||p.id}
             </option>)}
           </select>
+          <div className="row-actions">
+            <button type="button" className="btn secondary" disabled={deployCtx.loading||busy} onClick={()=>{setError('');loadDeployment()}}>{deployCtx.loading?(ar?'جارٍ التحديث…':'Refreshing…'):(ar?'تحديث المشاريع والمواقع':'Refresh projects and sites')}</button>
+            <button type="button" className="btn secondary" disabled={busy} onClick={()=>nav('/project-setup')}>{ar?'إضافة / إعداد مشروع':'Add / set up a project'}</button>
+          </div>
+          {!deployCtx.loading&&deploy.organization_id&&!deployProjects.length&&<small>{ar?'لا توجد مشاريع متاحة لهذه الشركة. أضف مشروعًا واربطه بالمالك والعقد من إعداد المشروع.':'No projects are available for this company. Create a project linked to its owner and contract in Project Setup.'}</small>}
         </Field>
 
         <Field label={ar?'المستشفى / الموقع':'Hospital / Site'}>
