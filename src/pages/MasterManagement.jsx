@@ -37,7 +37,7 @@ export default function MasterManagement({kind}){
  const {rows,bundle,loading,busy,error,success,setError,setSuccess,refresh,persist}=state
  const [form,setForm]=useState(cfg.empty),[editing,setEditing]=useState(null),[open,setOpen]=useState(false)
  const [search,setSearch]=useState(''),[filterOrg,setFilterOrg]=useState(''),[filterClient,setFilterClient]=useState(''),[filterStatus,setFilterStatus]=useState('')
- const name=(key)=>key==='logo_url'?(lang==='ar'?'شعار المالك':'Owner logo'):t(fieldNames[key]||key)
+ const name=(key)=>key==='client_id'&&kind==='contracts'?(lang==='ar'?'المالك':'Owner'):key==='logo_url'?(lang==='ar'?'شعار المالك':'Owner logo'):t(fieldNames[key]||key)
  const orgs=bundle.organizations||[],clients=bundle.clients||[],contracts=bundle.contracts||[]
  const allowedOrg=o=>can(cfg.permission+'.view',o.id)||can(cfg.permission+'.manage',o.id)
  const canManage=r=>can(cfg.permission+'.manage',kind==='organizations'?r.id:r.organization_id)
@@ -99,7 +99,7 @@ export default function MasterManagement({kind}){
     <input type={type} required={!!required} min={type==='number'?'0':undefined} step={type==='number'?'0.01':undefined} value={value} disabled={busy} onChange={e=>set(key,e.target.value)}/>}
   </label>
  }
- const col=(key,label,render)=>({key,label:t(label),render})
+ const col=(key,label,render)=>({key,label:label==='client'&&kind==='contracts'?name('client_id'):t(label),render})
  const columns=kind==='organizations'?[col('name','name'),col('code','code')]:
  kind==='clients'?[col('name','name'),col('organization','organization',r=>labelFor(orgs,r.organization_id)),col('email','email'),col('phone','phone')]:
  kind==='contracts'?[col('contract_number','contractNumber'),col('client','client',r=>labelFor(clients,r.client_id)),col('contract_type','contractType',r=>t(r.contract_type)),col('start_date','startDate'),col('end_date','endDate')]:
@@ -114,7 +114,7 @@ export default function MasterManagement({kind}){
   <div className="facility-panel filter-grid">
    <label>{t('search')}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('search')}/></label>
    <label>{t('organization')}<select value={filterOrg} onChange={e=>{setFilterOrg(e.target.value);setFilterClient('')}}><option value="">{t('all')}</option>{orgs.filter(allowedOrg).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
-   {kind!=='organizations'&&<label>{t('client')}<select value={filterClient} onChange={e=>setFilterClient(e.target.value)}><option value="">{t('all')}</option>{clients.filter(c=>!filterOrg||c.organization_id===filterOrg).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
+   {kind!=='organizations'&&<label>{kind==='contracts'?name('client_id'):t('client')}<select value={filterClient} onChange={e=>setFilterClient(e.target.value)}><option value="">{t('all')}</option>{clients.filter(c=>!filterOrg||c.organization_id===filterOrg).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
    <label>{t('status')}<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">{t('all')}</option>{statuses[kind].map(v=><option key={v} value={v}>{t(v)}</option>)}</select></label>
   </div>
   <div className="facility-toolbar"><span>{visible.length} / {rows.length}</span>{loading&&<span>{t('loading')}</span>}</div>
