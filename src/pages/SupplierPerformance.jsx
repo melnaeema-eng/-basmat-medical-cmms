@@ -1,3 +1,5 @@
+import {Link} from 'react-router-dom'
+import {useAuth} from '../context/AuthContext'
 import {useEffect,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadSupplierPerformance,evaluateSupplier} from '../lib/supplierPerformance'
@@ -5,7 +7,7 @@ import {loadSupplierPerformance,evaluateSupplier} from '../lib/supplierPerforman
 const iso=d=>d.toISOString().slice(0,10)
 
 export default function SupplierPerformance(){
- const {t}=useLanguage()
+ const {t,lang}=useLanguage(),{can}=useAuth()
  const today=new Date(),start=new Date(Date.now()-365*86400000)
  const [from,setFrom]=useState(iso(start)),[to,setTo]=useState(iso(today))
  const [data,setData]=useState({rows:[],summary:{},recent_evaluations:[]})
@@ -40,7 +42,7 @@ export default function SupplierPerformance(){
  const scoreOptions=[1,2,3,4,5]
 
  return <section className="facility-module">
-  <div className="page-head">
+  <div className="page-head">{can('procurement.view')&&<Link className="btn secondary" to="/suppliers">{lang==='ar'?'الموردون — عرض وإضافة':'Suppliers — view and add'}</Link>}
    <div><h1>{t('supplierPerformanceCenter')}</h1></div>
    <button className="btn secondary" onClick={load} disabled={busy}>{t('supplierPerformanceRefresh')}</button>
   </div>

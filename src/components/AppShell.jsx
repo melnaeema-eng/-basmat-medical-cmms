@@ -6,6 +6,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
 import {useSmartLanguageInputs} from '../lib/smartLanguage'
 import '../bafm-theme.css'
+import './AppShellActions.css'
 
 const groups=[
  {title:'Work | التشغيل',items:[
@@ -27,6 +28,7 @@ const groups=[
   ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
  ]},
  {title:'Support | المساندة',items:[
+  ['/suppliers','Suppliers | الموردون','procurement.view','users'],
   ['/inventory','Inventory | المخزون','inventory.view','box'],
   ['/procurement','Procurement | المشتريات','procurement.view','cart'],
   ['/reports','Management Reports | تقارير الإدارة','reports.view','report'],
@@ -209,7 +211,7 @@ export default function AppShell(){
      </section>
     })}
    </nav>
-   <div className="bafm-sidebar-footer">BAMM · v1.0</div>
+   <div className="bafm-sidebar-footer"><button type="button" className="bafm-signout" onClick={signOut} aria-label={lang==='ar'?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{lang==='ar'?'تسجيل الخروج':'Sign out'}</span></button>BAMM · v1.0</div>
   </aside>
 
   <div className="bafm-main">
@@ -237,7 +239,7 @@ export default function AppShell(){
        <small>{organizationLabel}</small>
       </div>
      </div>
-     <button className="bafm-signout" onClick={signOut}>↪</button>
+     <button type="button" className="bafm-signout" onClick={signOut} aria-label={lang==='ar'?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{lang==='ar'?'تسجيل الخروج':'Sign out'}</span></button>
     </div>
    </header>
    <div style={{

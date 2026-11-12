@@ -1,3 +1,4 @@
+import Suppliers from './pages/Suppliers'
 import MaintenanceCompanies from './pages/MaintenanceCompanies'
 import MasterAssetLibrary from './pages/MasterAssetLibrary'
 import MedicalOperationalSetup from './pages/MedicalOperationalSetup'
@@ -120,6 +121,7 @@ export default function App(){
    <Route path="/kpi" element={guard('kpi.view',<KpiDashboard/>)}/>
    <Route path="/audit" element={guard('audit.view',<AuditCenter/>)}/>
    <Route path="/planning" element={guard('planning.view',<PlanningCalendar/>)}/>
+   <Route path="/suppliers" element={guard('procurement.view',<Suppliers/>)}/>
    <Route path="/supplier-performance" element={guard('supplier-performance.view',<SupplierPerformance/>)}/>
    <Route path="/medical-service-library" element={<MedicalServiceCompaniesLibrary/>}/>
    <Route path="/workforce" element={guard('workforce.view',<WorkforceDispatch/>)}/>

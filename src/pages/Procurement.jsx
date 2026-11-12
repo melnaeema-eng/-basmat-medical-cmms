@@ -5,10 +5,10 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {loadProcurement,procurementAction,amount} from '../lib/procurement'
 import {Field,Select,Dialog,Notice,FormActions,Status} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
-export default function Procurement(){
+export default function Procurement({defaultTab='requisitions'}){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
- const [tab,setTab]=useState('requisitions'),[org,setOrg]=useState(''),[query,setQuery]=useState(''),[open,setOpen]=useState(false),[form,setForm]=useState({})
+ const [tab,setTab]=useState(defaultTab),[org,setOrg]=useState(''),[query,setQuery]=useState(''),[open,setOpen]=useState(false),[form,setForm]=useState({})
  const load=async()=>{setError('');try{setData(await loadProcurement())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
@@ -31,7 +31,7 @@ export default function Procurement(){
   stock:[{key:'part',label:t('part'),render:x=>part(x.part_id)?.sku},{key:'owner',label:t('stockOwner'),render:x=>x.owner_client_id?data.clients.find(c=>c.id===x.owner_client_id)?.name:t('companyStock')},{key:'lot',label:t('lotCode'),render:x=>x.lot_code||'—'},{key:'serial',label:t('serialNumber'),render:x=>x.serial_number||'—'},{key:'bin',label:t('bin'),render:x=>data.bins.find(b=>b.id===x.bin_id)?.code},{key:'quantity',label:t('onHand'),render:x=>amount(x.quantity,3)},{key:'cost',label:t('unitCost'),render:x=>amount(x.unit_cost,4)+' '+x.currency}]
  }
  return <section className="facility-module">
-  <div className="page-head"><h1>{t('procurement')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{(tab==='suppliers'?can('procurement.manage',org||null):tab==='requisitions'?can('procurement.request',org||null):false)&&<button className="btn primary" onClick={start}>{t(tab==='suppliers'?'newSupplier':'newRequisition')}</button>}</div></div>
+  <div className="page-head"><h1>{t(defaultTab==='suppliers'?'suppliers':'procurement')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{(tab==='suppliers'?can('procurement.manage',org||null):tab==='requisitions'?can('procurement.request',org||null):false)&&<button className="btn primary" onClick={start}>{t(tab==='suppliers'?'newSupplier':'newRequisition')}</button>}</div></div>
   <Notice error={error} success={success}/>
   <div className="row-actions">{[['requisitions','requisitions'],['orders','purchaseOrders'],['suppliers','suppliers'],['receipts','goodsReceipts'],['stock','traceableStock']].map(([key,label])=><button key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>{setTab(key);setQuery('')}}>{t(label)} ({data?.[key]?.length||0})</button>)}</div>
   <div className="facility-panel filter-grid"><Field label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></Field><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
