@@ -99,7 +99,7 @@ export function printReport(report,columns,labels,title,lang='en',targetWindow=n
  const doc=win.document
  const dir=lang==='ar'?'rtl':'ltr'
  doc.open()
- doc.write(`<!DOCTYPE html><html lang="${lang}" dir="${dir}"><head><meta charset="utf-8"/><title>BAMM - ${title}</title><style>
+ doc.write(`<!DOCTYPE html><html lang="${lang}" dir="${dir}"><head><link rel="stylesheet" href="${window.location.origin}/cairo.css"><meta charset="utf-8"/><title>BAMM - ${title}</title><style>
   body{font-family:Arial,sans-serif;margin:0;background:#f6f8fb;color:#172033}
   .page{padding:22px 24px 34px}
   .toolbar{display:flex;justify-content:$space-between;align-items:center;gap:12px;margin-bottom:14px}
