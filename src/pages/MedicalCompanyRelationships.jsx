@@ -1,3 +1,4 @@
+import {partyRoleError} from '../lib/partyRoleErrors'
 import {useEffect,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {medRelationshipBundle} from '../lib/medicalKnowledgeLibrary'
@@ -40,7 +41,7 @@ export default function MedicalCompanyRelationships({tenant,onChanged}){
   setBundle(b)
  }
 
- useEffect(()=>{refresh().catch(e=>setError(e.message))},[org])
+ useEffect(()=>{refresh().catch(e=>setError(partyRoleError(e,lang)))},[org])
 
  const ownerName=id=>masters.clients.find(x=>x.id===id)?.name||bundle.clients?.find(x=>x.id===id)?.name||id||'—'
  const projectName=id=>masters.projects.find(x=>x.id===id)?.name||masters.projects.find(x=>x.id===id)?.project_name||id||'—'
@@ -64,7 +65,7 @@ export default function MedicalCompanyRelationships({tenant,onChanged}){
    await refresh()
    setOk(ar?'تم ربط المالك':'Owner linked')
    onChanged?.()
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  const doProject=async()=>{
@@ -86,7 +87,7 @@ export default function MedicalCompanyRelationships({tenant,onChanged}){
    await refresh()
    setOk(ar?'تم ربط المشروع':'Project linked')
    onChanged?.()
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  const doSite=async()=>{
@@ -112,7 +113,7 @@ export default function MedicalCompanyRelationships({tenant,onChanged}){
    await refresh()
    setOk(ar?'تم ربط المستشفى/المركز':'Hospital/center linked')
    onChanged?.()
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  if(!org)return null
@@ -123,7 +124,7 @@ export default function MedicalCompanyRelationships({tenant,onChanged}){
     <h2>{ar?'ربط الشركة بالمالك والمشروع والمستشفى/المركز':'Company Relationships'}</h2>
     <p className="muted">{ar?'كل إضافة أو ربط يظهر مباشرة أسفل الشركة':'Every add/link appears immediately below the company'}</p>
    </div>
-   <button className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>{ar?'تحديث':'Refresh'}</button>
+   <button className="btn secondary" onClick={()=>refresh().catch(e=>setError(partyRoleError(e,lang)))}>{ar?'تحديث':'Refresh'}</button>
   </div>
 
   {error&&<div className="alert error">{error}</div>}

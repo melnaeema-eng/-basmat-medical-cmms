@@ -1,3 +1,4 @@
+import {partyRoleError} from '../lib/partyRoleErrors'
 import {useEffect,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -9,7 +10,7 @@ const empty={name_ar:'',name_en:'',organization_type:'owner',registration_no:'',
 const types=['owner','maintenance_contractor','consultant','subcontractor','service_provider','government_entity','private_company']
 
 export default function OrganizationOnboarding(){
- const {t}=useLanguage(),{profile}=useAuth()
+ const {t,lang}=useLanguage(),{profile}=useAuth()
  const [rows,setRows]=useState([]),[form,setForm]=useState(empty),[editing,setEditing]=useState(null)
  const [medicalLinks,setMedicalLinks]=useState([]),[medicalCompanies,setMedicalCompanies]=useState([]),[medicalProjects,setMedicalProjects]=useState([]),[medicalSites,setMedicalSites]=useState([])
  const [busy,setBusy]=useState(false),[error,setError]=useState('')
@@ -45,7 +46,7 @@ export default function OrganizationOnboarding(){
     return (data?.projects||[]).map(p=>({...p,organization_id:p.organization_id||org.id}))
    }))
    setMedicalProjects(batches.flat())
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  useEffect(()=>{load()},[])
@@ -55,7 +56,7 @@ export default function OrganizationOnboarding(){
  const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{
   if(editing)await updateOrganization({...form,id:editing});else await createOrganization(form)
   reset();await load()
- }catch(e){setError(e.message)}finally{setBusy(false)}}
+ }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}}
 
  const linkedMedicalForOrg=(orgId)=>medicalLinks
   .filter(x=>x.organization_id===orgId)
@@ -69,6 +70,7 @@ export default function OrganizationOnboarding(){
 
  return <section className="facility-module">
   <div className="page-head"><div><h1>{t('orgOnboardingTitle')}</h1><p className="muted">{t('orgAutoNote')}</p></div><button className="btn secondary" onClick={load}>{t('orgRefresh')}</button></div>
+  <p className="muted">{lang==='ar'?'أدوار الجهات منفصلة: لا يمكن أن تكون الجهة نفسها مالكًا وشركة صيانة.':'Party roles are separate: the same entity cannot be both an owner and a maintenance company.'}</p><div className="row-actions" style={{marginBottom:16}}><a className="btn secondary" href="/medical-knowledge-library">{lang==='ar'?'مكتبة الشركات — إضافة للنظام':'Company library — add to system'}</a><a className="btn secondary" href="/medical-service-library">{lang==='ar'?'ربط شركة صيانة بمشروع':'Link a maintenance company to a project'}</a></div>
   {error&&<div className="alert error">{error}</div>}
   {(profile?.is_super_admin||editing)&&<form id="organization-onboarding-form" className="facility-panel" onSubmit={submit}><h2>{editing?t('orgEdit'):t('orgAdd')}</h2><div className="form-grid">
    <label>{t('orgType')}<select value={form.organization_type} onChange={e=>set('organization_type',e.target.value)}>{types.map(x=><option key={x} value={x}>{t(x)}</option>)}</select></label>
