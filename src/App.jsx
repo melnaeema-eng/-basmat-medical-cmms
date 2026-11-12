@@ -1,3 +1,4 @@
+import MaintenanceCompanies from './pages/MaintenanceCompanies'
 import MasterAssetLibrary from './pages/MasterAssetLibrary'
 import MedicalOperationalSetup from './pages/MedicalOperationalSetup'
 import LibraryDeployment from './pages/LibraryDeployment'
@@ -79,6 +80,8 @@ export default function App(){
   <Route path="/login" element={<Login/>}/>
   <Route element={<ProtectedRoute><AppShell/></ProtectedRoute>}>
    <Route index element={<Dashboard/>}/>
+   <Route path="/maintenance-companies" element={guard('organizations.view',<MaintenanceCompanies libraryPath="/medical-knowledge-library"/>)}/>
+   <Route path="/owners" element={guard('clients.view',<Clients/>)}/>
    <Route path="/organizations" element={guard('organizations.view',<OrganizationOnboarding/>)}/>
    <Route path="/soft-fm" element={guard('soft-fm.view',<SoftFmOperations/>)}/>
    <Route path="/governance" element={guard('governance.view',<GovernanceMatrix/>)}/>

@@ -1,3 +1,4 @@
+import NotificationBell from './NotificationBell'
 import {NavLink,Outlet,useLocation,useNavigate} from 'react-router-dom'
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
@@ -17,6 +18,8 @@ const groups=[
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
  ]},
  {title:'Setup | الإعداد',items:[
+  ['/maintenance-companies','Maintenance Companies | شركات الصيانة','organizations.view','building'],
+  ['/owners','Owners | الملاك','clients.view','users'],
   ['/project-setup','Project Setup | إعداد المشروع','organizations.view','building'],
   ['/asset-library','Device Library | مكتبة الأجهزة','assets.view','grid'],
   ['/contracts','Contracts | العقود','contracts.view','contract'],
@@ -62,6 +65,8 @@ export default function AppShell(){
  const {signOut,profile,user,can,access}=useAuth()
  const {lang,setLang}=useLanguage()
  const navigate=useNavigate(),location=useLocation()
+ const [orgRevision,setOrgRevision]=useState(0)
+ useEffect(()=>{const refresh=()=>setOrgRevision(v=>v+1);window.addEventListener('basmat-organizations-changed',refresh);return()=>window.removeEventListener('basmat-organizations-changed',refresh)},[])
  const [query,setQuery]=useState('')
  const [organizations,setOrganizations]=useState(access?.organizations||[])
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
@@ -76,6 +81,7 @@ export default function AppShell(){
    try{
     let q=supabase.from('bf_organizations')
      .select('id,name,name_ar,name_en,code,status,logo_url,organization_type')
+     .neq('status','archived')
      .order('name')
     if(!isPlatformAdmin){
      if(!homeOrganizationId){if(alive)setOrganizations(access?.organizations||[]);return}
@@ -96,7 +102,7 @@ export default function AppShell(){
   }
   if(user)loadOrganizations()
   return()=>{alive=false}
- },[user,isPlatformAdmin,homeOrganizationId,access])
+ },[user,isPlatformAdmin,homeOrganizationId,access,orgRevision,location.pathname])
 
  const activeOrganization=useMemo(()=>{
   if(!organizations.length)return null
@@ -223,7 +229,7 @@ export default function AppShell(){
       {organizations.map(o=><option key={o.id} value={o.id}>{lang==='ar'?(o.name_ar||o.name||o.name_en):(o.name_en||o.name||o.name_ar)}</option>)}
      </select>}
      <button className="bafm-top-btn" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{lang==='ar'?'EN':'عربي'}</button>
-     <button className="bafm-bell" onClick={()=>navigate('/notifications')} aria-label="Notifications"><NavIcon type="bell"/><span>•</span></button>
+     <NotificationBell/>
      <div className="bafm-user">
       <div className="bafm-avatar">{displayName.slice(0,1).toUpperCase()}</div>
       <div>

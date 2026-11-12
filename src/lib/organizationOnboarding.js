@@ -11,6 +11,7 @@ export async function createOrganization(v){
   p_email:v.email||null,p_phone:v.phone||null,p_city:v.city||null,p_address:v.address||null
  })
  if(error)throw error
+ window.dispatchEvent(new Event('basmat-organizations-changed'))
  return data
 }
 export async function updateOrganization(v){
@@ -20,4 +21,5 @@ export async function updateOrganization(v){
   p_email:v.email||null,p_phone:v.phone||null,p_city:v.city||null,p_address:v.address||null
  })
  if(error)throw error
+ window.dispatchEvent(new Event('basmat-organizations-changed'))
 }
