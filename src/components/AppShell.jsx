@@ -89,7 +89,7 @@ export default function AppShell(){
      if(home){
       const normalized={...home,id:home.id||home.organization_id||homeOrganizationId}
       if(alive)setOrganizations([normalized])
-      return
+      // Keep the cached name while refreshing the authorized home record.
      }
      q=q.eq('id',homeOrganizationId)
     }
@@ -97,7 +97,7 @@ export default function AppShell(){
     if(error)throw error
     if(alive)setOrganizations(data||[])
    }catch{
-    if(alive)setOrganizations([])
+    if(alive){const home=access?.home_organization;setOrganizations(!isPlatformAdmin&&home?[{...home,id:home.id||home.organization_id||homeOrganizationId}]:[])}
    }
   }
   if(user)loadOrganizations()
