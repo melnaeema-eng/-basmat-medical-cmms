@@ -1,3 +1,4 @@
+import {partyRoleError} from '../lib/partyRoleErrors'
 ﻿import {useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -80,7 +81,7 @@ export default function MasterManagement({kind}){
    setOwnerOpen(false)
    setSuccess(lang==='ar'?'تمت إضافة المالك واختياره للعقد':'Owner added and selected for the contract')
    await refresh({silent:true})
-  }catch(e){setOwnerError(e.message||String(e))}
+  }catch(e){setOwnerError(partyRoleError(e,lang))}
   finally{setOwnerBusy(false)}
  }
  const submit=async e=>{
@@ -97,12 +98,12 @@ export default function MasterManagement({kind}){
    if(kind==='clients')setFilterClient('')
    else if(saved.client_id)setFilterClient(saved.client_id)
    setFilterStatus('');setSearch('')
-  }catch(e){setError(e.message)}
+  }catch(e){setError(partyRoleError(e,lang))}
  }
  const archive=async row=>{
   const next=row.status==='archived'?'active':'archived'
   if(!confirm(t(next==='archived'?'confirmArchive':'confirmRestore')))return
-  try{await persist({...row,status:next},row.id);setSuccess(t('saved'))}catch(e){setError(e.message)}
+  try{await persist({...row,status:next},row.id);setSuccess(t('saved'))}catch(e){setError(partyRoleError(e,lang))}
  }
  const options=(key)=>{
   if(key==='status')return statuses[kind].map(v=>({id:v,label:t(v)}))
@@ -151,14 +152,14 @@ export default function MasterManagement({kind}){
     <label className="span-2">{lang==='ar'?'اسم المالك':'Owner name'}<input autoFocus required value={ownerForm.name} disabled={ownerBusy} onChange={e=>setOwnerForm(f=>({...f,name:e.target.value}))}/></label>
     <label>{lang==='ar'?'البريد الإلكتروني — اختياري':'Email — optional'}<input type="email" value={ownerForm.email} disabled={ownerBusy} onChange={e=>setOwnerForm(f=>({...f,email:e.target.value}))}/></label>
     <label>{lang==='ar'?'الهاتف — اختياري':'Phone — optional'}<input type="tel" value={ownerForm.phone} disabled={ownerBusy} onChange={e=>setOwnerForm(f=>({...f,phone:e.target.value}))}/></label>
-    <label className="span-2">{lang==='ar'?'شعار المالك — اختياري':'Owner logo — optional'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={ownerBusy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setOwnerBusy(true);setOwnerError('');try{const logo=await readOwnerLogo(file);setOwnerForm(f=>({...f,logo_url:logo}))}catch(e){setOwnerError(e.message)}finally{setOwnerBusy(false)}}}/></label>
+    <label className="span-2">{lang==='ar'?'شعار المالك — اختياري':'Owner logo — optional'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={ownerBusy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setOwnerBusy(true);setOwnerError('');try{const logo=await readOwnerLogo(file);setOwnerForm(f=>({...f,logo_url:logo}))}catch(e){setOwnerError(partyRoleError(e,lang))}finally{setOwnerBusy(false)}}}/></label>
     {ownerLogoSource(ownerForm.logo_url)&&<div className="span-2"><img src={ownerLogoSource(ownerForm.logo_url)} alt={lang==='ar'?'شعار المالك':'Owner logo'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn secondary" disabled={ownerBusy} onClick={()=>setOwnerForm(f=>({...f,logo_url:''}))}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}
     <div className="form-actions"><button type="button" className="btn secondary" disabled={ownerBusy} onClick={()=>setOwnerOpen(false)}>{lang==='ar'?'العودة للعقد':'Back to contract'}</button><button className="btn primary" disabled={ownerBusy}>{ownerBusy?t('loading'):(lang==='ar'?'حفظ المالك والمتابعة':'Save owner and continue')}</button></div>
    </form>:<form onSubmit={submit} className="form-grid">
    <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     {error&&<div className="alert error span-2" role="alert">{error}</div>}
     {cfg.fields.map(renderField)}
-    {kind==='clients'&&<div className="span-2"><label>{lang==='ar'?'شعار المالك — يظهَر في التقارير والجواز والتاق والمستندات':'Owner logo — shared by reports, passports, tags and documents'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async e=>{try{const file=e.target.files?.[0];if(file)set('logo_url',await readOwnerLogo(file))}catch(e){setError(e.message)}}}/></label><label>{lang==='ar'?'أو رابط HTTPS للشعار':'Or logo HTTPS URL'}<input type="url" value={String(form.logo_url||'').startsWith('data:')?'':form.logo_url||''} disabled={busy} onChange={e=>set('logo_url',e.target.value)} placeholder="https://…"/></label>{ownerLogoSource(form.logo_url)&&<div style={{display:'flex',alignItems:'center',gap:12,marginTop:10}}><img src={ownerLogoSource(form.logo_url)} alt={lang==='ar'?'معاينة شعار المالك':'Owner logo preview'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn" onClick={()=>set('logo_url','')}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}</div>}
+    {kind==='clients'&&<div className="span-2"><label>{lang==='ar'?'شعار المالك — يظهَر في التقارير والجواز والتاق والمستندات':'Owner logo — shared by reports, passports, tags and documents'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async e=>{try{const file=e.target.files?.[0];if(file)set('logo_url',await readOwnerLogo(file))}catch(e){setError(partyRoleError(e,lang))}}}/></label><label>{lang==='ar'?'أو رابط HTTPS للشعار':'Or logo HTTPS URL'}<input type="url" value={String(form.logo_url||'').startsWith('data:')?'':form.logo_url||''} disabled={busy} onChange={e=>set('logo_url',e.target.value)} placeholder="https://…"/></label>{ownerLogoSource(form.logo_url)&&<div style={{display:'flex',alignItems:'center',gap:12,marginTop:10}}><img src={ownerLogoSource(form.logo_url)} alt={lang==='ar'?'معاينة شعار المالك':'Owner logo preview'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn" onClick={()=>set('logo_url','')}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}</div>}
     <div className="form-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setOpen(false)}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>
    </form>}
   </Modal>

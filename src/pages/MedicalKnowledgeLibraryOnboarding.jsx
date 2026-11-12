@@ -1,3 +1,4 @@
+import {partyRoleError} from '../lib/partyRoleErrors'
 import {useState,useEffect} from 'react'
 import MedicalCompanyRelationships from './MedicalCompanyRelationships'
 import {useAuth} from '../context/AuthContext'
@@ -77,7 +78,7 @@ export default function MedicalKnowledgeLibraryOnboarding(){
     confidence:ai.confidence??null
    }))
    setOk(ar?'غير موجودة بالمكتبة؛ تم استكمال البيانات العامة تلقائيًا للمراجعة':'Not in library; public data was completed automatically for review')
-  }catch(e){setError(e.message)}
+  }catch(e){setError(partyRoleError(e,lang))}
   finally{setBusy(false)}
  }
 
@@ -91,7 +92,7 @@ export default function MedicalKnowledgeLibraryOnboarding(){
    const row=rows.find(x=>x.id===id)||rows[0]
    if(row)setForm({...blank,...row,specialties:row.specialties||[],manufacturers:row.manufacturers||[]})
    setOk(ar?'تم الحفظ في المكتبة وظهر التحديث مباشرة':'Saved to Medical Library and refreshed immediately')
-  }catch(e){setError(e.message)}
+  }catch(e){setError(partyRoleError(e,lang))}
   finally{setBusy(false)}
  }
 
@@ -126,7 +127,7 @@ export default function MedicalKnowledgeLibraryOnboarding(){
    try{ localStorage.setItem('basmat.medical.knowledgeTenant',JSON.stringify(x)) }catch{}
    setBundle(await medRelationshipBundle(x.organization_id))
    setOk(ar?'تم حفظ الشركة في المكتبة وإنشاء/ربط شركة الصيانة بنجاح':'Company saved to library and maintenance tenant linked successfully')
-  }catch(e){setError(e.message)}
+  }catch(e){setError(partyRoleError(e,lang))}
   finally{setBusy(false)}
  }
 

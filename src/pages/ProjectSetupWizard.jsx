@@ -1,3 +1,4 @@
+import {partyRoleError} from '../lib/partyRoleErrors'
 import {useEffect,useRef,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
@@ -60,7 +61,7 @@ export default function ProjectSetupWizard(){
    const current={sites:scope.siteIds.length,team:scope.members.length,assets:metrics[0].status==='fulfilled'?metrics[0].value:null,ppm:metrics[1].status==='fulfilled'?metrics[1].value:null}
    setCounts(current);setStage(setupNextStep({project:scope.project,...current})??2)
    if(metrics.some(m=>m.status==='rejected'))setWarning(ar?'تعذر التحقق من بعض البيانات؛ لم تُحتسب كبيانات ناقصة.':'Some checks are unavailable; they have not been counted as missing.')
-  }catch(e){if(ticket===request.current){setProjects([]);setProjectId('');setError(setupErrorMessage(e,lang))}}
+  }catch(e){if(ticket===request.current){setProjects([]);setProjectId('');setError(partyRoleError(e,lang,setupErrorMessage(e,lang)))}}
   finally{if(ticket===request.current)setBusy(false)}
  }
  useEffect(()=>{
@@ -78,7 +79,7 @@ export default function ProjectSetupWizard(){
   e.preventDefault();if(!org||!form.name.trim()||!form.client_id)return
   setSaving(true);setError('')
   try{const id=await createSetupProject({...form,name:form.name.trim(),organization_id:org});setCreating(false);await reload(id)}
-  catch(e){setError(setupErrorMessage(e,lang))}finally{setSaving(false)}
+  catch(e){setError(partyRoleError(e,lang,setupErrorMessage(e,lang)))}finally{setSaving(false)}
  }
  const labels=ar?['المشروع والجهات','المواقع والأجهزة','فريق التشغيل والوقائية']:['Project and parties','Sites and devices','Team and preventive maintenance']
  const hints=ar?['حدد المالك والمشروع','أين الأجهزة وما هي؟','من ينفذ؟ وما جدول الصيانة؟']:['Identify the owner and project','Where are the devices?','Who maintains them, and when?']

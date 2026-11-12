@@ -1,3 +1,4 @@
+import {partyRoleError} from '../lib/partyRoleErrors'
 import {useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
@@ -41,7 +42,7 @@ export default function MedicalServiceCompaniesLibrary(){
     return (data?.projects||[]).map(p=>({...p,organization_id:p.organization_id||org.id}))
    }))
    setProjects(batches.flat())
-  }catch(e){setError(e.message)}
+  }catch(e){setError(partyRoleError(e,lang))}
  }
 
  useEffect(()=>{load()},[])
@@ -98,7 +99,7 @@ export default function MedicalServiceCompaniesLibrary(){
    if(error)throw error
    setSuccess(ar?'تم حفظ شركة الصيانة الطبية.':'Medical maintenance company saved.')
    setForm(emptyForm);await load()
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  const archive=async(x,active)=>{
@@ -108,7 +109,7 @@ export default function MedicalServiceCompaniesLibrary(){
    if(error)throw error
    setSuccess(ar?(active?'تمت إعادة التفعيل.':'تمت الأرشفة.'):(active?'Reactivated.':'Archived.'))
    await load()
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  const linkCompany=async()=>{
@@ -124,7 +125,7 @@ export default function MedicalServiceCompaniesLibrary(){
    })
    if(error)throw error
    setSuccess(ar?'تم ربط شركة الصيانة الطبية بالمشروع.':'Medical maintenance company linked to the project.')
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(partyRoleError(e,lang))}finally{setBusy(false)}
  }
 
  const availableProjects=projects.filter(x=>!link.organization_id||x.organization_id===link.organization_id)
