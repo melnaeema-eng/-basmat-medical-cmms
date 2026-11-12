@@ -51,7 +51,7 @@ export function percentage(n,d){return d>0?Math.round(n/d*1000)/10:null}
 export function formatValue(value,lang='en'){
  if(value===null||value===undefined||value==='')return '—'
  if(typeof value==='number')return value.toLocaleString(lang==='ar'?'ar-SA':'en-US',{maximumFractionDigits:3})
- if(typeof value==='boolean')return value?'Yes':'No'
+ if(typeof value==='boolean')return lang==='ar'?(value?'نعم':'لا'):(value?'Yes':'No')
  if(typeof value==='object')return JSON.stringify(value)
  return String(value)
 }

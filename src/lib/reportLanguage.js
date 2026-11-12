@@ -1,6 +1,6 @@
 export const reportDict={
 en:{
- owner_name:"Owner",site_name:"Site / hospital",asset_name:"Device",visit_number:"Visit number",assigned_technician_name:"Assigned technician",stock_owner_name:"Stock owner",
+ owner_name:"Owner",site_name:"Site / hospital",asset_name:"Medical device",visit_number:"Visit number",assigned_technician_name:"Assigned technician",stock_owner_name:"Stock owner",
  reportDefOverview:"Work orders are counted by creation date, PPM by due date, and labor by interval start. Statuses are current, not historical.",
  reportDefWorkOrders:"Work orders created in the selected period. Current statuses and recorded response/completion durations are shown; SLA compliance is not inferred.",
  reportDefPPM:"Generated, non-cancelled PPM jobs due in the period. Closed / due is not a full contractual compliance measure because missing schedules are not inferred.",
@@ -87,12 +87,12 @@ en:{
  reportLimits:'Date range is limited to 367 calendar days. Export is limited to 50,000 rows. Split larger reports into smaller ranges.',
  reportPartial:'The export contains all returned rows for this filter; it is not an immutable accounting snapshot.',
  reportNoPermission:'You do not have access to these reports.',reportExcelError:'Excel export failed',
- reportExportName:'Basmat Facilities Report',reportStatus:'Status',reportTotal:'Total',reportCount:'Count',
+ reportExportName:'Basmat Medical Equipment Report',reportStatus:'Status',reportTotal:'Total',reportCount:'Count',
  reportMinutes:'Minutes',reportDate:'Date',reportAction:'Action',reportValue:'Value',reportFilter:'Filter',
  reportUnknown:'Unknown',reportOpenDetails:'Open work order'
 },
 ar:{
- owner_name:"الجهة المالكة",site_name:"الموقع / المستشفى",asset_name:"الجهاز",visit_number:"رقم الزيارة",assigned_technician_name:"الفني المسند",stock_owner_name:"مالك المخزون",
+ owner_name:"الجهة المالكة",site_name:"الموقع / المستشفى",asset_name:"الجهاز الطبي",visit_number:"رقم الزيارة",assigned_technician_name:"الفني المسند",stock_owner_name:"مالك المخزون",
  reportDefOverview:"تُحسب أوامر العمل حسب تاريخ الإنشاء، والصيانة الوقائية حسب الاستحقاق، وساعات العمل حسب بداية الفترة. الحالات حالية وليست تاريخية.",
  reportDefWorkOrders:"أوامر العمل المنشأة خلال الفترة. تظهر الحالات الحالية وأزمنة الاستجابة والإكمال المسجلة، دون افتراض الالتزام باتفاقيات SLA.",
  reportDefPPM:"مهام الصيانة الوقائية المجدولة وغير الملغاة والمستحقة خلال الفترة. نسبة المغلقة إلى المستحقة ليست مؤشر التزام تعاقدي كاملًا لعدم احتساب الجداول غير المنشأة.",
@@ -179,7 +179,7 @@ ar:{
  reportLimits:'الفترة القصوى 367 يومًا تقويميًا، والتصدير حتى 50,000 صف. قسم التقارير الكبيرة إلى فترات أصغر.',
  reportPartial:'يشمل التصدير جميع الصفوف المسترجعة للفلاتر المحددة، وليس لقطة محاسبية ثابتة.',
  reportNoPermission:'ليست لديك صلاحية الوصول إلى التقارير.',reportExcelError:'تعذر تصدير Excel',
- reportExportName:'تقرير بصمة النوابغ للمرافق',reportStatus:'الحالة',reportTotal:'الإجمالي',reportCount:'العدد',
+ reportExportName:'تقرير بصمة النوابغ للأجهزة الطبية',reportStatus:'الحالة',reportTotal:'الإجمالي',reportCount:'العدد',
  reportMinutes:'دقيقة',reportDate:'التاريخ',reportAction:'الإجراء',reportValue:'القيمة',reportFilter:'الفلتر',
  reportUnknown:'غير معروف',reportOpenDetails:'فتح أمر العمل'
 }}

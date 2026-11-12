@@ -5,6 +5,7 @@ import {ownerLogoSource} from '../lib/ownerLogo'
 import {useAuth} from '../context/AuthContext'
 import {ownerReportPeriod} from '../lib/ownerReportModel'
 import {displayReportValue} from '../lib/reportDisplay'
+import {ownerReportStatus} from '../lib/ownerReportPresentation.js'
 import {useLanguage} from '../i18n/LanguageContext'
 import {
  loadOwnerReportDirectory,loadBranding,saveBranding,loadOwnerReportData,archiveOwnerReport,loadArchivedReports,
@@ -366,7 +367,7 @@ export function ReportDocument({report,brand,reportType,start,end,ar,archived=fa
   ?(ar?'لا توجد أعمال متاحة لهذا الحساب ضمن النطاق والفترة المختارين. لا يمكن اعتبار ذلك نسبة إنجاز صفرية. راجع العقد أو اختر «كل أعمال المالك لدى الشركة» لإدراج أعماله غير المرتبطة بعقد.':'No work is available to this account for the selected scope and period. This does not represent a zero completion rate. Check the contract or select all owner work to include work without a contract.')
   :(ar?`خلال الفترة ${start} — ${end} سُجل ${m.totalWO??'—'} أمر عمل؛ أُنجز فنياً ${m.completedWO??'—'} وأُغلق ${m.closedWO??'—'}، بنسبة إغلاق ${percent(m.woClosure)} بعد استبعاد الملغى. سُجلت ${m.totalPPM??'—'} مهمة وقائية للفترة، ونسبة تنفيذ المهام المستحقة حتى ${report.asOf||end} هي ${percent(m.ppmCompliance)}. رصيد الأعمال المفتوحة يشمل ${m.openWO??'—'} أمر عمل، منها ${m.overdueWO??'—'} متأخر.`:`During ${start} — ${end}, ${m.totalWO??'—'} work orders were recorded; ${m.completedWO??'—'} were technically completed and ${m.closedWO??'—'} closed (${percent(m.woClosure)}). There are ${m.totalPPM??'—'} preventive jobs in the period; execution of jobs due by ${report.asOf||end} is ${percent(m.ppmCompliance)}. The open backlog is ${m.openWO??'—'}, including ${m.overdueWO??'—'} overdue work orders.`)
  const maxStatus=Math.max(1,...(report.woStatus||[]).map(x=>x[1]))
- return <div className="owner-report-document">
+ return <div className="owner-report-document" lang={ar?'ar':'en'} dir={ar?'rtl':'ltr'}>
   <div className="or-cover" style={{borderTop:`8px solid ${brand.primary_color||'#0b2b4b'}`}}>
    <div className="or-logos">
     <div className="or-logo">{brand.owner_logo_data?<img src={brand.owner_logo_data} alt="Owner logo"/>:<div style={{height:12}}/>}<div><b>{ar?brand.owner_name_ar:brand.owner_name_en}</b></div></div>
@@ -393,14 +394,14 @@ export function ReportDocument({report,brand,reportType,start,end,ar,archived=fa
   </div>
 
   {!!(report.woStatus||[]).length&&<div className="or-section"><h2>{ar?'توزيع أوامر العمل':'Work Order Distribution'}</h2><div className="facility-panel or-chart">
-   {report.woStatus.map(([k,v])=><div className="or-bar" key={k}><span>{titleCase(k)}</span><div><i style={{width:`${Math.max(3,Math.round(v/maxStatus*100))}%`}}/></div><b>{v}</b></div>)}
+   {report.woStatus.map(([k,v])=><div className="or-bar" key={k}><span>{ownerReportStatus(k,ar?'ar':'en')}</span><div><i style={{width:`${Math.max(3,Math.round(v/maxStatus*100))}%`}}/></div><b>{v}</b></div>)}
   </div></div>}
 
-  {!!report.wo?.length&&<div className="or-section"><h2>{ar?'تفاصيل أوامر العمل':'Work order details'}</h2><ReportTable rows={report.wo} cols={[
-   ['work_order_number',ar?'رقم أمر العمل':'WO No.'],['title',ar?'العنوان':'Title'],['asset_label',ar?'الجهاز':'Device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['priority',ar?'الأولوية':'Priority'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
+  {!!report.wo?.length&&<div className="or-section"><h2>{ar?'تفاصيل أوامر العمل':'Work order details'}</h2><ReportTable ar={ar} rows={report.wo} cols={[
+   ['work_order_number',ar?'رقم أمر العمل':'WO No.'],['title',ar?'العنوان':'Title'],['asset_label',ar?'الجهاز الطبي':'Medical device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['priority',ar?'الأولوية':'Priority'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
   ]}/></div>}
-  {!!report.ppm?.length&&<div className="or-section"><h2>{ar?'الصيانة الوقائية':'Preventive Maintenance'}</h2><ReportTable rows={report.ppm} cols={[
-   ['job_number',ar?'رقم المهمة':'Job No.'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
+  {!!report.ppm?.length&&<div className="or-section"><h2>{ar?'الصيانة الوقائية':'Preventive Maintenance'}</h2><ReportTable ar={ar} rows={report.ppm} cols={[
+   ['job_number',ar?'رقم المهمة':'Job No.'],['asset_label',ar?'الجهاز الطبي':'Medical device'],['site_name',ar?'الموقع':'Site'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']
   ]}/></div>}
 
   <OwnerReportInsights report={report} ar={ar} reportType={reportType}/>
@@ -409,12 +410,11 @@ export function ReportDocument({report,brand,reportType,start,end,ar,archived=fa
  </div>
 }
 function Kpi({l,v,tone}){return <div className="or-kpi"><span>{l}</span><strong style={tone?{color:tone}:null}>{v}</strong></div>}
-function ReportTable({rows,cols}){
- const {lang}=useLanguage(),ar=lang==='ar'
- const statuses={draft:'مسودة',assigned:'مسند',accepted:'مقبول',in_progress:'قيد التنفيذ',on_hold:'متوقف',completed:'منجز فنياً',approved:'معتمد',closed:'مغلق',cancelled:'ملغى',scheduled:'مجدول',in_service:'في الخدمة',out_of_service:'خارج الخدمة',unknown:'غير مسجل',P1:'حرجة',P2:'عالية',P3:'متوسطة',P4:'منخفضة'}
+function ReportTable({rows,cols,ar}){
+ const lang=ar?'ar':'en'
  const cell=(row,key)=>{
   const value=row[key]
-  if(ar&&statuses[value]&&['status','operational_status','priority'].includes(key))return statuses[value]
+  if(['status','operational_status','priority'].includes(key))return ownerReportStatus(value,lang)
   if(/(_date|_at)$/.test(key))return displayReportValue(value,key,lang)
   return safe(value)
  }
@@ -424,8 +424,8 @@ function OwnerReportInsights({report,ar,reportType}){
  if(report.metrics?.totalWO===0&&report.metrics?.totalPPM===0&&!report.backlog?.length&&!report.assets?.length&&!report.upcoming?.length)return <p className="facility-panel">{ar?'لا تتوفر سجلات كافية للتحليل ضمن هذا النطاق. اختر العقد الصحيح أو نطاق جميع أعمال المالك، ثم أعد إنشاء التقرير.':'There are insufficient records to analyze this scope. Select the correct contract or all owner work, then regenerate the report.'}</p>
  if(!report.trend)return <p className="muted">{ar?'هذه النسخة المؤرشفة لا تتضمن التحليلات التفصيلية الجديدة.':'This archived version does not contain the newer detailed analysis.'}</p>
  const section=(title,content)=><div className="or-section"><h2>{title}</h2>{content}</div>
- const refCols=[['work_order_number',ar?'أمر العمل':'Work order'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']]
- const dueCols=[['job_number',ar?'مهمة الوقائية':'PPM job'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['due_date',ar?'الاستحقاق':'Due']]
+ const refCols=[['work_order_number',ar?'أمر العمل':'Work order'],['asset_label',ar?'الجهاز الطبي':'Medical device'],['site_name',ar?'الموقع':'Site'],['status',ar?'الحالة':'Status'],['due_date',ar?'الاستحقاق':'Due']]
+ const dueCols=[['job_number',ar?'مهمة الوقائية':'PPM job'],['asset_label',ar?'الجهاز الطبي':'Medical device'],['site_name',ar?'الموقع':'Site'],['due_date',ar?'الاستحقاق':'Due']]
  const overdue=[...(report.overdueWO||[]).map(r=>({...r,reference:r.work_order_number,kind:ar?'أمر عمل':'Work order'})),...(report.overduePPM||[]).map(r=>({...r,reference:r.job_number,kind:ar?'وقائية':'Preventive'}))]
  const followup=[]
  if(report.metrics.criticalWO)followup.push(ar?`متابعة ${report.metrics.criticalWO} أمر عمل مفتوح بأولوية حرجة مع المشرف.`:`Follow up ${report.metrics.criticalWO} critical open work orders with the supervisor.`)
@@ -434,13 +434,13 @@ function OwnerReportInsights({report,ar,reportType}){
  if(report.awaitingClose?.length)followup.push(ar?'استكمال المراجعات والاعتمادات المطلوبة للأعمال المنجزة فنياً قبل إغلاقها.':'Complete the required reviews and acceptance steps for technically completed work before closure.')
  if(report.warranty?.length)followup.push(ar?'مراجعة تواريخ انتهاء الضمان المبينة في التقرير قبل تكليف صيانة خارج نطاقه.':'Review the warranty expiry dates before authorizing service outside warranty coverage.')
  return <>
-  {section(ar?(reportType==='weekly'?'الإنجاز اليومي خلال الأسبوع':reportType==='annual'?'حصيلة الأداء حسب شهور السنة':'اتجاه الإنجاز خلال أسابيع الفترة'):(reportType==='weekly'?'Daily results for the week':reportType==='annual'?'Monthly results for the year':'Weekly results within the period'),<><ReportTable rows={report.trend} cols={[["period",ar?'الفترة':'Period'],['work_orders',ar?'أوامر عمل مسجلة':'Recorded work orders'],['closed',ar?'مغلقة حالياً':'Currently closed'],['ppm_due',ar?'وقائية مجدولة':'Scheduled PPM'],['ppm_done',ar?'وقائية منفذة':'Executed PPM']]}/><p className="muted">{ar?'كل صف يجمع الأعمال وفق تاريخ إنشائها أو استحقاقها؛ الإغلاق حسب الحالة الحالية.':'Rows group work by creation or due date; closure uses current status.'}</p></>)}
-  {section(ar?'المتأخرات التي تتطلب متابعة':'Overdue work requiring follow-up',<ReportTable rows={overdue} cols={[["reference",ar?'المرجع':'Reference'],['kind',ar?'النوع':'Type'],['asset_label',ar?'الجهاز':'Device'],['site_name',ar?'الموقع':'Site'],['due_date',ar?'الاستحقاق':'Due']]}/>)}
-  {section(ar?'الأعمال المتوقفة وأسبابها المسجلة':'Work on hold and recorded reasons',<ReportTable rows={report.held||[]} cols={[...refCols,['hold_reason',ar?'سبب التوقف المسجل':'Recorded hold reason']]}/>)}
-  {section(ar?'أعمال منجزة فنياً ولم تُغلق':'Technically completed work awaiting closure',<ReportTable rows={report.awaitingClose||[]} cols={refCols}/>)}
-  {section(ar?(reportType==='weekly'?'خطة الأسبوع التالي المسجلة':reportType==='annual'?'الوقائية المسجلة للفترة التالية':'خطة الشهر التالي المسجلة'):'Recorded preventive work for the next period',<><ReportTable rows={report.upcoming||[]} cols={dueCols}/><p className="muted">{ar?'تُعرض المهام المولدة فعلياً فقط؛ عدم وجود مهام لا يثبت اكتمال خطة الصيانة.':'Only generated jobs are shown. No jobs does not establish that scheduling is complete.'}</p></>)}
-  {reportType!=='weekly'&&section(ar?'أكثر الأجهزة تكراراً لطلبات العمل — أعلى 10':'Devices with repeated work orders — top 10',<><ReportTable rows={report.repeatedAssets||[]} cols={[["asset_label",ar?'الجهاز':'Device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['count',ar?'طلبات غير وقائية':'Non-PPM work orders']]}/><p className="muted">{ar?'التكرار مؤشر للمتابعة، وليس تشخيصاً فنياً أو قياساً للاعتمادية. تُستبعد أوامر العمل المرتبطة بمهام الوقائية من هذا الجدول.':'Repeat work is a follow-up signal, not a diagnosis or a reliability measure. Work orders linked to PPM jobs are excluded.'}</p></>)}
-  {section(ar?'الأجهزة المشمولة بالنطاق وتواريخ الضمان':'Devices within scope and warranty dates',<><div className="or-kpis"><Kpi l={ar?'الأجهزة المسجلة بالنطاق':'Recorded devices in scope'} v={report.metrics.assets}/><Kpi l={ar?'الأجهزة الحرجة':'Critical devices'} v={report.metrics.criticalAssets}/><Kpi l={ar?'ضمان ينتهي خلال الفترة':'Warranty expiring in period'} v={report.metrics.warrantyEnding}/></div><ReportTable rows={report.warranty||[]} cols={[["asset_label",ar?'الجهاز':'Device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['warranty_end',ar?'نهاية الضمان':'Warranty end']]}/>{reportType==='annual'&&<ReportTable rows={(report.assetStatus||[]).map(([operational_status,count])=>({operational_status,count}))} cols={[["operational_status",ar?'حالة الجهاز المسجلة':'Recorded device status'],['count',ar?'العدد':'Count']]}/>}<p className="muted">{ar?'في نطاق العقد تشمل قائمة الأجهزة ما ارتبط بأعماله أو بمواقع مسندة له. يلزم سجل تغطية تعاقدية كامل لتأكيد شمول جميع الأجهزة.':'For a contract, devices are drawn from linked work and contract-assigned sites. A full coverage register is needed to confirm every covered device.'}</p></>)}
+  {section(ar?(reportType==='weekly'?'الإنجاز اليومي خلال الأسبوع':reportType==='annual'?'حصيلة الأداء حسب شهور السنة':'اتجاه الإنجاز خلال أسابيع الفترة'):(reportType==='weekly'?'Daily results for the week':reportType==='annual'?'Monthly results for the year':'Weekly results within the period'),<><ReportTable ar={ar} rows={report.trend} cols={[["period",ar?'الفترة':'Period'],['work_orders',ar?'أوامر عمل مسجلة':'Recorded work orders'],['closed',ar?'مغلقة حالياً':'Currently closed'],['ppm_due',ar?'وقائية مجدولة':'Scheduled PPM'],['ppm_done',ar?'وقائية منفذة':'Executed PPM']]}/><p className="muted">{ar?'كل صف يجمع الأعمال وفق تاريخ إنشائها أو استحقاقها؛ الإغلاق حسب الحالة الحالية.':'Rows group work by creation or due date; closure uses current status.'}</p></>)}
+  {section(ar?'المتأخرات التي تتطلب متابعة':'Overdue work requiring follow-up',<ReportTable ar={ar} rows={overdue} cols={[["reference",ar?'المرجع':'Reference'],['kind',ar?'النوع':'Type'],['asset_label',ar?'الجهاز الطبي':'Medical device'],['site_name',ar?'الموقع':'Site'],['due_date',ar?'الاستحقاق':'Due']]}/>)}
+  {section(ar?'الأعمال المتوقفة وأسبابها المسجلة':'Work on hold and recorded reasons',<ReportTable ar={ar} rows={report.held||[]} cols={[...refCols,['hold_reason',ar?'سبب التوقف المسجل':'Recorded hold reason']]}/>)}
+  {section(ar?'أعمال منجزة فنياً ولم تُغلق':'Technically completed work awaiting closure',<ReportTable ar={ar} rows={report.awaitingClose||[]} cols={refCols}/>)}
+  {section(ar?(reportType==='weekly'?'خطة الأسبوع التالي المسجلة':reportType==='annual'?'الوقائية المسجلة للفترة التالية':'خطة الشهر التالي المسجلة'):'Recorded preventive work for the next period',<><ReportTable ar={ar} rows={report.upcoming||[]} cols={dueCols}/><p className="muted">{ar?'تُعرض المهام المولدة فعلياً فقط؛ عدم وجود مهام لا يثبت اكتمال خطة الصيانة.':'Only generated jobs are shown. No jobs does not establish that scheduling is complete.'}</p></>)}
+  {reportType!=='weekly'&&section(ar?'أكثر الأجهزة تكراراً لطلبات العمل — أعلى 10':'Devices with repeated work orders — top 10',<><ReportTable ar={ar} rows={report.repeatedAssets||[]} cols={[["asset_label",ar?'الجهاز الطبي':'Medical device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['count',ar?'طلبات غير وقائية':'Non-PPM work orders']]}/><p className="muted">{ar?'التكرار مؤشر للمتابعة، وليس تشخيصاً فنياً أو قياساً للاعتمادية. تُستبعد أوامر العمل المرتبطة بمهام الوقائية من هذا الجدول.':'Repeat work is a follow-up signal, not a diagnosis or a reliability measure. Work orders linked to PPM jobs are excluded.'}</p></>)}
+  {section(ar?'الأجهزة الطبية المشمولة بالنطاق وتواريخ الضمان':'Medical devices within scope and warranty dates',<><div className="or-kpis"><Kpi l={ar?'الأجهزة الطبية المسجلة بالنطاق':'Recorded medical devices in scope'} v={report.metrics.assets}/><Kpi l={ar?'الأجهزة الطبية الحرجة':'Critical medical devices'} v={report.metrics.criticalAssets}/><Kpi l={ar?'ضمان ينتهي خلال الفترة':'Warranty expiring in period'} v={report.metrics.warrantyEnding}/></div><ReportTable ar={ar} rows={report.warranty||[]} cols={[["asset_label",ar?'الجهاز الطبي':'Medical device'],['serial_number',ar?'السيريال':'Serial'],['site_name',ar?'الموقع':'Site'],['warranty_end',ar?'نهاية الضمان':'Warranty end']]}/>{reportType==='annual'&&<ReportTable ar={ar} rows={(report.assetStatus||[]).map(([operational_status,count])=>({operational_status,count}))} cols={[["operational_status",ar?'حالة الجهاز الطبي المسجلة':'Recorded device status'],['count',ar?'العدد':'Count']]}/>}<p className="muted">{ar?'في نطاق العقد تشمل قائمة الأجهزة ما ارتبط بأعماله أو بمواقع مسندة له. يلزم سجل تغطية تعاقدية كامل لتأكيد شمول جميع الأجهزة.':'For a contract, devices are drawn from linked work and contract-assigned sites. A full coverage register is needed to confirm every covered device.'}</p></>)}
   {section(ar?'أولويات المتابعة المقترحة للمالك':'Suggested owner follow-up priorities',<div className="facility-panel">{followup.length?<ul>{followup.map(item=><li key={item} style={{marginBottom:10}}>{item}</li>)}</ul>:<p>{ar?'لم تظهر أولويات آلية من البنود المحملة. راجع اكتمال السجلات والجدولة قبل الاعتماد.':'No automatic priorities were identified in the returned records. Review data and scheduling completeness before approval.'}</p>}</div>)}
  </>
 }
