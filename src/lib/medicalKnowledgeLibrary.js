@@ -1,3 +1,4 @@
+import {requestCompanyWebLookup} from './companyWebLookup'
 import {supabase} from './supabaseClient'
 
 export async function medicalLibrarySearch(query){
@@ -6,10 +7,8 @@ export async function medicalLibrarySearch(query){
  return data||[]
 }
 
-export async function medicalCompanySmartLookup(name){
- const {data,error}=await supabase.functions.invoke('medical-company-smart-lookup',{body:{name}})
- if(error)throw error
- return data||{}
+export async function medicalCompanySmartLookup(name,website='',lang='ar'){
+ return requestCompanyWebLookup(body=>supabase.functions.invoke('medical-company-smart-lookup',{body}),name,website,lang)
 }
 
 export async function medicalLibrarySave(v){
@@ -49,3 +48,4 @@ export async function medRelationshipBundle(organization_id){
  if(error)throw error
  return data||{clients:[],sites:[],projects:[],assets:[]}
 }
+

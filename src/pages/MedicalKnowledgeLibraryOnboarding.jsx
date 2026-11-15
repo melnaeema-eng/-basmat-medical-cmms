@@ -1,3 +1,4 @@
+import {companyWebDraft,companySourceLinks} from '../lib/companyWebLookup'
 import {useState,useEffect} from 'react'
 import MedicalCompanyRelationships from './MedicalCompanyRelationships'
 import {useAuth} from '../context/AuthContext'
@@ -18,7 +19,7 @@ export default function MedicalKnowledgeLibraryOnboarding(){
  const {profile}=useAuth()
  const {lang}=useLanguage()
  const ar=lang==='ar'
- const [query,setQuery]=useState('')
+ const [query,setQuery]=useState(''),[website,setWebsite]=useState(''),[webCandidates,setWebCandidates]=useState([])
  const [results,setResults]=useState([])
  const [form,setForm]=useState(blank)
  const [tenant,setTenant]=useState(null)
@@ -39,47 +40,35 @@ export default function MedicalKnowledgeLibraryOnboarding(){
 
  const isSuper=!!profile?.is_super_admin
 
- const searchAndInsert=async()=>{
-  const name=query.trim()
-  if(!name)return
+ const resetTenant=()=>{setTenant(null);setBundle({clients:[],sites:[],projects:[],assets:[]});try{localStorage.removeItem('basmat.medical.knowledgeTenant')}catch{}}
+ const loadWeb=async(url)=>{
+  const name=query.trim();if(!name||busy)return
   setBusy(true);setError('');setOk('')
   try{
-   const local=await medicalLibrarySearch(name)
-   setResults(local)
+   const data=await medicalCompanySmartLookup(name,url,lang)
+   if(data.candidates?.length){setWebCandidates(data.candidates);setOk(ar?'اختر الموقع الرسمي للشركة لاستيراد بياناته.':'Choose the official company website to import its data.');return}
+   resetTenant();setForm(companyWebDraft(blank,data,name));setWebCandidates([])
+   setOk(ar?'تم استيراد البيانات العامة من الموقع دون ذكاء اصطناعي. راجعها ثم احفظها في المكتبة.':'Public data imported without AI. Review it, then save to the library.')
+  }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
+ const searchAndInsert=async()=>{
+  const name=query.trim();if(!name||busy)return
+  if(website.trim()){await loadWeb(website.trim());return}
+  setBusy(true);setError('');setOk('');setWebCandidates([])
+  try{
+   const local=await medicalLibrarySearch(name);setResults(local)
    if(local.length){
-    const r=local[0]
-    setForm({
-     ...blank,...r,
-     specialties:r.specialties||[],
-     manufacturers:r.manufacturers||[],
-     logo_source:r.logo_source||'library'
-    })
-    setOk(ar?'تم العثور على الشركة في المكتبة الطبية وتحميل بياناتها':'Company found in Medical Library and loaded')
+    resetTenant()
+    if(local.length===1){const r=local[0];setForm({...blank,...r,specialties:r.specialties||[],manufacturers:r.manufacturers||[],logo_source:r.logo_source||'library'});setOk(ar?'تم تحميل الشركة من المكتبة الطبية.':'Company loaded from the medical library.')}
+    else{setForm(blank);setOk(ar?'توجد شركات متشابهة؛ اختر الشركة المطلوبة أدناه.':'Several companies match; choose the correct company below.')}
     return
    }
-
-   const ai=await medicalCompanySmartLookup(name)
-   setForm(v=>({
-    ...v,
-    name_ar:ai.name_ar||'',
-    name_en:ai.name_en||name,
-    website:ai.website||'',
-    email:ai.email||'',
-    phone:ai.phone||'',
-    city:ai.city||'',
-    address:ai.address||'',
-    logo_url:ai.logo_url||'',
-    logo_source:ai.logo_url?'web_official':'',
-    specialties:Array.isArray(ai.specialties)?ai.specialties:[],
-    manufacturers:Array.isArray(ai.manufacturers)?ai.manufacturers:[],
-    source_type:'ai_web',
-    source_reference:ai.source_reference||'',
-    confidence:ai.confidence??null
-   }))
-   setOk(ar?'غير موجودة بالمكتبة؛ تم استكمال البيانات العامة تلقائيًا للمراجعة':'Not in library; public data was completed automatically for review')
-  }catch(e){setError(e.message)}
-  finally{setBusy(false)}
+   const data=await medicalCompanySmartLookup(name,'',lang)
+   setWebCandidates(data.candidates||[])
+   setOk(ar?'اختر الموقع الرسمي للشركة لاستيراد بياناته دون ذكاء اصطناعي.':'Choose the official website to import company data without AI.')
+  }catch(e){setError(e.message)}finally{setBusy(false)}
  }
+ const manual=()=>{const arName=/[\u0600-\u06ff]/.test(query);resetTenant();setForm({...blank,name_ar:arName?query.trim():'',name_en:arName?'':query.trim()});setError('');setOk(ar?'أكمل البيانات أدناه ثم احفظها في المكتبة.':'Complete the fields below, then save to the library.')}
 
  const save=async e=>{
   e.preventDefault()
@@ -136,7 +125,7 @@ export default function MedicalKnowledgeLibraryOnboarding(){
   <div className="page-head">
    <div>
     <h1>{ar?'المكتبة الطبية الذكية وإدراج الشركات':'Medical Knowledge Library & Smart Onboarding'}</h1>
-    <p className="muted">{ar?'المكتبة أولاً، ثم استكمال تلقائي عند الحاجة. لا يوجد أي fallback إلى بيانات المرافق.':'Library first, then automatic completion only when needed. No Facilities fallback.'}</p>
+    <p className="muted">{ar?'ابحث في المكتبة أو استورد بيانات الشركة من موقعها الرسمي مجانًا، ثم راجعها واحفظها.':'Search the library or import public company data from its official website for free, then review and save.'}</p>
    </div>
   </div>
 
@@ -144,22 +133,24 @@ export default function MedicalKnowledgeLibraryOnboarding(){
   {ok&&<div className="alert success">{ok}</div>}
 
   <div className="facility-panel">
-   <h2>{ar?'بحث وإدراج ذكي':'Smart Search & Insert'}</h2>
-   <div style={{display:'flex',gap:10,alignItems:'end'}}>
+   <h2>{ar?'بحث واستيراد من الإنترنت':'Web search and import'}</h2>
+   <div style={{display:'flex',gap:10,alignItems:'end',flexWrap:'wrap'}}>
     <label style={{flex:1}}>{ar?'اسم الشركة':'Company name'}
-     <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchAndInsert()}/>
+     <input value={query} disabled={busy} onChange={e=>{setQuery(e.target.value);setWebCandidates([])}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();searchAndInsert()}}}/>
     </label>
-    <button className="btn primary" disabled={busy} onClick={searchAndInsert}>{ar?'بحث وإدراج ذكي':'Smart Search & Insert'}</button>
+    <button type="button" className="btn primary" disabled={busy||!query.trim()} onClick={searchAndInsert}>{busy?(ar?'جارٍ البحث…':'Searching…'):(ar?'بحث واستيراد':'Search and import')}</button>
    </div>
+   <div style={{marginTop:14}}><label>{ar?'رابط الموقع الرسمي — اختياري للبحث المباشر':'Official website — optional for direct import'}<input type="url" dir="ltr" value={website} disabled={busy} placeholder="https://company.com" onChange={e=>setWebsite(e.target.value)}/></label><p className="muted">{ar?'دون اشتراك ذكاء اصطناعي. الحقول غير المتاحة في الموقع تبقى فارغة لتكملها.':'No AI subscription. Fields not published on the website remain empty for you to complete.'}</p><div className="row-actions"><button type="button" className="btn secondary" disabled={busy} onClick={manual}>{ar?'إضافة يدويًا':'Add manually'}</button>{query.trim()&&<a className="btn secondary" href={'https://www.bing.com/search?q='+encodeURIComponent(query+' الموقع الرسمي official website')} target="_blank" rel="noopener noreferrer">{ar?'فتح بحث الإنترنت':'Open web search'}</a>}</div></div>
+   {webCandidates.length>0&&<div style={{marginTop:14}}><h3>{ar?'اختر الموقع الرسمي الصحيح':'Choose the correct official website'}</h3>{webCandidates.map(c=><div className="row-actions" key={c.url} style={{marginBlock:8}}><span>{c.title} · {c.domain}</span><a href={c.url} target="_blank" rel="noopener noreferrer">{ar?'معاينة الموقع':'Preview website'}</a><button type="button" className="btn secondary" disabled={busy} onClick={()=>{setWebsite(c.url);loadWeb(c.url)}}>{ar?'استيراد من هذا الموقع':'Import from this website'}</button></div>)}</div>}
    {!!results.length&&<div style={{marginTop:12}}>
-    {results.map(r=><button key={r.id} type="button" className="btn secondary" style={{marginInlineEnd:8,marginBottom:8}} onClick={()=>setForm({...blank,...r,specialties:r.specialties||[],manufacturers:r.manufacturers||[]})}>
+    {results.map(r=><button key={r.id} type="button" className="btn secondary" style={{marginInlineEnd:8,marginBottom:8}} onClick={()=>{resetTenant();setForm({...blank,...r,specialties:r.specialties||[],manufacturers:r.manufacturers||[]})}}>
      {r.name_ar||r.name_en}
     </button>)}
    </div>}
   </div>
 
   <form className="facility-panel" onSubmit={save}>
-   <h2>{ar?'بيانات المكتبة':'Library Record'}</h2>
+   <h2>{ar?'بيانات المكتبة':'Library Record'}</h2>{companySourceLinks(form.source_reference).length>0&&<p>{ar?'مصادر البيانات — راجعها قبل الحفظ: ':'Data sources — review before saving: '}{companySourceLinks(form.source_reference).map(url=><a key={url} href={url} target="_blank" rel="noopener noreferrer" style={{marginInlineEnd:12}}>{new URL(url).hostname}</a>)}</p>}
 
    {form.logo_url&&<div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
     <img src={form.logo_url} alt="" style={{width:84,height:84,objectFit:'contain',border:'1px solid #ddd',borderRadius:10,padding:6}}/>
@@ -209,3 +200,4 @@ export default function MedicalKnowledgeLibraryOnboarding(){
   </>}
  </section>
 }
+
