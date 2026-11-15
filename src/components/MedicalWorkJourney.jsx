@@ -1,3 +1,5 @@
+import {NextActionCard,StageSection} from './MaintenanceFocus'
+import {maintenanceAction} from '../lib/maintenanceFocus'
 import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -81,6 +83,8 @@ export default function MedicalWorkJourney({asset,jobs=[],workOrders=[],onRefres
    const report=bundle?.eligible.find(e=>e.document_type==='technical_report'&&e.entity_type===r.entityType&&e.entity_id===r.id)
    const docs=(bundle?.documents||[]).filter(d=>(d.entity_type===r.entityType&&d.entity_id===r.id)||(d.entity_type==='approval'&&d.entity_id===owner?.id))
    const next=state.cancelled?l('ملغاة','Cancelled'):state.next===-1?l('اكتملت دورة الإنجاز','Completion journey finished'):detailedLabels[ar?'ar':'en'][state.next]
+   const executionAction=maintenanceAction({kind:r.entityType==='ppm_job'?'ppm':'work_order',status:r.status,approvalStatus:r.approval_status,assigned:!!r.assigned_to||state.steps[1],technician:r.assigned_name,lang})
+   const currentAction=state.cancelled?{title:l('العمل ملغى','Work cancelled'),terminal:true}:state.next===-1?{title:l('اكتملت دورة الإنجاز','Completion journey finished'),terminal:true}:!state.steps[3]?executionAction:{title:next,responsible:state.next===4?(owner?.status==='pending'?l('ممثل المالك','Owner representative'):l('مشرف الصيانة لإرسال التقرير أو استكمال الإعادة','Maintenance supervisor to submit the report or address rework')):l('مشرف الصيانة','Maintenance supervisor')}
    const compact=[state.steps[2],state.steps[4],state.steps[6]]
    const current=compact.findIndex(v=>!v)
    const canFinish=can(r.entityType==='ppm_job'?'ppm.approve':'corrective.approve',r.organization_id)
@@ -88,8 +92,8 @@ export default function MedicalWorkJourney({asset,jobs=[],workOrders=[],onRefres
    const canSend=state.steps[3]&&entity&&scope?.can_request&&!['pending','approved'].includes(owner?.status)
    return <article className="medical-journey-card" key={`${r.entityType}-${r.id}`}>
     <div className="medical-journey-heading"><div><span className="medical-eyebrow">{r.kind}</span><h3><Link to={r.href}>{r.reference||l('فتح سجل الصيانة','Open maintenance record')}</Link></h3><p>{r.title||asset.asset_tag}</p></div><span className="medical-state">{statuses[ar?'ar':'en'][r.status]||l('حالة غير معروفة','Unknown status')}</span></div>
-    <ol className="medical-steps medical-steps-simple" aria-label={l('مراحل الإنجاز','Completion stages')}>{labels.map((label,i)=><li key={label} className={compact[i]?'done':current===i?'current':''} aria-current={current===i?'step':undefined}><span>{compact[i]?'✓':i+1}</span>{label}</li>)}</ol>
-    <p><strong>{l('المرحلة التالية: ','Next stage: ')}</strong>{next}</p>
+    {bundle&&<NextActionCard action={currentAction} lang={lang}/>}
+    <StageSection completed label={l('سجل المراحل السابقة','Previous stage history')}><ol className="medical-steps medical-steps-simple" aria-label={l('مراحل الإنجاز','Completion stages')}>{labels.map((label,i)=><li key={label} className={compact[i]?'done':current===i?'current':''} aria-current={current===i?'step':undefined}><span>{compact[i]?'✓':i+1}</span>{label}</li>)}</ol></StageSection>
     {owner&&<p>{l('قبول المالك: ','Owner acceptance: ')}{owner.status==='approved'?l('معتمد','Approved'):owner.status==='rejected'?l('معاد للاستكمال','Returned for rework'):owner.status==='cancelled'?l('ملغى','Cancelled'):l('بانتظار المراجعة','Pending review')}{owner.decided_at?` · ${new Date(owner.decided_at).toLocaleString(ar?'ar-SA':'en-GB')}`:''}</p>}
     <div className="row-actions">
      {!state.cancelled&&bundle&&(canSend?<button className="btn primary" disabled={busy} onClick={()=>run(()=>sendToOwner(r,report))}>{l('تجهيز التقرير وإرسال للمالك','Prepare report and send to owner')}</button>
@@ -103,3 +107,4 @@ export default function MedicalWorkJourney({asset,jobs=[],workOrders=[],onRefres
   })}
  </div>
 }
+

@@ -1,3 +1,5 @@
+import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
+import {maintenanceAction,checklistFocus} from '../lib/maintenanceFocus'
 import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
 import {useEffect,useState} from 'react'
 import {Link,useNavigate,useParams} from 'react-router-dom'
@@ -10,7 +12,7 @@ const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',t
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
- const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[executionPkg,setExecutionPkg]=useState(null),[executionEvidence,setExecutionEvidence]=useState([]),[uploadingEvidence,setUploadingEvidence]=useState(false),[activeStepIndex,setActiveStepIndex]=useState(0)
+ const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[executionPkg,setExecutionPkg]=useState(null),[executionEvidence,setExecutionEvidence]=useState([]),[uploadingEvidence,setUploadingEvidence]=useState(false),[reviewStep,setReviewStep]=useState(null)
  const load=async()=>{
   setError('')
   try{
@@ -18,7 +20,7 @@ export default function PPMDetails(){
    setData(bundle);setDirectory(people);setHistory(events)
   }catch(e){setError(e.message)}
  }
- useEffect(()=>{load()},[kind,id])
+ useEffect(()=>{setReviewStep(null);load()},[kind,id])
  const row=(kind==='procedure'?data?.procedures:kind==='plan'?data?.plans:data?.jobs)?.find(x=>x.id===id)
  const ownerIdentity=useOwnerIdentity({organizationId:row?.organization_id,clientId:row?.client_id,contractId:row?.contract_id,assetId:row?.asset_id})
  const manager=row&&can('ppm.manage',row.organization_id),approver=row&&can('ppm.approve',row.organization_id)
@@ -46,11 +48,12 @@ export default function PPMDetails(){
  const steps=kind==='procedure'?data?.steps.filter(x=>x.procedure_id===id).sort((a,b)=>a.seq-b.seq)||[]:kind==='job'?(row?.procedure_snapshot?.steps||[]):[]
  const results=data?.results.filter(x=>x.job_id===id)||[]
  const resultFor=stepId=>results.find(x=>x.step_id===stepId)
+ const focus=checklistFocus(steps,results)
+ const nextAction=kind==='job'&&row?maintenanceAction({kind:'ppm',status:row.status,assigned:!!row.assigned_to,technician:directory.find(x=>x.id===row.assigned_to)?.full_name,lang,integrated:false,steps,results}):null
  const update=(stepId,key,value)=>setInputs(old=>({...old,[stepId]:{...old[stepId],[key]:value}}))
  const resultField=(s,key)=>inputs[s.id]?.[key]??resultFor(s.id)?.[key]??''
- const firstIncompleteIndex=steps.findIndex(s=>!resultFor(s.id))
  const completedStepCount=steps.filter(s=>!!resultFor(s.id)).length
- const activeJobStep=kind==='job'?steps[activeStepIndex]||steps[0]:null
+ const activeJobStep=kind==='job'?(reviewStep?steps.find(s=>s.id===reviewStep):focus.next):null
  const loadPpmExecutionEvidence=async()=>{
   if(kind!=='job'||!row?.work_order_id){
    setExecutionPkg(null);setExecutionEvidence([]);return
@@ -92,12 +95,6 @@ export default function PPMDetails(){
   }
  }
  const stepEvidence=s=>executionEvidence.filter(x=>Number(x.step_seq)===Number(s?.seq))
- useEffect(()=>{
-  if(kind!=='job'||!steps.length)return
-  const next=steps.findIndex(s=>!resultFor(s.id))
-  if(next>=0)setActiveStepIndex(next)
-  else setActiveStepIndex(Math.max(steps.length-1,0))
- },[kind,id,data?.results?.length])
  const saveResult=async s=>{
   if(busy)return
   const result=resultField(s,'result')
@@ -111,19 +108,9 @@ export default function PPMDetails(){
     comment:resultField(s,'comment')
    })
 
-   const stepIndex=steps.findIndex(x=>x.id===s.id)
-   const isLastStep=stepIndex===steps.length-1
-
-   if(isLastStep&&result!=='fail'){
-    await ppmAction('job',id,'complete',{})
-    await load()
-    setSuccess(lang==='ar'?'اكتمل التنفيذ. الخطوة التالية مراجعة المشرف ثم قبول المالك وإصدار الشهادة.':'Execution completed. Next: supervisor review, owner acceptance, then certificate issuance.')
-    return
-   }
-
    await load()
+   setReviewStep(null)
    setSuccess(t('saved'))
-   if(stepIndex>=0&&stepIndex<steps.length-1)setActiveStepIndex(stepIndex+1)
   }catch(e){
    setError(e.message)
   }finally{
@@ -148,7 +135,7 @@ export default function PPMDetails(){
     <h3>{t(kind)}</h3>
     {kind==='procedure'?details([['nameAr',row.name_ar],['nameEn',row.name_en],['frequency',t(row.frequency)],['category',name(data.categories.find(x=>x.id===row.category_id))],['manufacturer',row.manufacturer],['model',row.model],['reference',row.reference],['estimatedMinutes',row.estimated_minutes],['status',t(row.status)]]):
     kind==='plan'?details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['procedure',data.procedures.find(x=>x.id===row.procedure_id)?.code],['frequency',t(row.frequency)],['startDate',row.start_date],['nextDue',row.next_due],['intervalCount',row.interval_count],['status',t(row.status)]]):
-    details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||row.assigned_to],['workOrder',row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
+    details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
    </div>
    {kind==='procedure'&&<>
@@ -173,27 +160,21 @@ export default function PPMDetails(){
     <div className="facility-panel"><h3>{t('ppmJobs')}</h3>{data.jobs.filter(x=>x.plan_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date)).map(j=><div key={j.id} className="row-actions" style={{padding:'8px 0'}}><Link to={'/ppm/job/'+j.id}>{j.job_number}</Link><span>{j.due_date}</span><Status value={j.status}/></div>)}</div>
    </>}
    {kind==='job'&&<>
+    <NextActionCard action={nextAction} lang={lang}/>
     <div className="facility-panel"><h3>{t('actions')}</h3>
-     {manager&&['scheduled','assigned'].includes(row.status)&&<div className="form-grid"><Field label={t('assignedTo')}><Select value={assignee} onChange={setAssignee} options={options(directory.filter(x=>x.organization_id===row.organization_id),x=>x.full_name||x.email)}/></Field><div className="row-actions">{button('assign',!!assignee,{user_id:assignee},true)}</div></div>}
+     <StageSection completed={!!row.assigned_to} label={lang==='ar'?'الإسناد وتغيير الفني':'Assignment and technician changes'}>     {manager&&['scheduled','assigned'].includes(row.status)&&<div className="form-grid"><Field label={t('assignedTo')}><Select value={assignee} onChange={setAssignee} options={options(directory.filter(x=>x.organization_id===row.organization_id),x=>x.full_name||x.email)}/></Field><div className="row-actions">{button('assign',!!assignee,{user_id:assignee},true)}</div></div>}</StageSection>
      <div className="row-actions">{button('start',executor&&row.status==='assigned',{},true)}{button('complete',executor&&row.status==='in_progress'&&steps.filter(s=>s.required).every(s=>resultFor(s.id)),{},true)}{button('approve',approver&&row.status==='completed',{},true)}{button('close',approver&&row.status==='approved',{},true)}</div>
      {manager&&row.status==='completed'&&<><Field label={t('reason')}><textarea value={reason} onChange={e=>setReason(e.target.value)}/></Field>{button('reject',reason.trim().length>=5,{reason})}</>}
      <p className="muted">{t('executionNotice')}</p>
     </div>
-    <div className="facility-panel"><h3>Guided PPM | الصيانة الوقائية الموجهة</h3>
+    <StageSection completed={row.status!=='in_progress'} label={lang==='ar'?'إجراءات الصيانة ونتائجها':'Maintenance steps and results'}>    <div className="facility-panel"><h3>{lang==='ar'?'إجراء الصيانة الحالي':'Current maintenance step'}</h3>
      {!steps.length?<p>{t('noData')}</p>:<>
       <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
-       <strong>Step {Math.min(activeStepIndex+1,steps.length)} / {steps.length} | الخطوة {Math.min(activeStepIndex+1,steps.length)} من {steps.length}</strong>
-       <span className="muted">{completedStepCount}/{steps.length} Completed | مكتملة</span>
+       <strong>{lang==='ar'?'الخطوات المسجلة':'Recorded steps'}: {completedStepCount} / {steps.length}</strong>
+       <span className="muted">{lang==='ar'?'يظهر الإجراء التالي بعد الحفظ':'The next step appears after saving'}</span>
       </div>
       <div style={{height:8,borderRadius:99,background:'#e8edf3',overflow:'hidden',marginBottom:14}}>
        <div style={{height:'100%',width:`${steps.length?Math.round(completedStepCount/steps.length*100):0}%`,background:'currentColor',opacity:.65}}/>
-      </div>
-      <div className="row-actions" style={{marginBottom:14,flexWrap:'wrap'}}>
-       {steps.map((s,i)=>{
-        const done=!!resultFor(s.id)
-        const unlocked=firstIncompleteIndex<0||i<=firstIncompleteIndex
-        return <button type="button" key={s.id} disabled={!unlocked} className={'btn xs '+(i===activeStepIndex?'primary':'secondary')} onClick={()=>unlocked&&setActiveStepIndex(i)}>{done?'✓ ':''}{s.seq}</button>
-       })}
       </div>
       {activeJobStep&&<div className="facility-panel" style={{marginBlock:'12px'}}>
        <strong>{activeJobStep.seq}. {name({name_ar:activeJobStep.title_ar,name_en:activeJobStep.title_en})}</strong>
@@ -201,7 +182,7 @@ export default function PPMDetails(){
        {details([['safetyNotes',activeJobStep.safety_notes],['tools',activeJobStep.tools],['materials',activeJobStep.materials],['unit',activeJobStep.unit],['minValue',activeJobStep.min_value],['maxValue',activeJobStep.max_value]])}
        {/* PPM PHOTO EVIDENCE UI */}
        {executor&&row.status==='in_progress'&&<div className="facility-panel" style={{marginTop:12}}>
-        <strong>📷 Photo Evidence | صورة إثبات</strong>
+        <strong>{lang==='ar'?'صورة إثبات':'Photo evidence'}</strong>
         <p className="muted">{lang==='ar'?'ارفع صورة واضحة لهذه الخطوة قبل إنهاء الصيانة.':'Upload a clear photo for this step before completing the maintenance.'}</p>
         <div className="row-actions" style={{alignItems:'center',flexWrap:'wrap'}}>
          <label className={'btn secondary '+(uploadingEvidence?'disabled':'')} style={{cursor:uploadingEvidence?'not-allowed':'pointer'}}>
@@ -230,21 +211,22 @@ export default function PPMDetails(){
         <Field label={t('result')}><Select value={resultField(activeJobStep,'result')} onChange={v=>update(activeJobStep.id,'result',v)} options={[{value:'',label:t('select')},...['pass','fail',...(activeJobStep.required?[]:['na'])].map(v=>({value:v,label:t(v)}))]}/></Field>
         {activeJobStep.response_type==='reading'&&<Field label={t('reading')}><input type="number" step="any" value={resultField(activeJobStep,'reading')} onChange={e=>update(activeJobStep.id,'reading',e.target.value)}/></Field>}
         <Field label={t('comment')}><textarea value={resultField(activeJobStep,'comment')} onChange={e=>update(activeJobStep.id,'comment',e.target.value)}/></Field>
-        <div className="row-actions"><button type="button" disabled={busy||!resultField(activeJobStep,'result')} className="btn primary" onClick={()=>saveResult(activeJobStep)}>{activeStepIndex===steps.length-1?(lang==='ar'?'حفظ وإنهاء':'Save & Finish'):(lang==='ar'?'حفظ والتالي':'Save & Next')}</button></div>
+        <div className="row-actions"><button type="button" disabled={busy||!resultField(activeJobStep,'result')} className="btn primary" onClick={()=>saveResult(activeJobStep)}>{lang==='ar'?'حفظ والتالي':'Save & Next'}</button></div>
        </div>:<p><Status value={resultFor(activeJobStep.id)?.result||'not_submitted'}/> {resultFor(activeJobStep.id)?.reading??''} {resultFor(activeJobStep.id)?.comment||''}</p>}
        {resultFor(activeJobStep.id)?.result==='fail'&&(manager||executor)&&<div className="row-actions">
         {data.followups.find(f=>f.job_id===id&&f.step_id===activeJobStep.id)?<Link to={'/corrective/request/'+data.followups.find(f=>f.job_id===id&&f.step_id===activeJobStep.id).request_id}>{t('followupCreated')}</Link>:<button type="button" disabled={busy} className="btn secondary" onClick={()=>followup(activeJobStep)}>{t('followup')}</button>}
        </div>}
       </div>}
-      <div className="row-actions">
-       <button type="button" className="btn secondary" disabled={activeStepIndex<=0} onClick={()=>setActiveStepIndex(i=>Math.max(0,i-1))}>← Previous | السابق</button>
-       <button type="button" className="btn secondary" disabled={activeStepIndex>=steps.length-1||!resultFor(activeJobStep?.id)} onClick={()=>setActiveStepIndex(i=>Math.min(steps.length-1,i+1))}>Next | التالي →</button>
-      </div>
+
      </>}
      <p className="muted">{t('qaNotice')}</p>
-    </div>
+    </div></StageSection>
+    {focus.failed.map(s=><div className="maintenance-focus-failure" key={s.id} role="alert"><strong>{lang==='ar'?'نتيجة فاشلة تحتاج متابعة: ':'Failed result needs follow-up: '}{name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p>{resultFor(s.id)?.comment}</p>{(manager||executor)&&<div className="row-actions">{data.followups.find(f=>f.job_id===id&&f.step_id===s.id)?<Link to={'/corrective/request/'+data.followups.find(f=>f.job_id===id&&f.step_id===s.id).request_id}>{t('followupCreated')}</Link>:<button disabled={busy} className="btn secondary" onClick={()=>followup(s)}>{t('followup')}</button>}</div>}</div>)}
+    {focus.completed.length>0&&<StageSection completed label={(lang==='ar'?'الخطوات المسجلة السابقة':'Previously recorded steps')+' ('+focus.completed.length+')'}>{focus.completed.map(s=><div className="maintenance-saved-step" key={s.id}><strong>{s.seq}. {name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p><Status value={resultFor(s.id)?.result}/> {resultFor(s.id)?.reading??''} {resultFor(s.id)?.comment}</p>{stepEvidence(s).map(x=><button type="button" key={x.id} className="btn secondary" onClick={()=>openExecutionEvidence(x)}>{x.file_name||t('evidence')}</button>)}{executor&&row.status==='in_progress'&&<button type="button" className="btn secondary" onClick={()=>setReviewStep(s.id)}>{lang==='ar'?'مراجعة وتعديل النتيجة':'Review and edit result'}</button>}</div>)}</StageSection>}
+
    </>}
-   <div className="facility-panel"><h3>{t('history')}</h3>{history.map(e=><div key={e.id} style={{padding:'8px 0',borderBottom:'1px solid #ddd'}}><strong>{t(e.action)}</strong><p className="muted">{new Date(e.created_at).toLocaleString(lang)}</p>{e.details?.reason&&<p>{e.details.reason}</p>}</div>)}</div>
+   <StageSection completed label={lang==='ar'?'سجل الخطوات السابقة':'Previous steps'}>   <div className="facility-panel"><h3>{t('history')}</h3>{history.map(e=><div key={e.id} style={{padding:'8px 0',borderBottom:'1px solid #ddd'}}><strong>{t(e.action)}</strong><p className="muted">{new Date(e.created_at).toLocaleString(lang)}</p>{e.details?.reason&&<p>{e.details.reason}</p>}</div>)}</div></StageSection>
   </>}
  </section>
 }
+

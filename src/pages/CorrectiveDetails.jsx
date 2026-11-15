@@ -1,3 +1,5 @@
+import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
+import {maintenanceAction} from '../lib/maintenanceFocus'
 import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
 import FieldOperations from '../components/FieldOperations'
 import {useEffect,useState} from 'react'
@@ -41,40 +43,48 @@ export default function CorrectiveDetails(){
  }
  const button=(command,enabled,payload={},primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload)}>{t(command)}</button>:null
  const value=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
+ const technician=assigned.map(a=>data?.staff.find(x=>x.id===a.user_id&&x.organization_id===row?.organization_id)?.full_name).filter(Boolean).join('، ')
+ const nextAction=row&&maintenanceAction({kind,status:row.status,approvalStatus:row.approval_status,assigned:assigned.length>0,technician,lang,integrated:false})
  const fields=[['organization_id','organization','organizations'],['client_id','client','clients'],['site_id','site','sites'],['contract_id','contractNumber','contracts'],['asset_id','asset','assets']]
  return <section className="facility-module">
   <div className="page-head"><div><Link to="/corrective">← {t('corrective')}</Link><h1>{row?.request_number||row?.work_order_number||t('loading')}</h1><p className="muted">{row?.title}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
   <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
+   <NextActionCard action={nextAction} lang={lang}/>
    <div className="stats-grid facility-stats">{[['priority',t(row.priority)],['status',t(row.status)],...(kind==='work_order'?[['approvalStatus',t(row.approval_status)],['slaStatus',t(row.sla_status)]]:[])].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v}</strong></div>)}</div>
    <div className="facility-panel"><h3>{t('requestDetails')}</h3><div className="form-grid">{fields.map(([key,label,table])=><div key={key}><span className="muted">{t(label)}</span><p>{key==='asset_id'?data?.assets.find(x=>x.id===row[key])?.asset_tag:key==='contract_id'?data?.contracts.find(x=>x.id===row[key])?.contract_number:value(data?.[table].find(x=>x.id===row[key]))||'—'}</p></div>)}</div><p>{row.description}</p></div>
    {kind==='request'?<div className="facility-panel"><h3>{t('actions')}</h3>{manager&&['submitted','triaged','converted'].includes(row.status)&&<><div className="form-grid"><Field label={t('priority')}><Select value={form.priority||row.priority} onChange={v=>set('priority',v)} options={priorities.map(x=>({value:x,label:t(x)}))}/></Field></div><div className="row-actions">{button('triage',row.status==='submitted',{priority:form.priority||row.priority})}{button('convert',true,{},true)}</div></>}{manager&&['submitted','triaged'].includes(row.status)&&<><Field label={t('reason')}><textarea value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">{button('reject',true,{reason:form.reason})}{button('cancel',true,{reason:form.reason})}</div></>}</div>:
    <>
-    <div className="facility-panel"><h3>{t('assignedTo')}</h3><p>{assigned.map(a=>data.staff.find(x=>x.id===a.user_id&&x.organization_id===row.organization_id)?.full_name||a.user_id).join('، ')||t('noAssignee')}</p>
+    <StageSection completed={assigned.length>0} label={lang==='ar'?'الإسناد السابق وتعديله':'Assignment history and changes'}>    <div className="facility-panel"><h3>{t('assignedTo')}</h3><p>{assigned.map(a=>data.staff.find(x=>x.id===a.user_id&&x.organization_id===row.organization_id)?.full_name||(lang==='ar'?'فني مسند':'Assigned technician')).join('، ')||t('noAssignee')}</p>
      {manager&&['draft','assigned'].includes(row.status)&&<div className="form-grid"><Field label={t('technician')}><Select value={form.user_id} onChange={v=>set('user_id',v)} options={[{value:'',label:t('select')},...data.staff.filter(x=>x.status==='active'&&x.organization_id===row.organization_id).map(x=>({value:x.id,label:x.full_name||x.email}))]}/></Field><label><input type="checkbox" checked={form.replace} onChange={e=>set('replace',e.target.checked)}/>{t('replaceAssignments')}</label><div className="row-actions">{button('assign',!!form.user_id,{user_id:form.user_id,replace:form.replace},true)}</div></div>}
     </div>
+</StageSection>
     <div className="facility-panel"><h3>{t('actions')}</h3><div className="row-actions">
+     {button('accept',executor&&row.status==='assigned',{},true)}
+     {button('start',executor&&row.status==='accepted',{},true)}
      {button('resume',(executor||manager)&&row.status==='on_hold')}
      {button('submit_qa',manager&&row.status==='completed')}
      {button('approve',approver&&row.status==='completed'&&row.approval_status==='pending',{},true)}
      {button('close',approver&&row.status==='approved',{},true)}
     </div><p className="muted">{t('qaNotice')}</p>
-    {(manager||executor)&&['draft','assigned','accepted','in_progress','on_hold','completed','approved','closed'].includes(row.status)&&<><Field label={t('reason')}><textarea value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">
+    {(manager||executor)&&['draft','assigned','accepted','in_progress','on_hold','completed','approved','closed'].includes(row.status)&&<details className="maintenance-history"><summary>{lang==='ar'?'إجراءات أخرى أو إعادة العمل':'Other actions or rework'}</summary><Field label={t('reason')}><textarea value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">
       {button('hold',row.status==='assigned'||row.status==='accepted'||row.status==='in_progress',{reason:form.reason})}
       {button('reject_qa',manager&&row.status==='completed',{reason:form.reason})}
       {button('reopen',approver&&['approved','closed'].includes(row.status),{reason:form.reason})}
       {button('cancel',manager&&(row.status==='draft'||row.status==='assigned'||row.status==='accepted'||row.status==='on_hold'),{reason:form.reason})}
-     </div></>}
+     </div></details>}
     </div>
     {manager&&['draft','assigned'].includes(row.status)&&<div className="facility-panel"><h3>{t('setSla')}</h3><p className="muted">{t('slaNotice')}</p><div className="form-grid"><Field label={t('responseDue')}><input type="datetime-local" value={form.response_due_at} onChange={e=>set('response_due_at',e.target.value)}/></Field><Field label={t('completionDue')}><input type="datetime-local" value={form.completion_due_at} onChange={e=>set('completion_due_at',e.target.value)}/></Field></div>{button('set_sla',true,{response_due_at:form.response_due_at?new Date(form.response_due_at).toISOString():null,completion_due_at:form.completion_due_at?new Date(form.completion_due_at).toISOString():null})}</div>}
-    {(manager||executor)&&<FieldOperations workOrder={row} onRefresh={load} canExecute={executor} staff={data.staff}/>}
+    <StageSection completed={row.status!=='in_progress'} label={lang==='ar'?'سجل التنفيذ والتقرير الفني':'Execution history and technical report'}>    {(manager||executor)&&<FieldOperations workOrder={row} onRefresh={load} canExecute={executor} staff={data.staff}/>}
     <div className="facility-panel"><h3>{t('technicalRecord')}</h3>
-     {row.status!=='in_progress'||!executor?<div className="alert warning" role="status"><p>{lang==='ar'?(!executor?'تقرير التنفيذ متاح للفني المسند فقط. تأكد من اسم الفني في قسم الإسناد.':row.status==='assigned'?'اقبل أمر العمل، ثم اضغط بدء التنفيذ لفتح حقول التقرير.':row.status==='accepted'?'اضغط بدء التنفيذ لفتح حقول التقرير.':'التقرير للعرض في الحالة الحالية لأمر العمل.'):(!executor?'Only the assigned technician can enter the execution report. Check the technician assignment.':row.status==='assigned'?'Accept the work order, then start execution to enable the report.':row.status==='accepted'?'Start execution to enable the report.':'The report is read-only in the current work-order status.')}</p><div className="row-actions">{button('accept',executor&&row.status==='assigned',{},true)}{button('start',executor&&row.status==='accepted',{},true)}</div></div>:null}
+     {row.status!=='in_progress'||!executor?<div className="alert warning" role="status"><p>{lang==='ar'?(!executor?'تقرير التنفيذ متاح للفني المسند فقط. تأكد من اسم الفني في قسم الإسناد.':row.status==='assigned'?'اقبل أمر العمل، ثم اضغط بدء التنفيذ لفتح حقول التقرير.':row.status==='accepted'?'اضغط بدء التنفيذ لفتح حقول التقرير.':'التقرير للعرض في الحالة الحالية لأمر العمل.'):(!executor?'Only the assigned technician can enter the execution report. Check the technician assignment.':row.status==='assigned'?'Accept the work order, then start execution to enable the report.':row.status==='accepted'?'Start execution to enable the report.':'The report is read-only in the current work-order status.')}</p></div>:null}
      <div className="form-grid">{[['diagnosis','diagnosis'],['root_cause','rootCause'],['work_performed','workPerformed'],['tests_performed','testsPerformed'],['recommendations','recommendations']].map(([key,label])=><Field label={t(label)} key={key} wide><textarea value={form[key]} onChange={e=>set(key,e.target.value)} disabled={!executor||row.status!=='in_progress'}/></Field>)}</div>{button('complete',executor&&row.status==='in_progress',{diagnosis:form.diagnosis,root_cause:form.root_cause,work_performed:form.work_performed,tests_performed:form.tests_performed,recommendations:form.recommendations},true)}<p className="muted">{t('previewOnly')}</p></div>
+</StageSection>
     {(executor||manager)&&!['closed','cancelled'].includes(row.status)&&<div className="facility-panel"><h3>{t('internalNote')}</h3><Field label={t('note')}><textarea value={form.text} onChange={e=>set('text',e.target.value)}/></Field>{button('note',!!form.text.trim()&&['assigned','accepted','in_progress','on_hold'].includes(row.status),{text:form.text})}</div>}
    </>}
-   <div className="facility-panel"><h3>{t('history')}</h3>{history.length?history.map(e=><div key={e.id} className="facility-history-item" style={{padding:'12px 0',borderBottom:'1px solid var(--border, #ddd)'}}><strong>{t(e.action)}</strong> · {e.from_status?t(e.from_status)+' → ':''}{t(e.to_status||'')}<p className="muted">{new Date(e.created_at).toLocaleString(lang)} · {data?.staff.find(x=>x.id===e.actor_id)?.full_name||e.actor_id}</p>{e.details?.reason&&<p>{e.details.reason}</p>}{e.details?.text&&<p>{e.details.text}</p>}</div>):<p>{t('noData')}</p>}</div>
+   <StageSection completed label={lang==='ar'?'سجل الخطوات السابقة':'Previous steps'}>   <div className="facility-panel"><h3>{t('history')}</h3>{history.length?history.map(e=><div key={e.id} className="facility-history-item" style={{padding:'12px 0',borderBottom:'1px solid var(--border, #ddd)'}}><strong>{t(e.action)}</strong> · {e.from_status?t(e.from_status)+' → ':''}{t(e.to_status||'')}<p className="muted">{new Date(e.created_at).toLocaleString(lang)} · {data?.staff.find(x=>x.id===e.actor_id)?.full_name||(lang==='ar'?'مستخدم النظام':'System user')}</p>{e.details?.reason&&<p>{e.details.reason}</p>}{e.details?.text&&<p>{e.details.text}</p>}</div>):<p>{t('noData')}</p>}</div></StageSection>
   </>}
  </section>
 }
+

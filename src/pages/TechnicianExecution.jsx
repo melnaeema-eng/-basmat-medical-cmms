@@ -1,3 +1,6 @@
+import {executionFocus} from '../lib/maintenanceFocus'
+import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
+import {useAuth} from '../context/AuthContext'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadMyExecutionPackages,loadExecutionResults,loadExecutionAttachments,uploadExecutionEvidence,removeExecutionEvidence,openExecutionEvidence,startExecutionPackage,submitExecutionStep,completeExecutionPackage} from '../lib/maintenanceExecution'
@@ -11,9 +14,10 @@ function jobOf(p){return p?.procedure_snapshot?.job||p?.procedure_snapshot?.work
 
 export default function TechnicianExecution(){
  const {lang}=useLanguage()
+ const {profile}=useAuth()
  const [rows,setRows]=useState([]),[selected,setSelected]=useState(null),[results,setResults]=useState([]),[attachments,setAttachments]=useState([])
  const [drafts,setDrafts]=useState({}),[files,setFiles]=useState({}),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[uploading,setUploading]=useState(false)
- const [error,setError]=useState(''),[success,setSuccess]=useState(''),[closeNote,setCloseNote]=useState('')
+ const [error,setError]=useState(''),[success,setSuccess]=useState(''),[closeNote,setCloseNote]=useState(''),[detailLoading,setDetailLoading]=useState(false)
  const ar=lang==='ar'
 
  async function load(){
@@ -29,13 +33,13 @@ export default function TechnicianExecution(){
  }
  async function pick(p){
   try{
-   setSelected(p);setError('');setSuccess('')
+   setDetailLoading(true);setResults([]);setAttachments([]);setDrafts({});setFiles({});setCloseNote('');setSelected(p);setError('');setSuccess('')
    const [r,a]=await Promise.all([loadExecutionResults(p.id),loadExecutionAttachments(p.id)])
    setResults(r);setAttachments(a)
    const d={}
    for(const x of r)d[x.step_seq]={pass_fail:x.pass_fail||'',reading_value:x.reading_value??'',result_text:x.result_text||'',notes:x.notes||''}
    setDrafts(d)
-  }catch(e){setError(e.message)}
+  }catch(e){setSelected(null);setError(e.message)}finally{setDetailLoading(false)}
  }
  useEffect(()=>{load()},[])
 
@@ -94,6 +98,48 @@ export default function TechnicianExecution(){
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
 
+ const {next:nextStep,completed:savedSteps,failed:failedSteps}=executionFocus(steps,results)
+ const focusAction=selected?.status==='completed'?{title:ar?'مراجعة واعتماد الإنجاز':'Review and approve completed work',responsible:ar?'مشرف الصيانة':'Maintenance supervisor'}:{title:['assigned','blocked'].includes(selected?.status)?(ar?'بدء التنفيذ':'Start execution'):nextStep?(ar?nextStep.title_ar||nextStep.title_en:nextStep.title_en||nextStep.title_ar):(ar?'إرسال الإنجاز للمراجعة':'Submit completed work for review'),responsible:profile?.full_name||(ar?'الفني المسند':'Assigned technician')}
+ const renderStep=s=>{
+      const d=draft(s.seq),done=doneSeq.has(Number(s.seq))
+      return <div className={'tech-step '+(done?'done':'')} key={s.seq}>
+       <div style={{display:'flex',justifyContent:'space-between',gap:10}}>
+        <h3 style={{margin:0}}>{s.seq}. {ar?s.title_ar:s.title_en}</h3>
+        <div>{s.required!==false&&<span className="tech-badge">{ar?'إلزامي':'Required'}</span>}{done&&<span className="tech-badge">✓ {ar?'محفوظ':'Saved'}</span>}</div>
+       </div>
+       <p>{ar?s.instructions_ar:s.instructions_en}</p>
+
+       {s.safety_notes&&<div style={{padding:9,border:'1px solid #ead7a3',borderRadius:10,marginBottom:8}}>⚠️ <b>{ar?'السلامة':'Safety'}:</b> {s.safety_notes}</div>}
+       {s.acceptance_text&&<div><b>{ar?'معيار القبول':'Acceptance'}:</b> {s.acceptance_text}</div>}
+       {s.tools&&<div><b>{ar?'الأدوات':'Tools'}:</b> {s.tools}</div>}
+       {s.materials&&<div><b>{ar?'المواد':'Materials'}:</b> {s.materials}</div>}
+       {(s.min_value!=null||s.max_value!=null)&&<div><b>{ar?'الحدود':'Limits'}:</b> {s.min_value??'—'} → {s.max_value??'—'} {s.unit||''}</div>}
+       {s.failure_action&&<div><b>{ar?'عند الفشل':'Failure action'}:</b> {s.failure_action}</div>}
+       {s.escalation_role&&<div><b>{ar?'التصعيد إلى':'Escalate to'}:</b> {s.escalation_role}</div>}
+
+       <div className="tech-grid" style={{marginTop:10}}>
+        {s.response_type==='pass_fail'&&<label>{ar?'النتيجة':'Result'}<select value={d.pass_fail} onChange={e=>setDraft(s.seq,'pass_fail',e.target.value)}><option value="">Select</option><option value="pass">PASS</option><option value="fail">FAIL</option><option value="na">N/A</option></select></label>}
+        {s.response_type==='reading'&&<label>{ar?'القراءة':'Reading'} {s.unit||''}<input type="number" step="any" value={d.reading_value} onChange={e=>setDraft(s.seq,'reading_value',e.target.value)}/></label>}
+        {s.response_type==='text'&&<label>{ar?'النتيجة':'Result'}<input value={d.result_text} onChange={e=>setDraft(s.seq,'result_text',e.target.value)}/></label>}
+        <label>{ar?'رفع صور/مستندات':'Upload images/documents'} {s.photo_required&&'*'}
+         <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={e=>setFiles(x=>({...x,[s.seq]:Array.from(e.target.files||[])}))}/>
+        </label>
+        <label>{ar?'ملاحظات':'Notes'}<input value={d.notes} onChange={e=>setDraft(s.seq,'notes',e.target.value)}/></label>
+       </div>
+       <div style={{marginTop:9,display:'flex',gap:8,flexWrap:'wrap'}}>
+        <button className="btn" disabled={uploading||selected.status==='completed'||!(files[s.seq]?.length)} onClick={()=>uploadFiles(s)}>📎 {ar?'رفع المرفقات':'Upload Evidence'}</button>
+        <button className="btn primary" disabled={busy||uploading||selected.status!=='started'} onClick={()=>saveStep(s)}>💾 {ar?'حفظ الخطوة':'Save Step'}</button>
+       </div>
+       {stepAttachments(s.seq).length>0&&<div style={{marginTop:9}}>
+        <b>{ar?'المرفقات المحفوظة':'Stored attachments'}:</b>
+        {stepAttachments(s.seq).map(a=><div key={a.id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:5}}>
+         <span>📎 {a.file_name}</span><small>{a.mime_type||''} {a.size_bytes?`· ${Math.ceil(a.size_bytes/1024)} KB`:''}</small>
+         <button className="btn" onClick={()=>openAttachment(a)}>{ar?'عرض':'Open'}</button>
+         {selected.status!=='completed'&&<button className="btn" disabled={uploading} onClick={()=>removeAttachment(a)}>{ar?'حذف':'Delete'}</button>}
+        </div>)}
+       </div>}
+      </div>
+     }
  return <section className="facility-module">
   <style>{`
    .tech-wrap{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:14px}
@@ -123,7 +169,7 @@ export default function TechnicianExecution(){
     {!loading&&!rows.length&&<p>{ar?'لا توجد مهام معينة حالياً.':'No assigned jobs.'}</p>}
     {rows.map(p=>{
      const a=assetOf(p),j=jobOf(p)
-     return <div key={p.id} className={'tech-card '+(selected?.id===p.id?'active':'')} onClick={()=>pick(p)}>
+     return <div key={p.id} className={'tech-card '+(selected?.id===p.id?'active':'')} onClick={()=>!busy&&!uploading&&!detailLoading&&pick(p)}>
       <div style={{display:'flex',justifyContent:'space-between',gap:8}}><b>{p.procedure_name_en||p.procedure_name_ar||'Procedure'}</b><span className="tech-badge">{p.status}</span></div>
       <div style={{fontSize:12,marginTop:5}}>{a.asset_tag||a.serial_number||j.job_number||j.work_order_number||'—'}</div>
       <div><span className="tech-badge">{p.domain}</span><span className="tech-badge">{p.source_type}</span>{p.required_skill&&<span className="tech-badge">{p.required_skill}</span>}</div>
@@ -173,51 +219,17 @@ export default function TechnicianExecution(){
        <div className="tech-progress"><div style={{width:`${progress}%`}}/></div>
       </div>
 
-      {selected.status==='assigned'&&<button className="btn primary" disabled={busy} style={{marginTop:12}} onClick={start}>▶ {ar?'بدء التنفيذ':'Start Execution'}</button>}
+      {['assigned','blocked'].includes(selected.status)&&<button className="btn primary" disabled={busy} style={{marginTop:12}} onClick={start}>▶ {ar?'بدء التنفيذ':'Start Execution'}</button>}
      </div>
 
-     {steps.map(s=>{
-      const d=draft(s.seq),done=doneSeq.has(Number(s.seq))
-      return <div className={'tech-step '+(done?'done':'')} key={s.seq}>
-       <div style={{display:'flex',justifyContent:'space-between',gap:10}}>
-        <h3 style={{margin:0}}>{s.seq}. {ar?s.title_ar:s.title_en}</h3>
-        <div>{s.required!==false&&<span className="tech-badge">{ar?'إلزامي':'Required'}</span>}{done&&<span className="tech-badge">✓ {ar?'محفوظ':'Saved'}</span>}</div>
-       </div>
-       <p>{ar?s.instructions_ar:s.instructions_en}</p>
+     {!detailLoading&&<NextActionCard action={focusAction} lang={lang}/>}
+     {detailLoading?<p role="status">{ar?'جارٍ تحميل الخطوات المسجلة…':'Loading recorded steps…'}</p>:<>
+      {selected.status==='started'&&nextStep&&renderStep(nextStep)}
+      {failedSteps.map(s=><div className="maintenance-focus-failure" role="alert" key={s.seq}><strong>{ar?'نتيجة فاشلة تحتاج متابعة: ':'Failed result needs follow-up: '}{ar?s.title_ar:s.title_en}</strong><p>{s.failure_action}</p><p>{ar?'المسؤول عن التصعيد: ':'Escalation responsibility: '}{s.escalation_role||(ar?'مشرف الصيانة':'Maintenance supervisor')}</p><p>{ar?'راجع النتيجة ومرفقاتها من سجل الخطوات السابقة أدناه.':'Review the result and its evidence in the previous steps below.'}</p></div>)}
+      {savedSteps.length>0&&<StageSection completed label={(ar?'الخطوات المسجلة السابقة':'Previously recorded steps')+' ('+savedSteps.length+')'}>{savedSteps.map(renderStep)}</StageSection>}
+     </>}
 
-       {s.safety_notes&&<div style={{padding:9,border:'1px solid #ead7a3',borderRadius:10,marginBottom:8}}>⚠️ <b>{ar?'السلامة':'Safety'}:</b> {s.safety_notes}</div>}
-       {s.acceptance_text&&<div><b>{ar?'معيار القبول':'Acceptance'}:</b> {s.acceptance_text}</div>}
-       {s.tools&&<div><b>{ar?'الأدوات':'Tools'}:</b> {s.tools}</div>}
-       {s.materials&&<div><b>{ar?'المواد':'Materials'}:</b> {s.materials}</div>}
-       {(s.min_value!=null||s.max_value!=null)&&<div><b>{ar?'الحدود':'Limits'}:</b> {s.min_value??'—'} → {s.max_value??'—'} {s.unit||''}</div>}
-       {s.failure_action&&<div><b>{ar?'عند الفشل':'Failure action'}:</b> {s.failure_action}</div>}
-       {s.escalation_role&&<div><b>{ar?'التصعيد إلى':'Escalate to'}:</b> {s.escalation_role}</div>}
-
-       <div className="tech-grid" style={{marginTop:10}}>
-        {s.response_type==='pass_fail'&&<label>{ar?'النتيجة':'Result'}<select value={d.pass_fail} onChange={e=>setDraft(s.seq,'pass_fail',e.target.value)}><option value="">Select</option><option value="pass">PASS</option><option value="fail">FAIL</option><option value="na">N/A</option></select></label>}
-        {s.response_type==='reading'&&<label>{ar?'القراءة':'Reading'} {s.unit||''}<input type="number" step="any" value={d.reading_value} onChange={e=>setDraft(s.seq,'reading_value',e.target.value)}/></label>}
-        {s.response_type==='text'&&<label>{ar?'النتيجة':'Result'}<input value={d.result_text} onChange={e=>setDraft(s.seq,'result_text',e.target.value)}/></label>}
-        <label>{ar?'رفع صور/مستندات':'Upload images/documents'} {s.photo_required&&'*'}
-         <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={e=>setFiles(x=>({...x,[s.seq]:Array.from(e.target.files||[])}))}/>
-        </label>
-        <label>{ar?'ملاحظات':'Notes'}<input value={d.notes} onChange={e=>setDraft(s.seq,'notes',e.target.value)}/></label>
-       </div>
-       <div style={{marginTop:9,display:'flex',gap:8,flexWrap:'wrap'}}>
-        <button className="btn" disabled={uploading||selected.status==='completed'||!(files[s.seq]?.length)} onClick={()=>uploadFiles(s)}>📎 {ar?'رفع المرفقات':'Upload Evidence'}</button>
-        <button className="btn primary" disabled={busy||uploading||selected.status==='completed'} onClick={()=>saveStep(s)}>💾 {ar?'حفظ الخطوة':'Save Step'}</button>
-       </div>
-       {stepAttachments(s.seq).length>0&&<div style={{marginTop:9}}>
-        <b>{ar?'المرفقات المحفوظة':'Stored attachments'}:</b>
-        {stepAttachments(s.seq).map(a=><div key={a.id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:5}}>
-         <span>📎 {a.file_name}</span><small>{a.mime_type||''} {a.size_bytes?`· ${Math.ceil(a.size_bytes/1024)} KB`:''}</small>
-         <button className="btn" onClick={()=>openAttachment(a)}>{ar?'عرض':'Open'}</button>
-         {selected.status!=='completed'&&<button className="btn" disabled={uploading} onClick={()=>removeAttachment(a)}>{ar?'حذف':'Delete'}</button>}
-        </div>)}
-       </div>}
-      </div>
-     })}
-
-     {selected.status!=='completed'&&<div className="facility-panel">
+     {!detailLoading&&selected.status==='started'&&progress===100&&<div className="facility-panel">
       <h2>{ar?'إغلاق المهمة':'Complete Job'}</h2>
       <textarea style={{width:'100%',minHeight:90}} value={closeNote} onChange={e=>setCloseNote(e.target.value)} placeholder={ar?'ملاحظة الإغلاق / تفاصيل أي فشل أو استثناء...':'Closeout note / failure or exception details...'}/>
       <button className="btn primary" disabled={busy||progress<100} onClick={complete}>✅ {ar?'إكمال الإجراء':'Complete Procedure'}</button>
@@ -228,3 +240,4 @@ export default function TechnicianExecution(){
   </div>
  </section>
 }
+
