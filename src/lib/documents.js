@@ -1,3 +1,4 @@
+import {emitNotificationRefresh} from './notifications'
 import {supabase} from './supabaseClient'
 export async function loadDocuments(filters={}){
  const {data,error}=await supabase.rpc('bf13_center',{
@@ -9,9 +10,12 @@ export async function loadDocuments(filters={}){
 export async function generateDocument(type,entityType,entityId,title=''){
  const {data,error}=await supabase.rpc('bf13_generate',{p_type:type,p_entity_type:entityType,p_entity:entityId,p_title:title||null})
  if(error)throw error
+  emitNotificationRefresh()
  return data
 }
 export async function voidDocument(id,reason){
  const {error}=await supabase.rpc('bf13_void',{p_id:id,p_reason:reason})
  if(error)throw error
+  emitNotificationRefresh()
 }
+

@@ -1,14 +1,9 @@
 import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
-import {loadNotifications,setNotificationRead,markAllNotificationsRead} from '../lib/notifications'
+import {loadNotifications,setNotificationRead,markAllNotificationsRead,notificationRefreshEvent} from '../lib/notifications'
+import {notificationLabel,notificationInstruction,notificationUrl} from '../lib/notificationPresentation'
 
-const kinds={
- approval_pending:'notificationApprovalPending',approval_rejected:'notificationApprovalRejected',
- approval_decided:'notificationApprovalDecided',sla_breached:'notificationSlaBreached',
- work_order_assigned:'notificationWorkAssigned',work_order_on_hold:'notificationWorkHold',
- work_order_due:'notificationWorkDue',ppm_due:'notificationPpmDue',ppm_overdue:'notificationPpmOverdue'
-}
 const severities={critical:'notificationCritical',high:'notificationHigh',normal:'notificationNormal'}
 export default function Notifications(){
  const {t,lang}=useLanguage()
@@ -19,7 +14,13 @@ export default function Notifications(){
   try{setData(await loadNotifications(nextUnread,100,nextPage*100))}
   catch(e){setError(e.message)}finally{setBusy(false)}
  }
- useEffect(()=>{load(false,0)},[])
+ useEffect(()=>{
+  const update=()=>{if(document.visibilityState!=='hidden')load(unreadOnly,page)}
+  update();const timer=window.setInterval(update,30000)
+  window.addEventListener('focus',update);window.addEventListener(notificationRefreshEvent,update)
+  document.addEventListener('visibilitychange',update)
+  return()=>{window.clearInterval(timer);window.removeEventListener('focus',update);window.removeEventListener(notificationRefreshEvent,update);document.removeEventListener('visibilitychange',update)}
+ },[unreadOnly,page])
  const changeUnread=v=>{setUnreadOnly(v);setPage(0);load(v,0)}
  const toggle=async item=>{
   setBusy(true);setError('')
@@ -50,15 +51,16 @@ export default function Notifications(){
    data.items?.map(item=><article className="facility-panel" key={item.notification_key} style={{opacity:item.is_read?.78:1}}>
     <div className="page-head">
      <div>
-      <strong>{t(kinds[item.kind]||item.kind)} — {item.title}</strong>
+      <strong>{notificationLabel(item,lang,t)} — {item.title}</strong>
       <p className="muted">{new Date(item.occurred_at).toLocaleString(lang)}</p>
      </div>
      <span><strong>{t(severities[item.severity]||'notificationNormal')}</strong>{item.is_read?' ✓':''}</span>
     </div>
+    {notificationInstruction(item,lang)&&<p>{notificationInstruction(item,lang)}</p>}
     {item.body&&<p>{item.body}</p>}
     <div className="row-actions">
      <button className="btn secondary" type="button" disabled={busy} onClick={()=>toggle(item)}>{item.is_read?t('notificationMarkUnread'):t('notificationMarkRead')}</button>
-     <Link className="btn primary" to={item.action_url} onClick={()=>{if(!item.is_read)setNotificationRead(item.notification_key,true).catch(()=>{})}}>{t('notificationOpen')}</Link>
+     <Link className="btn primary" to={notificationUrl(item)} onClick={()=>{if(!item.is_read)setNotificationRead(item.notification_key,true).catch(()=>{})}}>{t('notificationOpen')}</Link>
     </div>
    </article>)}
   <div className="row-actions">
@@ -68,3 +70,4 @@ export default function Notifications(){
   </div>
  </section>
 }
+

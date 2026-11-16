@@ -1,3 +1,4 @@
+import {emitNotificationRefresh} from './notifications'
 import {supabase} from './supabaseClient'
 export const priorities=['P1','P2','P3','P4']
 export const statuses=['draft','assigned','accepted','in_progress','on_hold','completed','approved','closed','cancelled']
@@ -16,6 +17,7 @@ export async function page(table,columns='*',filters=[]){
 export async function action(kind,id,command,payload={}){
  const {data,error}=await supabase.rpc('bf4_action',{p_kind:kind,p_id:id||null,p_action:command,p_data:payload})
  if(error)throw error
+  emitNotificationRefresh()
  return data
 }
 export async function loadCorrective(){
@@ -37,3 +39,4 @@ export async function loadHistory(kind,id){
  if(error)throw error
  return data||[]
 }
+

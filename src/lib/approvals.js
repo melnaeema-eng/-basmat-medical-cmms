@@ -1,3 +1,4 @@
+import {emitNotificationRefresh} from './notifications'
 import {supabase} from './supabaseClient'
 export async function loadApprovalPortal(filters={}){
  const {data,error}=await supabase.rpc('bf11_portal',{
@@ -9,6 +10,7 @@ export async function loadApprovalPortal(filters={}){
 export async function approvalAction(action,id=null,payload={}){
  const {data,error}=await supabase.rpc('bf11_action',{p_action:action,p_id:id,p_data:payload})
  if(error)throw error
+  emitNotificationRefresh()
  return data
 }
 export async function findConsultant(email,organizationId){
@@ -30,3 +32,4 @@ export async function loadOwnerAuthorization(organizationId,clientId){
  if(error)throw error
  return data===true
 }
+

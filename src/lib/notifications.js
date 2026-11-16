@@ -7,9 +7,15 @@ export async function loadNotifications(unreadOnly=false,limit=100,offset=0){
 export async function setNotificationRead(key,read=true){
  const {error}=await supabase.rpc('bf12_read',{p_key:key,p_read:read})
  if(error)throw error
+ emitNotificationRefresh()
 }
 export async function markAllNotificationsRead(){
  const {data,error}=await supabase.rpc('bf12_mark_all_read')
  if(error)throw error
+ emitNotificationRefresh()
  return data
 }
+
+
+export const notificationRefreshEvent='basmat-notifications-changed'
+export function emitNotificationRefresh(){if(typeof window!=='undefined')window.dispatchEvent(new Event(notificationRefreshEvent))}

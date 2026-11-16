@@ -116,6 +116,8 @@ export function AuthProvider({children}){
  const can=(permission,org=null)=>{
   // User must still be active
   if(profile?.status!=='active')return false
+  // Every active user can open their own server-filtered action inbox.
+  if(permission==='notifications.view')return true
   if(permission===companyAdminPermission)return companyWorkspace(access,profile).isSuperAdmin
 
   // Platform Super Admin has unrestricted access
@@ -217,3 +219,4 @@ export function useAuth(){
 
  return v
 }
+
