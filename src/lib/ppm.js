@@ -50,7 +50,7 @@ export async function loadPPM(){
     ['clients','bf_clients','id,organization_id,name,code,status'],
     ['sites','bf_sites','id,organization_id,client_id,contract_id,name,code,status'],
     ['contracts','bf_contracts','id,organization_id,client_id,contract_number,status'],
-    ['assets','bf_assets','id,organization_id,client_id,site_id,category_id,asset_tag,name_ar,name_en,manufacturer,model,status'],
+    ['assets','bf_assets','id,organization_id,client_id,site_id,category_id,asset_tag,serial_number,name_ar,name_en,manufacturer,model,status'],
     ['categories','bf_asset_categories','id,organization_id,name_ar,name_en,code,status']
   ]
 
@@ -86,3 +86,4 @@ export async function loadPPMHistory(kind,id){
 }
 
 export {recurrenceDates} from './ppmCore'
+

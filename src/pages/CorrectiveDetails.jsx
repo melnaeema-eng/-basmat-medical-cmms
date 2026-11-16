@@ -1,3 +1,5 @@
+import MedicalWorkJourney from '../components/MedicalWorkJourney'
+import {medicalWorkflowError} from '../lib/medicalJourney'
 import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
 import {maintenanceAction} from '../lib/maintenanceFocus'
 import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
@@ -39,19 +41,21 @@ export default function CorrectiveDetails(){
    if(command==='convert'){navigate('/corrective/work_order/'+result);return}
    await load();setSuccess(t('saved'))
    if(command==='note')setForm(f=>({...f,text:''}))
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(medicalWorkflowError(e,lang))}finally{setBusy(false)}
  }
  const button=(command,enabled,payload={},primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload)}>{t(command)}</button>:null
  const value=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
  const technician=assigned.map(a=>data?.staff.find(x=>x.id===a.user_id&&x.organization_id===row?.organization_id)?.full_name).filter(Boolean).join('، ')
  const nextAction=row&&maintenanceAction({kind,status:row.status,approvalStatus:row.approval_status,assigned:assigned.length>0,technician,lang,integrated:false})
+ const showApprovalJourney=kind==='work_order'&&['approved','closed'].includes(row?.status)
+ const journeyAsset=row?{...data?.assets.find(a=>a.id===row.asset_id),asset_id:row.asset_id,organization_id:row.organization_id,client_id:row.client_id}:null
  const fields=[['organization_id','organization','organizations'],['client_id','client','clients'],['site_id','site','sites'],['contract_id','contractNumber','contracts'],['asset_id','asset','assets']]
  return <section className="facility-module">
   <div className="page-head"><div><Link to="/corrective">← {t('corrective')}</Link><h1>{row?.request_number||row?.work_order_number||t('loading')}</h1><p className="muted">{row?.title}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
   <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
-   <NextActionCard action={nextAction} lang={lang}/>
+   {showApprovalJourney?<MedicalWorkJourney compact refreshKey={data} asset={journeyAsset} workOrders={[row]} onRefresh={load}/>:<NextActionCard action={nextAction} lang={lang}/>}
    <div className="stats-grid facility-stats">{[['priority',t(row.priority)],['status',t(row.status)],...(kind==='work_order'?[['approvalStatus',t(row.approval_status)],['slaStatus',t(row.sla_status)]]:[])].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v}</strong></div>)}</div>
    <div className="facility-panel"><h3>{t('requestDetails')}</h3><div className="form-grid">{fields.map(([key,label,table])=><div key={key}><span className="muted">{t(label)}</span><p>{key==='asset_id'?data?.assets.find(x=>x.id===row[key])?.asset_tag:key==='contract_id'?data?.contracts.find(x=>x.id===row[key])?.contract_number:value(data?.[table].find(x=>x.id===row[key]))||'—'}</p></div>)}</div><p>{row.description}</p></div>
    {kind==='request'?<div className="facility-panel"><h3>{t('actions')}</h3>{manager&&['submitted','triaged','converted'].includes(row.status)&&<><div className="form-grid"><Field label={t('priority')}><Select value={form.priority||row.priority} onChange={v=>set('priority',v)} options={priorities.map(x=>({value:x,label:t(x)}))}/></Field></div><div className="row-actions">{button('triage',row.status==='submitted',{priority:form.priority||row.priority})}{button('convert',true,{},true)}</div></>}{manager&&['submitted','triaged'].includes(row.status)&&<><Field label={t('reason')}><textarea value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">{button('reject',true,{reason:form.reason})}{button('cancel',true,{reason:form.reason})}</div></>}</div>:
@@ -66,7 +70,6 @@ export default function CorrectiveDetails(){
      {button('resume',(executor||manager)&&row.status==='on_hold')}
      {button('submit_qa',manager&&row.status==='completed')}
      {button('approve',approver&&row.status==='completed'&&row.approval_status==='pending',{},true)}
-     {button('close',approver&&row.status==='approved',{},true)}
     </div><p className="muted">{t('qaNotice')}</p>
     {(manager||executor)&&['draft','assigned','accepted','in_progress','on_hold','completed','approved','closed'].includes(row.status)&&<details className="maintenance-history"><summary>{lang==='ar'?'إجراءات أخرى أو إعادة العمل':'Other actions or rework'}</summary><Field label={t('reason')}><textarea value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">
       {button('hold',row.status==='assigned'||row.status==='accepted'||row.status==='in_progress',{reason:form.reason})}
@@ -87,4 +90,5 @@ export default function CorrectiveDetails(){
   </>}
  </section>
 }
+
 

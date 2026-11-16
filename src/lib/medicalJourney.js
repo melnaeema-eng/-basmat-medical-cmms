@@ -26,3 +26,30 @@ export async function finishMedicalJourney({record,owner,read,generate,close}){
   }
   if(record.status!=='closed')await close()
 }
+
+
+// Internal QA never skips the separate owner handover stage.
+export function approvalNextAction(record,owner,documents=[],lang='ar'){
+ const l=(a,e)=>lang==='ar'?a:e,state=journeyState(record,owner,documents)
+ if(state.cancelled)return {key:'cancelled',title:l('العمل ملغى','Work cancelled'),terminal:true}
+ if(state.next===-1)return {key:'finished',title:l('اكتملت دورة الإنجاز','Completion journey finished'),terminal:true}
+ if(!state.steps[3])return null
+ if(owner?.status==='pending')return {key:'owner_review',title:l('مراجعة الإنجاز وقبوله من المالك','Owner review and acceptance'),responsible:l('ممثل المالك المخوّل','Authorized owner representative')}
+ if(!state.steps[4])return {key:'request_owner',title:owner?.status==='rejected'?l('استكمال ملاحظات المالك وإعادة الإرسال','Address owner comments and resubmit'):l('تجهيز التقرير وإرساله لقبول المالك','Prepare report and submit for owner acceptance'),responsible:l('مشرف الصيانة المخوّل بالإرسال','Maintenance supervisor authorized to submit')}
+ if(!state.steps[5])return {key:'certificate',title:l('إصدار شهادة الإنجاز','Issue the completion certificate'),responsible:l('المخوّل بإصدار شهادة الإنجاز','Authorized certificate issuer')}
+ return {key:'close',title:l('إغلاق أمر العمل بعد قبول المالك وإصدار الشهادة','Close work after owner acceptance and certification'),responsible:l('مشرف الصيانة المخوّل بالإغلاق','Maintenance supervisor authorized to close')}
+}
+export function canDecideOwnerApproval(owner,userId,authorized){
+ return authorized===true&&owner?.status==='pending'&&!!userId&&owner.requested_by!==userId
+}
+export function canFinishApprovedJourney(record,owner,documents,eligible,canClose){
+ if(!canClose||!['approved','closed'].includes(record.status)||owner?.status!=='approved')return false
+ const certificate=journeyState(record,owner,documents).certificate
+ return !!certificate||(eligible||[]).some(d=>d.document_type==='approval_certificate'&&d.entity_type==='approval'&&d.entity_id===owner.id)
+}
+export function medicalWorkflowError(error,lang='ar'){
+ const message=error?.message||String(error)
+ if(message.includes('Closure blocked: owner acceptance required'))return lang==='ar'?'يجب إرسال الإنجاز للمالك والحصول على قبوله قبل الإغلاق.':'Submit the completed work to the owner and obtain acceptance before closing.'
+ if(message.includes('Requester cannot decide own approval'))return lang==='ar'?'يجب أن يراجع طلب القبول ممثل مالك آخر؛ لا يمكن اعتماد طلبك بنفسك.':'Another authorized owner representative must review this request; you cannot approve your own request.'
+ return message
+}

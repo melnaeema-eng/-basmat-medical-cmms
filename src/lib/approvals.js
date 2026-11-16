@@ -21,3 +21,12 @@ export async function manageConsultant(action,userId,organizationId,clientId){
   p_action:action,p_user:userId,p_org:organizationId,p_client:clientId})
  if(error)throw error
 }
+
+
+// Use the caller's real session; a staff role does not remove a separate owner assignment.
+export async function loadOwnerAuthorization(organizationId,clientId){
+ if(!organizationId||!clientId)return false
+ const {data,error}=await supabase.rpc('bf11_owner',{p_org:organizationId,p_client:clientId})
+ if(error)throw error
+ return data===true
+}

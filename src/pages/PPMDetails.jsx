@@ -1,3 +1,5 @@
+import MedicalWorkJourney from '../components/MedicalWorkJourney'
+import {medicalWorkflowError} from '../lib/medicalJourney'
 import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
 import {maintenanceAction,checklistFocus} from '../lib/maintenanceFocus'
 import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
@@ -40,7 +42,7 @@ export default function PPMDetails(){
    if(e.message==='Invalid job transition'){
     await load()
     setError(lang==='ar'?'تغيّرت حالة المهمة منذ فتح الصفحة. تم تحديثها؛ اتبع الإجراء المتاح للحالة الحالية.':'The job status changed after this page opened. It has been refreshed; use the action available for its current status.')
-   }else setError(e.message)
+   }else setError(medicalWorkflowError(e,lang))
   }finally{setBusy(false)}
  }
  const button=(command,enabled,payload={},primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload)}>{t(command)}</button>:null
@@ -50,6 +52,8 @@ export default function PPMDetails(){
  const resultFor=stepId=>results.find(x=>x.step_id===stepId)
  const focus=checklistFocus(steps,results)
  const nextAction=kind==='job'&&row?maintenanceAction({kind:'ppm',status:row.status,assigned:!!row.assigned_to,technician:directory.find(x=>x.id===row.assigned_to)?.full_name,lang,integrated:false,steps,results}):null
+ const showApprovalJourney=kind==='job'&&['approved','closed'].includes(row?.status)
+ const journeyAsset=row?{...data?.assets.find(a=>a.id===row.asset_id),asset_id:row.asset_id,organization_id:row.organization_id,client_id:row.client_id||data?.assets.find(a=>a.id===row.asset_id)?.client_id}:null
  const update=(stepId,key,value)=>setInputs(old=>({...old,[stepId]:{...old[stepId],[key]:value}}))
  const resultField=(s,key)=>inputs[s.id]?.[key]??resultFor(s.id)?.[key]??''
  const completedStepCount=steps.filter(s=>!!resultFor(s.id)).length
@@ -160,10 +164,10 @@ export default function PPMDetails(){
     <div className="facility-panel"><h3>{t('ppmJobs')}</h3>{data.jobs.filter(x=>x.plan_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date)).map(j=><div key={j.id} className="row-actions" style={{padding:'8px 0'}}><Link to={'/ppm/job/'+j.id}>{j.job_number}</Link><span>{j.due_date}</span><Status value={j.status}/></div>)}</div>
    </>}
    {kind==='job'&&<>
-    <NextActionCard action={nextAction} lang={lang}/>
+    {showApprovalJourney?<MedicalWorkJourney compact refreshKey={data} asset={journeyAsset} jobs={[row]} onRefresh={load}/>:<NextActionCard action={nextAction} lang={lang}/>}
     <div className="facility-panel"><h3>{t('actions')}</h3>
      <StageSection completed={!!row.assigned_to} label={lang==='ar'?'الإسناد وتغيير الفني':'Assignment and technician changes'}>     {manager&&['scheduled','assigned'].includes(row.status)&&<div className="form-grid"><Field label={t('assignedTo')}><Select value={assignee} onChange={setAssignee} options={options(directory.filter(x=>x.organization_id===row.organization_id),x=>x.full_name||x.email)}/></Field><div className="row-actions">{button('assign',!!assignee,{user_id:assignee},true)}</div></div>}</StageSection>
-     <div className="row-actions">{button('start',executor&&row.status==='assigned',{},true)}{button('complete',executor&&row.status==='in_progress'&&steps.filter(s=>s.required).every(s=>resultFor(s.id)),{},true)}{button('approve',approver&&row.status==='completed',{},true)}{button('close',approver&&row.status==='approved',{},true)}</div>
+     <div className="row-actions">{button('start',executor&&row.status==='assigned',{},true)}{button('complete',executor&&row.status==='in_progress'&&steps.filter(s=>s.required).every(s=>resultFor(s.id)),{},true)}{button('approve',approver&&row.status==='completed',{},true)}</div>
      {manager&&row.status==='completed'&&<><Field label={t('reason')}><textarea value={reason} onChange={e=>setReason(e.target.value)}/></Field>{button('reject',reason.trim().length>=5,{reason})}</>}
      <p className="muted">{t('executionNotice')}</p>
     </div>
@@ -229,4 +233,5 @@ export default function PPMDetails(){
   </>}
  </section>
 }
+
 
