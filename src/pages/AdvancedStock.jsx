@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -53,7 +54,7 @@ export default function AdvancedStock(){
   <div className="page-head"><h1>{t('advancedStock')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{can('inventory.request')&&tab==='requests'&&<button className="btn primary" onClick={()=>{setForm({work_order_id:'',reason:''});setOpen(true)}}>{t('newAdvancedRequest')}</button>}</div></div>
   <Notice error={error} success={success}/>
   <div className="row-actions">{[['requests','advancedRequests'],['allocations','allocations'],['events','history']].map(([key,label])=><button key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>{setTab(key);setQuery('')}}>{t(label)} ({data?.[key==='allocations'?'lots':key]?.length||0})</button>)}</div>
-  <div className="facility-panel filter-grid"><Field label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></Field><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
+  <div className="facility-panel filter-grid"><CompanyField label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></CompanyField><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
   {!data?<p>{t('loading')}</p>:<DataTable rows={rows} columns={columns[tab]} emptyText={t('noData')}/>}
   <div className="facility-panel"><p className="muted">{t('stockNotice')}</p></div>
   <Dialog open={open} title={t('newAdvancedRequest')} onClose={()=>!busy&&setOpen(false)}>
@@ -64,3 +65,4 @@ export default function AdvancedStock(){
   </Dialog>
  </section>
 }
+

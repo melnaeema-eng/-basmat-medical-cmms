@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -155,7 +156,7 @@ export default function Corrective(){
   <Dialog open={open} title={t(tab==='request'?'newRequest':'newWO')} onClose={()=>!busy&&setOpen(false)}>
    <form onSubmit={submit} className="facility-form">
     <div className="form-grid">
-     {['organization_id','client_id','site_id','contract_id','asset_id'].map((key,i)=><Field key={key} label={t(({organization_id:'organization',client_id:'client',site_id:'site',contract_id:'contractNumber',asset_id:'asset'})[key])} required={i<3}><Select required={i<3} value={form[key]} onChange={v=>change(key,v)} options={options(key)} disabled={i>0&&!form[({client_id:'organization_id',site_id:'client_id',contract_id:'client_id',asset_id:'site_id'})[key]]}/></Field>)}
+     {['organization_id','client_id','site_id','contract_id','asset_id'].map((key,i)=><CompanyField company={key==='organization_id'} key={key} label={t(({organization_id:'organization',client_id:'client',site_id:'site',contract_id:'contractNumber',asset_id:'asset'})[key])} required={i<3}><Select required={i<3} value={form[key]} onChange={v=>change(key,v)} options={options(key)} disabled={i>0&&!form[({client_id:'organization_id',site_id:'client_id',contract_id:'client_id',asset_id:'site_id'})[key]]}/></CompanyField>)}
      <Field label={t('title')} required><input required minLength={3} maxLength={250} value={form.title} onChange={e=>change('title',e.target.value)}/></Field>
      <Field label={t('priority')}><Select value={form.priority} onChange={v=>change('priority',v)} options={priorities.map(x=>({value:x,label:t(x)}))}/></Field>
      <Field label={t('description')} wide><textarea value={form.description} onChange={e=>change('description',e.target.value)}/></Field>
@@ -165,3 +166,4 @@ export default function Corrective(){
   </Dialog>
  </section>
 }
+

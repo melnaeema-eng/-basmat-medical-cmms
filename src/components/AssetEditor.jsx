@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
@@ -137,10 +138,10 @@ export default function AssetEditor({record,data,initial={},onSaved,onCancel}){
  return <form className="form-grid asset-form" onSubmit={submit}>
   <Notice error={error}/>
   <div className="form-section"><h3>{t('organization')}</h3></div>
-  <Field label={t('organization')} required>
+  <CompanyField label={t('organization')} required>
    <Choice rows={orgs} lang={lang} value={form.organization_id} required disabled={!!record}
     onChange={v=>{setForm(f=>({...f,organization_id:v,client_id:'',site_id:'',building_id:'',floor_id:'',zone_id:'',room_id:'',category_id:'',parent_asset_id:''}));setMasterTypeId('');setManufacturerId('');setModelFamily('')}}/>
-  </Field>
+  </CompanyField>
   {choice('client_id','client',clients,true,!!record,['site_id','building_id','floor_id','zone_id','room_id','parent_asset_id'])}
   {choice('site_id','site',sites,true,!!record,['building_id','floor_id','zone_id','room_id','parent_asset_id'])}
   {masterTypes.length>0?<>
@@ -190,3 +191,4 @@ export default function AssetEditor({record,data,initial={},onSaved,onCancel}){
   <FormActions busy={busy||!costReady} onCancel={onCancel}/>
  </form>
 }
+

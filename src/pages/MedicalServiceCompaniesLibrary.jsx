@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
@@ -214,7 +215,7 @@ export default function MedicalServiceCompaniesLibrary(){
 
    <h3>{ar?'ربط بالشغيل / المشروع':'Operational project link'}</h3>
    <div className="form-grid">
-    <label>{ar?'المنظمة':'Organization'}<select value={link.organization_id} onChange={e=>setLink({...link,organization_id:e.target.value,project_id:'',site_id:''})}><option value="">—</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name||x.code}</option>)}</select></label>
+    <CompanyField>{ar?'المنظمة':'Organization'}<select value={link.organization_id} onChange={e=>setLink({...link,organization_id:e.target.value,project_id:'',site_id:''})}><option value="">—</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name||x.code}</option>)}</select></CompanyField>
     <label>{ar?'المشروع':'Project'}<select value={link.project_id} onChange={e=>setLink({...link,project_id:e.target.value})}><option value="">—</option>{availableProjects.map(x=><option key={x.id} value={x.id}>{x.project_code?`${x.project_code} — `:''}{x.name}</option>)}</select></label>
     <label>{ar?'الموقع':'Site'}<select value={link.site_id} onChange={e=>setLink({...link,site_id:e.target.value})}><option value="">—</option>{availableSites.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
     <label>{ar?'الشركة المصنعة':'Manufacturer'}<select value={link.manufacturer_id} onChange={e=>setLink({...link,manufacturer_id:e.target.value})}><option value="">—</option>{(master.manufacturers||[]).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
@@ -228,3 +229,4 @@ export default function MedicalServiceCompaniesLibrary(){
   </div>}
  </section>
 }
+

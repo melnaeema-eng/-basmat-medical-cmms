@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
@@ -271,12 +272,12 @@ export default function UsersRoles(){
   <Dialog open={orgOpen} title={ar?'إسناد منظمة للمستخدم':'Assign User Organization'} onClose={()=>setOrgOpen(false)}>
    <form className="form-grid" onSubmit={saveOrg}>
     <label><span>{ar?'المستخدم':'User'}</span><input disabled value={selected?.email||selected?.full_name||''}/></label>
-    <label><span>{ar?'المنظمة الممثلة':'Represented organization'} *</span>
+    <CompanyField><span>{ar?'المنظمة الممثلة':'Represented organization'} *</span>
      <select required value={orgId} onChange={e=>setOrgId(e.target.value)} disabled={!isPlatformAdmin&&!!homeOrgId}>
       <option value="">{ar?'اختر المنظمة':'Select organization'}</option>
       {(data.organizations||[]).map(o=><option key={o.id} value={o.id}>{o.name||o.code}</option>)}
      </select>
-    </label>
+    </CompanyField>
     {selected?.organization_id&&selected.organization_id!==orgId&&<label className="span-2" style={{display:'flex',alignItems:'center',gap:8}}>
      <input type="checkbox" checked={transfer} onChange={e=>setTransfer(e.target.checked)} style={{width:'auto'}}/>
      <span>{ar?'تأكيد النقل مع تعطيل وصول المنظمة السابقة والإبقاء على التاريخ.':'Confirm transfer and preserve work history.'}</span>
@@ -348,3 +349,4 @@ export default function UsersRoles(){
   </Dialog>
  </section>
 }
+

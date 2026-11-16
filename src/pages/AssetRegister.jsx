@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -32,7 +33,7 @@ export default function AssetRegister(){
   <Notice error={error} success={success}/>
   {data&&<><div className="stats-grid facility-stats">{stats.map(([key,value])=><div className="stat-card" key={key}><span>{t(key)}</span><strong>{value}</strong></div>)}</div>
   <div className="facility-panel filter-grid">
-   <Field label={t('organization')}><Choice rows={active(data.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setClient('');setSite('');setCategory('')}}/></Field>
+   <CompanyField label={t('organization')}><Choice rows={active(data.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setClient('');setSite('');setCategory('')}}/></CompanyField>
    <Field label={t('client')}><Choice rows={active(data.clients).filter(c=>!org||c.organization_id===org)} lang={lang} value={client} onChange={v=>{setClient(v);setSite('')}}/></Field>
    <Field label={t('site')}><Choice rows={active(data.sites).filter(s=>(!org||s.organization_id===org)&&(!client||s.client_id===client))} lang={lang} value={site} onChange={setSite}/></Field>
    <Field label={t('category')}><Choice rows={active(data.categories).filter(c=>!org||c.organization_id===org)} lang={lang} value={category} onChange={setCategory}/></Field>
@@ -45,3 +46,4 @@ export default function AssetRegister(){
   </Dialog>
  </section>
 }
+

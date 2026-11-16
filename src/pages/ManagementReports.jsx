@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import OwnerBrand from '../components/OwnerBrand'
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
@@ -115,7 +116,7 @@ export default function ManagementReports({capabilities}){
   {result?.reference_lookup_unavailable&&<p role="status" className="muted">{lang==='ar'?'تعذر جلب بعض الأسماء. تظهر شرطة مكان الاسم غير المتاح.':'Some names could not be retrieved. Unavailable names are shown as a dash.'}</p>}
   <form className="facility-panel" onSubmit={apply}>
    <div className="form-grid">
-    <Field label={t('reportCompany')} required><Select required value={org} onChange={v=>set('organization_id',v)} options={options(scopes?.organizations||[],false)}/></Field>
+    <CompanyField label={t('reportCompany')} required><Select required value={org} onChange={v=>set('organization_id',v)} options={options(scopes?.organizations||[],false)}/></CompanyField>
     <Field label={t('reportClient')}><Select value={filters.client_id} onChange={v=>set('client_id',v)} options={options(clients)}/></Field>
     <Field label={t('reportSite')}><Select value={filters.site_id} onChange={v=>set('site_id',v)} options={options(sites)}/></Field>
     <Field label={t('reportStart')} required><input required type="date" value={filters.start_date} onChange={e=>set('start_date',e.target.value)}/></Field>
@@ -179,3 +180,4 @@ export default function ManagementReports({capabilities}){
   {busy&&<p role="status">{t('loading')}</p>}
  </section>
 }
+

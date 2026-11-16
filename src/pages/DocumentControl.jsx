@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {loadOwnerIdentity} from '../lib/ownerIdentity'
 import {printReport} from '../lib/reportExport'
 import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
@@ -42,7 +43,7 @@ export default function DocumentControl(){
   <div className="stats-grid facility-stats">{[['dcTotal',s.total],['dcActive',s.active],['dcArchived',s.archived],['dcExpiring',s.expiring_60],['dcNoRevision',s.without_revision]].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v??0}</strong></div>)}</div>
   <OwnerBrand identity={ownerIdentity} lang={lang}/>
   <form className="facility-panel" onSubmit={save}><h2>{t('dcNew')}</h2><div className="form-grid">
-   <label>Organization<select required value={form.organization_id} onChange={e=>setForm(v=>({...v,organization_id:e.target.value,client_id:'',site_id:'',asset_id:''}))}><option value="">—</option>{directory.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+   <CompanyField>Organization<select required value={form.organization_id} onChange={e=>setForm(v=>({...v,organization_id:e.target.value,client_id:'',site_id:'',asset_id:''}))}><option value="">—</option>{directory.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></CompanyField>
    <label>{t('dcClient')}<select required value={form.client_id} onChange={e=>setForm(v=>({...v,client_id:e.target.value,site_id:'',asset_id:''}))}><option value="">—</option>{directory.clients.filter(x=>!form.organization_id||x.organization_id===form.organization_id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
    <label>{t('dcSite')}<select value={form.site_id} onChange={e=>setForm(v=>({...v,site_id:e.target.value,asset_id:''}))}><option value="">—</option>{directory.sites.filter(x=>!form.client_id||x.client_id===form.client_id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
    <label>{t('dcAsset')}<select value={form.asset_id} onChange={e=>setForm(v=>({...v,asset_id:e.target.value}))}><option value="">—</option>{directory.assets.filter(x=>!form.site_id||x.site_id===form.site_id).map(x=><option key={x.id} value={x.id}>{x.asset_tag} — {x.name_ar||x.name_en}</option>)}</select></label>
@@ -61,3 +62,4 @@ export default function DocumentControl(){
   <div className="facility-panel">{!data.documents?.length?<p>{t('dcNoData')}</p>:<div className="table-wrap"><table><thead><tr><th>{t('dcNumber')}</th><th>{t('dcClient')}</th><th>{t('dcSite')}</th><th>{t('dcType')}</th><th>{t('dcTitle')}</th><th>{t('dcRevision')}</th><th>{t('dcExpiry')}</th><th>{t('dcStatus')}</th><th></th></tr></thead><tbody>{data.documents.map(d=><tr key={d.id}><td>{d.document_number}</td><td>{d.client_name}</td><td>{d.site_name||'—'}</td><td>{d.document_type}</td><td>{d.title}</td><td>{d.current_revision}</td><td>{d.expiry_date||'—'}</td><td>{d.status}</td><td><button type="button" className="btn xs secondary" onClick={()=>printCover(d)}>{lang==='ar'?'غلاف بشعار المالك':'Owner-branded cover'}</button> <button className="btn xs secondary" onClick={()=>setRev({document_id:d.id,revision:'',description:'',issue_date:new Date().toISOString().slice(0,10),file_name:'',file_url:''})}>{t('dcAddRevision')}</button> {d.status!=='archived'&&<button className="btn xs danger-soft" onClick={()=>archive(d.id)}>{t('dcArchive')}</button>}</td></tr>)}</tbody></table></div>}</div>
  </section>
 }
+

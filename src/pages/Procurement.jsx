@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -34,12 +35,12 @@ export default function Procurement({defaultTab='requisitions'}){
   <div className="page-head"><h1>{t(defaultTab==='suppliers'?'suppliers':'procurement')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{(tab==='suppliers'?can('procurement.manage',org||null):tab==='requisitions'?can('procurement.request',org||null):false)&&<button className="btn primary" onClick={start}>{t(tab==='suppliers'?'newSupplier':'newRequisition')}</button>}</div></div>
   <Notice error={error} success={success}/>
   <div className="row-actions">{[['requisitions','requisitions'],['orders','purchaseOrders'],['suppliers','suppliers'],['receipts','goodsReceipts'],['stock','traceableStock']].map(([key,label])=><button key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>{setTab(key);setQuery('')}}>{t(label)} ({data?.[key]?.length||0})</button>)}</div>
-  <div className="facility-panel filter-grid"><Field label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></Field><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
+  <div className="facility-panel filter-grid"><CompanyField label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></CompanyField><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
   {!data?<p>{t('loading')}</p>:<DataTable rows={rows} columns={columns[tab]} emptyText={t('noData')}/>}
   <div className="facility-panel"><p className="muted">{t(tab==='stock'?'stockNotice':'procurementNotice')}</p></div>
   <Dialog open={open} title={t(tab==='suppliers'?'newSupplier':'newRequisition')} onClose={()=>!busy&&setOpen(false)}>
    <form className="facility-form" onSubmit={submit}><div className="form-grid">
-    <Field label={t('organization')} required><Select required value={form.organization_id||''} onChange={v=>set('organization_id',v)} options={opts(data?.organizations.filter(x=>can(tab==='suppliers'?'procurement.manage':'procurement.request',x.id)),name)}/></Field>
+    <CompanyField label={t('organization')} required><Select required value={form.organization_id||''} onChange={v=>set('organization_id',v)} options={opts(data?.organizations.filter(x=>can(tab==='suppliers'?'procurement.manage':'procurement.request',x.id)),name)}/></CompanyField>
     {tab==='suppliers'?<>
      {['name','tax_number','contact_name','email','phone','address'].map(key=><Field key={key} label={t(({tax_number:'taxNumber',contact_name:'contactName'})[key]||key)} required={key==='name'}><input required={key==='name'} value={form[key]||''} onChange={e=>set(key,e.target.value)}/></Field>)}
     </>:<>
@@ -50,3 +51,4 @@ export default function Procurement({defaultTab='requisitions'}){
   </Dialog>
  </section>
 }
+

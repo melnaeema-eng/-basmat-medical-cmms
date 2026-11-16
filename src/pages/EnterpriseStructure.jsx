@@ -1,3 +1,6 @@
+import {useAuth} from '../context/AuthContext'
+import {companyWorkspace} from '../lib/companyWorkspace'
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {
@@ -13,6 +16,7 @@ function Field({label,children}){return <label style={{display:'grid',gap:6}}><s
 
 export default function EnterpriseStructure(){
  const {lang}=useLanguage(),ar=lang==='ar'
+ const {access,profile}=useAuth(),platformAdmin=companyWorkspace(access,profile).isSuperAdmin
  const [data,setData]=useState({organizations:[],projects:[],sites:[],users:[],roles:[]})
  const [project,setProject]=useState(blankProject)
  const [selectedProject,setSelectedProject]=useState('')
@@ -62,15 +66,15 @@ export default function EnterpriseStructure(){
  })
 
  const orgSelect=(key,label)=><div style={{display:'grid',gap:8}}>
-  <Field label={label}>
+  <CompanyField company={key==='maintenance_org_id'} label={label}>
    <select value={project[key]} onChange={e=>setProject({...project,[key]:e.target.value})}>
     <option value="">{ar?'اختر...':'Select...'}</option>
     {data.organizations.map(o=><option key={o.id} value={o.id}>{orgName(o)}</option>)}
    </select>
-  </Field>
-  <button type="button" className="btn secondary" onClick={()=>setNewOrg({role:key,name:''})}>
+  </CompanyField>
+  {(key!=='maintenance_org_id'||platformAdmin)&&<button type="button" className="btn secondary" onClick={()=>setNewOrg({role:key,name:''})}>
    {ar?'+ إضافة جهة جديدة':'+ Add organization'}
-  </button>
+  </button>}
  </div>
 
  return <section className="facility-module">
@@ -149,3 +153,4 @@ export default function EnterpriseStructure(){
   </Card>
  </section>
 }
+

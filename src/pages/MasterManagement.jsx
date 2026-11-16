@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 ﻿import {useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -114,7 +115,7 @@ export default function MasterManagement({kind}){
  }
  const renderField=([key,type,required])=>{
   const value=form[key]??''
-  return <label key={key} className={key==='address'?'span-2':''}>{name(key)}
+  return <CompanyField company={key==='organization_id'} key={key} className={key==='address'?'span-2':''}>{name(key)}
    {type==='reference'?<input value={value||'Auto-generated on save / ظٹظڈظ†ط´ط£ ط¹ظ†ط¯ ط§ظ„ط­ظپط¸'} readOnly aria-label={name(key)} />:
    ['organization','client','contract','status','contractType'].includes(type)?
     <select required={!!required} value={value} disabled={busy||(editing&&key==='organization_id')||(editing&&key==='client_id'&&['contracts','sites'].includes(kind))} onChange={e=>set(key,e.target.value)}>
@@ -122,7 +123,7 @@ export default function MasterManagement({kind}){
     </select>:
     <input type={type} required={!!required} min={type==='number'?'0':undefined} step={type==='number'?'0.01':undefined} value={value} disabled={busy} onChange={e=>set(key,e.target.value)}/>}
    {kind==='contracts'&&key==='client_id'&&!editing&&<span style={{display:'block',marginTop:8}}>{can('clients.manage',form.organization_id)&&form.organization_id?<button type="button" className="btn secondary" disabled={busy} onClick={startOwner}>{lang==='ar'?'+ إضافة مالك جديد':'+ Add new owner'}</button>:<small>{lang==='ar'?'إضافة مالك جديد تتطلب صلاحية إدارة المالكين في الشركة المحددة':'Adding an owner requires owner management permission in the selected organization'}</small>}</span>}
-  </label>
+  </CompanyField>
  }
  const col=(key,label,render)=>({key,label:label==='client'&&kind==='contracts'?name('client_id'):t(label),render})
  const columns=kind==='organizations'?[col('name','name'),col('code','code')]:
@@ -138,7 +139,7 @@ export default function MasterManagement({kind}){
   {success&&<div className="alert success" role="status">{success==='saved'?t('saved'):success}</div>}
   <div className="facility-panel filter-grid">
    <label>{t('search')}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('search')}/></label>
-   <label>{t('organization')}<select value={filterOrg} onChange={e=>{setFilterOrg(e.target.value);setFilterClient('')}}><option value="">{t('all')}</option>{orgs.filter(allowedOrg).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
+   <CompanyField>{t('organization')}<select value={filterOrg} onChange={e=>{setFilterOrg(e.target.value);setFilterClient('')}}><option value="">{t('all')}</option>{orgs.filter(allowedOrg).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></CompanyField>
    {kind!=='organizations'&&<label>{kind==='contracts'?name('client_id'):t('client')}<select value={filterClient} onChange={e=>setFilterClient(e.target.value)}><option value="">{t('all')}</option>{clients.filter(c=>!filterOrg||c.organization_id===filterOrg).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
    <label>{t('status')}<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">{t('all')}</option>{statuses[kind].map(v=><option key={v} value={v}>{t(v)}</option>)}</select></label>
   </div>
@@ -164,4 +165,5 @@ export default function MasterManagement({kind}){
   </Modal>
  </section>
 }
+
 

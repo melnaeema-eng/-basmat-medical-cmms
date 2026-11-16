@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -124,12 +125,12 @@ export default function MedicalOperationalSetup(){
   {success&&<div style={{...card,borderColor:'#6ce9a6',marginBottom:12}}>{success}</div>}
 
   <div style={{...card,display:'grid',gap:14}}>
-   <label>{ar?'شركة الصيانة / المنظمة التشغيلية':'Maintenance service provider / operating organization'}
+   <CompanyField>{ar?'شركة الصيانة / المنظمة التشغيلية':'Maintenance service provider / operating organization'}
     <select value={providerId} onChange={e=>setProviderId(e.target.value)} style={input}>
      <option value="">{ar?'اختر':'Select'}</option>
      {bundle.organizations.filter(x=>x.status!=='archived').map(x=><option key={x.id} value={x.id}>{x.name||x.name_ar||x.name_en||x.code}</option>)}
     </select>
-   </label>
+   </CompanyField>
 
    <label>{ar?'مالك موجود - اختياري':'Existing owner - optional'}
     <select value={ownerId} onChange={e=>setOwnerId(e.target.value)} style={input}>
@@ -169,3 +170,4 @@ export default function MedicalOperationalSetup(){
   </div>
  </div>
 }
+

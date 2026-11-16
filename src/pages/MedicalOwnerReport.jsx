@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -50,7 +51,7 @@ export default function MedicalOwnerReport(){
   {error&&<div className="alert error">{error}</div>}
   {ok&&<div className="alert success">{ok}</div>}
   <form className="facility-panel" onSubmit={submit}><div className="form-grid">
-   <label>{ar?'شركة الصيانة':'Maintenance company'}<select required value={form.organization_id} onChange={e=>setForm(v=>({...v,organization_id:e.target.value,client_id:'',site_id:'',asset_id:''}))}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(id=><option key={id} value={id}>{id}</option>)}</select></label>
+   <CompanyField>{ar?'شركة الصيانة':'Maintenance company'}<select required value={form.organization_id} onChange={e=>setForm(v=>({...v,organization_id:e.target.value,client_id:'',site_id:'',asset_id:''}))}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(id=><option key={id} value={id}>{id}</option>)}</select></CompanyField>
    <label>{ar?'المالك':'Owner'}<select required value={form.client_id} onChange={e=>setForm(v=>({...v,client_id:e.target.value,site_id:'',asset_id:''}))}><option value="">{ar?'اختر':'Select'}</option>{clients.map(id=><option key={id} value={id}>{id}</option>)}</select></label>
    <label>{ar?'المستشفى':'Hospital'}<select required value={form.site_id} onChange={e=>setForm(v=>({...v,site_id:e.target.value,asset_id:''}))}><option value="">{ar?'اختر':'Select'}</option>{sites.map(id=><option key={id} value={id}>{id}</option>)}</select></label>
    <label>{ar?'الجهاز الطبي':'Medical asset'}<select required value={form.asset_id} onChange={e=>setForm(v=>({...v,asset_id:e.target.value}))}><option value="">{ar?'اختر الجهاز':'Select asset'}</option>{assets.map(x=>{const a=x.bf_assets||{};return <option key={x.asset_id} value={x.asset_id}>{a.asset_number||a.asset_name||a.name||x.asset_id} {a.model?'- '+a.model:''}</option>})}</select></label>
@@ -59,3 +60,4 @@ export default function MedicalOwnerReport(){
   </div><div className="form-actions"><button className="btn primary" disabled={busy}>{ar?'إرسال البلاغ وإنشاء أمر العمل':'Submit report & create Work Order'}</button></div></form>
  </section>
 }
+

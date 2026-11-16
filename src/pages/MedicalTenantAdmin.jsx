@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -122,7 +123,7 @@ export default function MedicalTenantAdmin(){
   <div className="facility-panel">
    <h2>{ar?'إضافة مالك / عميل':'Add Owner / Client'}</h2>
    <form onSubmit={saveClient}><div className="form-grid">
-    <label>{ar?'شركة الصيانة':'Maintenance company'}<select required value={client.organization_id} onChange={e=>{setClient(v=>({...v,organization_id:e.target.value}));setSelectedOrg(e.target.value)}}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></label>
+    <CompanyField>{ar?'شركة الصيانة':'Maintenance company'}<select required value={client.organization_id} onChange={e=>{setClient(v=>({...v,organization_id:e.target.value}));setSelectedOrg(e.target.value)}}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></CompanyField>
     <label>{ar?'اسم المالك':'Owner/client name'}<input required value={client.name} onChange={e=>setClient(v=>({...v,name:e.target.value}))}/></label>
     <label>{ar?'البريد':'Email'}<input value={client.email} onChange={e=>setClient(v=>({...v,email:e.target.value}))}/></label>
     <label>{ar?'الهاتف':'Phone'}<input value={client.phone} onChange={e=>setClient(v=>({...v,phone:e.target.value}))}/></label>
@@ -134,7 +135,7 @@ export default function MedicalTenantAdmin(){
    <form onSubmit={saveSite}><div className="form-grid">
 <label>Latitude<input type="number" step="any" min="-90" max="90" required value={site.latitude} onChange={e=>setSite(v=>({...v,latitude:e.target.value}))}/></label>
 <label>Longitude<input type="number" step="any" min="-180" max="180" required value={site.longitude} onChange={e=>setSite(v=>({...v,longitude:e.target.value}))}/></label>
-    <label>{ar?'شركة الصيانة':'Maintenance company'}<select required value={site.organization_id} onChange={e=>{setSite(v=>({...v,organization_id:e.target.value,client_id:''}));setSelectedOrg(e.target.value)}}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></label>
+    <CompanyField>{ar?'شركة الصيانة':'Maintenance company'}<select required value={site.organization_id} onChange={e=>{setSite(v=>({...v,organization_id:e.target.value,client_id:''}));setSelectedOrg(e.target.value)}}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></CompanyField>
     <label>{ar?'المالك':'Owner/client'}<select required value={site.client_id} onChange={e=>setSite(v=>({...v,client_id:e.target.value}))}><option value="">{ar?'اختر':'Select'}</option>{clients.filter(x=>x.organization_id===site.organization_id).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
     <label>{ar?'اسم المستشفى':'Hospital name'}<input required value={site.name} onChange={e=>setSite(v=>({...v,name:e.target.value}))}/></label>
     <label>{ar?'المدينة':'City'}<input value={site.city} onChange={e=>setSite(v=>({...v,city:e.target.value}))}/></label>
@@ -144,7 +145,7 @@ export default function MedicalTenantAdmin(){
 
   <div className="facility-panel">
    <h2>{ar?'النطاق الطبي الحالي':'Current Medical Scope'}</h2>
-   <label>{ar?'شركة الصيانة':'Maintenance company'}<select value={selectedOrg} onChange={e=>setSelectedOrg(e.target.value)}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></label>
+   <CompanyField>{ar?'شركة الصيانة':'Maintenance company'}<select value={selectedOrg} onChange={e=>setSelectedOrg(e.target.value)}><option value="">{ar?'اختر':'Select'}</option>{orgs.map(x=><option key={x.id} value={x.id}>{x.name_ar||x.name_en||x.name}</option>)}</select></CompanyField>
    {selectedOrg&&<div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:12,marginTop:16}}>
     <div className="kpi-card"><b>{ar?'الملاك':'Owners'}</b><strong>{directory.clients?.length||0}</strong></div>
     <div className="kpi-card"><b>{ar?'المستشفيات':'Hospitals'}</b><strong>{directory.sites?.length||0}</strong></div>
@@ -157,3 +158,4 @@ export default function MedicalTenantAdmin(){
   </div>
  </section>
 }
+

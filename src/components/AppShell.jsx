@@ -1,3 +1,5 @@
+import CompanyWorkspaceBoundary from './CompanyWorkspaceBoundary'
+import {companyWorkspace,companyAdminPermission} from '../lib/companyWorkspace'
 import NotificationBell from './NotificationBell'
 import {NavLink,Outlet,useLocation,useNavigate} from 'react-router-dom'
 import {useEffect,useMemo,useState} from 'react'
@@ -19,7 +21,7 @@ const groups=[
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
  ]},
  {title:'Setup | الإعداد',items:[
-  ['/maintenance-companies','Maintenance Companies | شركات الصيانة','organizations.view','building'],
+  ['/maintenance-companies','Maintenance Companies | شركات الصيانة',companyAdminPermission,'building'],
   ['/owners','Owners | الملاك','clients.view','users'],
   ['/project-setup','Project Setup | إعداد المشروع','organizations.view','building'],
   ['/asset-library','Device Library | مكتبة الأجهزة','assets.view','grid'],
@@ -74,8 +76,8 @@ export default function AppShell(){
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
  useSmartLanguageInputs()
  const visible=permission=>!!(profile?.is_super_admin||access?.super_admin)||permission===null||permission==='__client__'||can(permission,access?.home_organization_id||null)
- const isPlatformAdmin=!!(profile?.is_super_admin||access?.super_admin)
- const homeOrganizationId=access?.home_organization_id||null
+ const isPlatformAdmin=companyWorkspace(access,profile).isSuperAdmin
+ const homeOrganizationId=companyWorkspace(access,profile).companyId
 
  useEffect(()=>{
   let alive=true
@@ -261,8 +263,9 @@ export default function AppShell(){
     {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
       <strong>{lang==='ar'?'وضع إعداد المشروع':'Project Setup Mode'}</strong>
       <button type="button" className="btn secondary" onClick={()=>navigate(sessionStorage.getItem('bafm-project-setup-return')||'/project-setup')}>{lang==='ar'?'العودة إلى إعداد المشروع':'Back to Project Setup'}</button>
-    </div>}<Outlet/></main>
+    </div>}<CompanyWorkspaceBoundary><Outlet/></CompanyWorkspaceBoundary></main>
   </div>
  </div>
 }
+
 

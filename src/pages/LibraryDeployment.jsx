@@ -1,3 +1,4 @@
+import CompanyField,{CompanyAdminOnly} from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
@@ -182,12 +183,12 @@ export default function LibraryDeployment(){
   <div className="facility-panel">
    <h2>{ar?'1. نطاق المشروع':'1. Project scope'}</h2>
    <div className="filter-grid">
-    <Field label={ar?'المنظمة':'Organization'}>
+    <CompanyField label={ar?'المنظمة':'Organization'}>
      <select value={org} onChange={e=>{setOrg(e.target.value);setProject('');setSite('');setAsset('');setProcedure('')}}>
       <option value="">{ar?'اختر المنظمة':'Select organization'}</option>
       {orgs.map(o=><option key={o.id} value={o.id}>{o.name||o.code}</option>)}
      </select>
-    </Field>
+    </CompanyField>
     <Field label={ar?'المشروع':'Project'}>
      <select value={project} onChange={e=>{setProject(e.target.value);setSite('');setAsset('')}} disabled={!org}>
       <option value="">{ar?'اختر المشروع':'Select project'}</option>
@@ -274,7 +275,7 @@ export default function LibraryDeployment(){
    </div>
   </div>
 
-  <div className="facility-panel">
+  <CompanyAdminOnly>  <div className="facility-panel">
    <h2>{ar?'4. شركات الصيانة':'4. Maintenance companies'}</h2>
    <p className="muted">
     {ar
@@ -286,7 +287,8 @@ export default function LibraryDeployment(){
      {ar?'فتح مكتبة شركات الصيانة':'Open maintenance companies library'}
     </Link>
    </div>
-  </div>
+  </div></CompanyAdminOnly>
  </section>
 }
+
 

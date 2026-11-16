@@ -1,3 +1,4 @@
+import {bindHomeCompany} from './companyWorkspace.js'
 import {resolveMedicalPermission} from './medicalPermissionAliases.js'
 
 const rows=value=>Array.isArray(value)?value:[]
@@ -30,11 +31,13 @@ export function normalizeAccessContext(payload={},verified=[]){
 // Legacy work-order RPCs still use bf_can. Accept only exact server-confirmed
 // grants in existing memberships; role names and admin labels never grant access.
 export async function loadEffectiveAccess(payload,rpc){
-  const normalized=normalizeAccessContext(payload)
+  let normalized=normalizeAccessContext(payload)
   if(payload.super_admin===true||payload.is_super_admin===true)return normalized
   let legacy
   try{legacy=await rpc('bf3_my_access',{})}catch{return normalized}
   if(legacy.error)return normalized
+  payload=bindHomeCompany(payload,legacy.data||{})
+  normalized=normalizeAccessContext(payload)
   const orgIds=new Set(normalized.organizations.map(o=>o.id))
   const source=rows(payload.permissions)
   const candidates=[...new Map(rows(legacy.data?.roles).filter(r=>r.permission&&orgIds.has(r.organization_id))
@@ -49,3 +52,4 @@ export async function loadEffectiveAccess(payload,rpc){
   }))
   return normalizeAccessContext(payload,checked.filter(Boolean))
 }
+

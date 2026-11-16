@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useRef} from 'react'
 import MedicalWorkJourney from '../components/MedicalWorkJourney'
 import {useEffect,useMemo,useState} from 'react'
@@ -621,7 +622,7 @@ export default function MedicalAssetCockpit(){
     <details className="medical-registration" open={registrationOpen} onToggle={e=>setRegistrationOpen(e.currentTarget.open)}><summary>{ar?'إضافة جهاز جديد من المكتبة':'Register a new device from the library'}</summary>
     <Panel title={ar?'إضافة جهاز من المكتبة إلى المشروع':'Add Asset from Library to Project'}>
       <div className="form-grid">
-        <Field label={ar?'المنظمة':'Organization'}>
+        <CompanyField label={ar?'المنظمة':'Organization'}>
           <select
             value={deploy.organization_id}
             onChange={e=>setDeploy({
@@ -633,7 +634,7 @@ export default function MedicalAssetCockpit(){
             <option value="">{ar?'اختر المنظمة':'Select organization'}</option>
             {deployOrgs.map(o=><option key={o.id} value={o.id}>{o.name||o.code}</option>)}
           </select>
-        </Field>
+        </CompanyField>
 
         <Field label={ar?'المشروع':'Project'}>
           <select
@@ -1065,3 +1066,4 @@ export default function MedicalAssetCockpit(){
 
   </section>
 }
+

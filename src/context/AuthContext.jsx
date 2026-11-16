@@ -1,3 +1,4 @@
+import {bindHomeCompany,companyAdminPermission,companyWorkspace} from '../lib/companyWorkspace'
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {resolveMedicalPermission} from '../lib/medicalPermissionAliases'
@@ -115,6 +116,7 @@ export function AuthProvider({children}){
  const can=(permission,org=null)=>{
   // User must still be active
   if(profile?.status!=='active')return false
+  if(permission===companyAdminPermission)return companyWorkspace(access,profile).isSuperAdmin
 
   // Platform Super Admin has unrestricted access
   if(isSuperAdmin)return true

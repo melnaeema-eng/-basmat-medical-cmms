@@ -1,3 +1,4 @@
+import {CompanyAdminOnly} from '../components/CompanyField'
 import {useEffect,useRef,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
@@ -106,9 +107,10 @@ export default function ProjectSetupWizard(){
       {next===null&&<div className="setup-success">{ar?'بيانات الإعداد الأساسية موجودة. يمكنك متابعة التشغيل من ملف الجهاز.':'Basic setup records are present. Continue operations from the device record.'}</div>}
       <button className="btn primary" disabled={!counts.assets} onClick={()=>open('/medical-asset-cockpit')}>{ar?'فتح الأجهزة والصيانة':'Open devices and maintenance'}</button>
      </>}
-     <details className="setup-extra"><summary>{ar?'خيارات إضافية':'More options'}</summary><div className="row-actions"><button className="btn" onClick={()=>open('/contracts')}>{ar?'العقود':'Contracts'}</button><button className="btn" onClick={()=>open('/organizations')}>{ar?'إدارة الجهات':'Organization management'}</button></div></details>
+     <details className="setup-extra"><summary>{ar?'خيارات إضافية':'More options'}</summary><div className="row-actions"><button className="btn" onClick={()=>open('/contracts')}>{ar?'العقود':'Contracts'}</button><CompanyAdminOnly><button className="btn" onClick={()=>open('/organizations')}>{ar?'إدارة الجهات':'Organization management'}</button></CompanyAdminOnly></div></details>
     </main>
    </div>}
   </>}
  </section>
 }
+

@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadEnterpriseAccess,assignEnterpriseScope,setEnterpriseScopeActive} from '../lib/enterpriseAccess'
@@ -39,7 +40,7 @@ export default function EnterpriseAccess(){
   <div className="page-head"><h1>{t('enterpriseAccessTitle')}</h1><button className="btn secondary" onClick={()=>load()}>{t('eaRefresh')}</button></div>
   {error&&<div className="facility-panel" role="alert">{error}</div>}
   <div className="facility-panel"><div className="form-grid">
-   <label>{t('eaOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+   <CompanyField>{t('eaOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></CompanyField>
   </div></div>
   <form className="facility-panel" onSubmit={submit}><h2>{t('eaAssign')}</h2><div className="form-grid">
    <label>{t('eaUser')}<select required value={form.user_id} onChange={e=>setForm(v=>({...v,user_id:e.target.value}))}><option value="">—</option>{dir.users.map(x=><option key={x.id} value={x.id}>{x.full_name||x.email}</option>)}</select></label>
@@ -58,3 +59,4 @@ export default function EnterpriseAccess(){
   <div className="facility-panel"><h2>{t('eaRoleTemplates')}</h2><div className="security-check-list">{(data.roles||[]).map(r=><article className="security-check-card" key={r.id}><div className="security-check-main"><div><strong>{r.name}</strong><p>{r.code}</p></div></div><details className="security-human-details"><summary>{t('eaPermissions')} ({r.permissions?.length||0})</summary><div className="security-detail-list">{(r.permissions||[]).map(p=><div key={p}>{p}</div>)}</div></details></article>)}</div></div>
  </section>
 }
+

@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -91,13 +92,13 @@ export default function Inventory(){
   <Notice error={error} success={success}/>
   {data&&<div className="stats-grid facility-stats">{[['inventoryParts',data.parts.length],['inventoryWarehouses',data.warehouses.length],['lowStock',low.length],['inventoryRequests',data.requests.filter(x=>!['consumed','cancelled','rejected'].includes(x.status)).length]].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v}</strong></div>)}</div>}
   <div className="row-actions">{[['parts','inventoryParts'],['warehouses','inventoryWarehouses'],['stock','inventoryStock'],['requests','inventoryRequests'],['movements','inventoryMovements']].map(([key,label])=><button key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>{setTab(key);setQuery('')}}>{t(label)}</button>)}</div>
-  <div className="facility-panel filter-grid"><Field label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></Field><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
+  <div className="facility-panel filter-grid"><CompanyField label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></CompanyField><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
   {!data?<p>{t('loading')}</p>:<DataTable rows={rows} columns={columns[tab]} emptyText={t('noData')}/>}
   {data&&<div className="facility-panel"><p className="muted">{t('stockNotice')}</p></div>}
   <Dialog open={!!open} title={t(open==='parts'?'newPart':open==='warehouses'?'newWarehouse':open==='bin'?'newBin':open==='stock'?'newMovement':'newRequest')} onClose={()=>!busy&&setOpen(false)}>
    <form className="facility-form" onSubmit={submit}><div className="form-grid">
     {['parts','warehouses'].includes(open)&&<>
-     <Field label={t('organization')} required><Select required value={form.organization_id||''} onChange={v=>set('organization_id',v)} options={opts(data?.organizations.filter(x=>x.status==='active'&&can('inventory.manage',x.id)),name)}/></Field>
+     <CompanyField label={t('organization')} required><Select required value={form.organization_id||''} onChange={v=>set('organization_id',v)} options={opts(data?.organizations.filter(x=>x.status==='active'&&can('inventory.manage',x.id)),name)}/></CompanyField>
      {['name_ar','name_en'].map(key=><Field key={key} label={t(key==='name_ar'?'nameAr':'nameEn')} required><input required value={form[key]||''} onChange={e=>set(key,e.target.value)}/></Field>)}
     </>}
     {open==='parts'&&<>
@@ -134,3 +135,4 @@ export default function Inventory(){
   </Dialog>
  </section>
 }
+

@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -22,7 +23,7 @@ export default function AssetCategories(){
  return <section className="facility-module">
   <div className="page-head"><h1>{t('categories')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button>{can('assets.manage',org||null)&&<button className="btn primary" disabled={!org} onClick={()=>start()}>{t('add')}</button>}</div></div>
   <Notice error={error} success={success}/>
-  <div className="facility-panel filter-grid"><Field label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={setOrg}/></Field><Field label={t('search')}><input value={search} onChange={e=>setSearch(e.target.value)}/></Field></div>
+  <div className="facility-panel filter-grid"><CompanyField label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={setOrg}/></CompanyField><Field label={t('search')}><input value={search} onChange={e=>setSearch(e.target.value)}/></Field></div>
   {data?<DataTable columns={cols} rows={rows} emptyText={t('noData')}/>:<p>{t('loading')}</p>}
   <Dialog open={open} title={editing?t('edit'):t('add')} onClose={()=>setOpen(false)}><form className="form-grid" onSubmit={submit}>
    <Field label={t('nameAr')} required><input required value={form.name_ar} onChange={e=>setForm({...form,name_ar:e.target.value})}/></Field>
@@ -35,3 +36,4 @@ export default function AssetCategories(){
   </form></Dialog>
  </section>
 }
+

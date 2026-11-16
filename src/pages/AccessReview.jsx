@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
@@ -40,7 +41,7 @@ export default function AccessReview(){
   {error&&<div className="facility-panel" role="alert">{error}</div>}
   <div className="security-mini-grid"><div><span>{t('arPending')}</span><strong>{s.pending_requests||0}</strong></div><div><span>{t('arActiveScopes')}</span><strong>{s.active_scopes||0}</strong></div><div><span>{t('arExpiring')}</span><strong>{s.temporary_expiring_30d||0}</strong></div><div><span>{t('arExpired')}</span><strong>{s.expired_active||0}</strong></div></div>
 
-  <div className="facility-panel"><label>{t('arOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>
+  <div className="facility-panel"><CompanyField>{t('arOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></CompanyField></div>
 
   <form className="facility-panel" onSubmit={submit}><h2>{t('arNew')}</h2><div className="form-grid">
    <label>{t('arType')}<select value={form.request_type} onChange={e=>setForm(v=>({...v,request_type:e.target.value}))}>{['new_access','change_scope','temporary_access','revoke_access'].map(x=><option key={x} value={x}>{t(x)}</option>)}</select></label>
@@ -61,3 +62,4 @@ export default function AccessReview(){
   <div className="facility-panel"><h2>{t('arExpiringScopes')}</h2><div className="security-check-list">{(data.expiring_scopes||[]).map(x=><article className="security-check-card" key={x.id}><div><strong>{x.user_name}</strong><p>{x.role_code} · {x.scope_level} · {x.valid_until}</p></div><div className="form-actions"><button className="btn secondary" onClick={()=>review(x.id,'retain')}>{t('arRetain')}</button><button className="btn secondary" onClick={()=>review(x.id,'revoke')}>{t('arRevoke')}</button></div></article>)}</div></div>
  </section>
 }
+

@@ -1,4 +1,6 @@
-﻿import {useEffect,useMemo,useState} from 'react'
+import {useAuth} from '../context/AuthContext'
+import {companyWorkspace} from '../lib/companyWorkspace'
+import {useEffect,useMemo,useState} from 'react'
 import {useLocation,useNavigate} from 'react-router-dom'
 import {applySmartLanguage} from '../lib/smartLanguage'
 import {
@@ -188,7 +190,8 @@ export default function GuidedWorkflowBar(){
  const location=useLocation(),navigate=useNavigate()
  const [flow,setFlow]=useState(()=>getGuidedWorkflow())
  const [tick,setTick]=useState(0)
- const config=useMemo(()=>routeConfig(location.pathname),[location.pathname])
+ const {access,profile}=useAuth(),platformAdmin=companyWorkspace(access,profile).isSuperAdmin
+ const config=useMemo(()=>{const c=routeConfig(location.pathname);return c?{...c,steps:c.steps.filter(s=>platformAdmin||s.key!=='organization')}:null},[location.pathname,platformAdmin])
 
  useEffect(()=>{
   const update=()=>setFlow(getGuidedWorkflow())
@@ -304,7 +307,7 @@ export default function GuidedWorkflowBar(){
   const steps=resolveSteps(config)
   const snapshot=snapshotForm(config)
   startGuidedWorkflow({
-   type:Object.keys(ROUTES).find(k=>ROUTES[k]===config)||'guided',
+   type:Object.keys(ROUTES).find(k=>ROUTES[k].test(location.pathname))||'guided',
    title:ar?config.titleAr:config.title,
    originPath:location.pathname,
    returnPath:location.pathname,
@@ -375,4 +378,5 @@ export default function GuidedWorkflowBar(){
   </div>
  </div>
 }
+
 

@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
@@ -40,7 +41,7 @@ export default function SoftFmOperations(){
   <div className="page-head"><div><h1>{t('softFmTitle')}</h1><p className="muted">Cleaning · Security · Landscape · Pest Control · Waste</p></div><button className="btn secondary" onClick={load}>{t('sfRefresh')}</button></div>
   {error&&<div className="facility-panel" role="alert">{error}</div>}
   <div className="facility-panel"><div className="form-grid">
-   <label>{t('sfOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+   <CompanyField>{t('sfOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></CompanyField>
    <label>{t('sfDate')}<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
   </div><button className="btn secondary" onClick={()=>{setBusy(true);seedSoftFmTemplates(org).then(load).catch(e=>setError(e.message)).finally(()=>setBusy(false))}}>{t('sfSeed')}</button></div>
 
@@ -70,3 +71,4 @@ export default function SoftFmOperations(){
   </div><details className="security-human-details"><summary>{t('sfQr')}</summary><AutoQr value={x.qr_payload} size={130}/></details></article>)}</div>
  </section>
 }
+
