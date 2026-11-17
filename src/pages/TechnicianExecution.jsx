@@ -1,3 +1,4 @@
+import {executionActionAccess} from '../lib/executionActionAccess'
 import {executionFocus} from '../lib/maintenanceFocus'
 import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
 import {useAuth} from '../context/AuthContext'
@@ -14,11 +15,12 @@ function jobOf(p){return p?.procedure_snapshot?.job||p?.procedure_snapshot?.work
 
 export default function TechnicianExecution(){
  const {lang}=useLanguage()
- const {profile}=useAuth()
+ const {profile,can}=useAuth()
  const [rows,setRows]=useState([]),[selected,setSelected]=useState(null),[results,setResults]=useState([]),[attachments,setAttachments]=useState([])
  const [drafts,setDrafts]=useState({}),[files,setFiles]=useState({}),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[uploading,setUploading]=useState(false)
  const [error,setError]=useState(''),[success,setSuccess]=useState(''),[closeNote,setCloseNote]=useState(''),[detailLoading,setDetailLoading]=useState(false)
  const ar=lang==='ar'
+ const actionAccess=executionActionAccess(selected,profile,!!selected&&can('maintenance.knowledge.manage',selected.organization_id))
 
  async function load(){
   try{
@@ -55,6 +57,7 @@ export default function TechnicianExecution(){
  function setDraft(seq,key,value){setDrafts(x=>({...x,[seq]:{...draft(seq),[key]:value}}))}
  function stepAttachments(seq){return attachments.filter(x=>Number(x.step_seq)===Number(seq))}
  async function uploadFiles(s){
+  if(!actionAccess.canEdit||busy||uploading)return
   const list=Array.from(files[s.seq]||[])
   if(!list.length)return
   try{
@@ -66,6 +69,7 @@ export default function TechnicianExecution(){
   }catch(e){setError(e.message)}finally{setUploading(false)}
  }
  async function removeAttachment(a){
+  if(!actionAccess.canEdit||busy||uploading)return
   try{
    setUploading(true);setError('')
    await removeExecutionEvidence(a)
@@ -77,9 +81,11 @@ export default function TechnicianExecution(){
  }
 
  async function start(){
+  if(!actionAccess.canStart||busy||uploading)return
   try{setBusy(true);setError('');await startExecutionPackage(selected.id);await load();setSuccess(ar?'تم بدء التنفيذ.':'Execution started.')}catch(e){setError(e.message)}finally{setBusy(false)}
  }
  async function saveStep(s){
+  if(!actionAccess.canEdit||busy||uploading)return
   try{
    setBusy(true);setError('');setSuccess('')
    await submitExecutionStep(selected.id,{seq:s.seq,...draft(s.seq)})
@@ -88,6 +94,7 @@ export default function TechnicianExecution(){
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
  async function complete(){
+  if(!actionAccess.canEdit||busy||uploading)return
   try{
    setBusy(true);setError('');setSuccess('')
    await completeExecutionPackage(selected.id,closeNote)
@@ -117,7 +124,7 @@ export default function TechnicianExecution(){
        {s.failure_action&&<div><b>{ar?'عند الفشل':'Failure action'}:</b> {s.failure_action}</div>}
        {s.escalation_role&&<div><b>{ar?'التصعيد إلى':'Escalate to'}:</b> {s.escalation_role}</div>}
 
-       <div className="tech-grid" style={{marginTop:10}}>
+       <fieldset disabled={!actionAccess.canEdit||busy||uploading||detailLoading} style={{border:0,padding:0,margin:0}}><div className="tech-grid" style={{marginTop:10}}>
         {s.response_type==='pass_fail'&&<label>{ar?'النتيجة':'Result'}<select value={d.pass_fail} onChange={e=>setDraft(s.seq,'pass_fail',e.target.value)}><option value="">Select</option><option value="pass">PASS</option><option value="fail">FAIL</option><option value="na">N/A</option></select></label>}
         {s.response_type==='reading'&&<label>{ar?'القراءة':'Reading'} {s.unit||''}<input type="number" step="any" value={d.reading_value} onChange={e=>setDraft(s.seq,'reading_value',e.target.value)}/></label>}
         {s.response_type==='text'&&<label>{ar?'النتيجة':'Result'}<input value={d.result_text} onChange={e=>setDraft(s.seq,'result_text',e.target.value)}/></label>}
@@ -130,12 +137,13 @@ export default function TechnicianExecution(){
         <button className="btn" disabled={uploading||selected.status==='completed'||!(files[s.seq]?.length)} onClick={()=>uploadFiles(s)}>📎 {ar?'رفع المرفقات':'Upload Evidence'}</button>
         <button className="btn primary" disabled={busy||uploading||selected.status!=='started'} onClick={()=>saveStep(s)}>💾 {ar?'حفظ الخطوة':'Save Step'}</button>
        </div>
+       </fieldset>
        {stepAttachments(s.seq).length>0&&<div style={{marginTop:9}}>
         <b>{ar?'المرفقات المحفوظة':'Stored attachments'}:</b>
         {stepAttachments(s.seq).map(a=><div key={a.id} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:5}}>
          <span>📎 {a.file_name}</span><small>{a.mime_type||''} {a.size_bytes?`· ${Math.ceil(a.size_bytes/1024)} KB`:''}</small>
          <button className="btn" onClick={()=>openAttachment(a)}>{ar?'عرض':'Open'}</button>
-         {selected.status!=='completed'&&<button className="btn" disabled={uploading} onClick={()=>removeAttachment(a)}>{ar?'حذف':'Delete'}</button>}
+         {selected.status!=='completed'&&<button className="btn" disabled={!actionAccess.canEdit||busy||uploading} onClick={()=>removeAttachment(a)}>{ar?'حذف':'Delete'}</button>}
         </div>)}
        </div>}
       </div>
@@ -219,9 +227,10 @@ export default function TechnicianExecution(){
        <div className="tech-progress"><div style={{width:`${progress}%`}}/></div>
       </div>
 
-      {['assigned','blocked'].includes(selected.status)&&<button className="btn primary" disabled={busy} style={{marginTop:12}} onClick={start}>▶ {ar?'بدء التنفيذ':'Start Execution'}</button>}
+      {['assigned','blocked'].includes(selected.status)&&<button className="btn primary" disabled={busy||!actionAccess.canStart} style={{marginTop:12}} onClick={start}>▶ {ar?'بدء التنفيذ':'Start Execution'}</button>}
      </div>
 
+     {!detailLoading&&!actionAccess.canEdit&&<p role="status" className="alert warning">{!actionAccess.authorized?(ar?'للعرض فقط — التنفيذ متاح للفني المسند أو المسؤول المخوّل.':'Read-only — execution is available to the assigned technician or authorized manager.'):(ar?'الحقول للعرض فقط حتى بدء التنفيذ، وتُقفل بعد اكتماله.':'Fields are read-only until execution starts and are locked after completion.')}</p>}
      {!detailLoading&&<NextActionCard action={focusAction} lang={lang}/>}
      {detailLoading?<p role="status">{ar?'جارٍ تحميل الخطوات المسجلة…':'Loading recorded steps…'}</p>:<>
       {selected.status==='started'&&nextStep&&renderStep(nextStep)}
@@ -231,8 +240,8 @@ export default function TechnicianExecution(){
 
      {!detailLoading&&selected.status==='started'&&progress===100&&<div className="facility-panel">
       <h2>{ar?'إغلاق المهمة':'Complete Job'}</h2>
-      <textarea style={{width:'100%',minHeight:90}} value={closeNote} onChange={e=>setCloseNote(e.target.value)} placeholder={ar?'ملاحظة الإغلاق / تفاصيل أي فشل أو استثناء...':'Closeout note / failure or exception details...'}/>
-      <button className="btn primary" disabled={busy||progress<100} onClick={complete}>✅ {ar?'إكمال الإجراء':'Complete Procedure'}</button>
+      <textarea disabled={!actionAccess.canEdit||busy||uploading} style={{width:'100%',minHeight:90}} value={closeNote} onChange={e=>setCloseNote(e.target.value)} placeholder={ar?'ملاحظة الإغلاق / تفاصيل أي فشل أو استثناء...':'Closeout note / failure or exception details...'}/>
+      <button className="btn primary" disabled={busy||uploading||!actionAccess.canEdit||progress<100} onClick={complete}>✅ {ar?'إكمال الإجراء':'Complete Procedure'}</button>
       {progress<100&&<small style={{marginInlineStart:8}}>{ar?'يجب إكمال جميع الخطوات الإلزامية أولاً.':'Complete all required steps first.'}</small>}
      </div>}
     </>}
@@ -240,4 +249,5 @@ export default function TechnicianExecution(){
   </div>
  </section>
 }
+
 

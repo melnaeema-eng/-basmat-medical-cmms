@@ -1,0 +1,5 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {executionActionAccess} from '../src/lib/executionActionAccess.js'
+test('Only assigned active technician or authorized manager can write an active procedure',()=>{const p={technician_id:'tech',status:'started'};assert.equal(executionActionAccess(p,{id:'other',status:'active'}).canEdit,false);assert.equal(executionActionAccess(p,{id:'tech',status:'inactive'}).canEdit,false);assert.equal(executionActionAccess(p,{id:'tech',status:'active'}).canEdit,true);assert.equal(executionActionAccess(p,{id:'manager',status:'active'},true).canEdit,true)})
+test('Start, pending and completed procedure states lock writing correctly',()=>{const u={id:'tech',status:'active'},p={technician_id:'tech',status:'assigned'};assert.equal(executionActionAccess(p,u).canStart,true);assert.equal(executionActionAccess(p,u).canEdit,false);assert.equal(executionActionAccess({...p,status:'completed'},u).canEdit,false);assert.equal(executionActionAccess(null,u).canEdit,false)})
