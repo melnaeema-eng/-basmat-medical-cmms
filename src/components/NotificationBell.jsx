@@ -21,7 +21,7 @@ export default function NotificationBell(){
  useEffect(()=>{if(!open)return;const outside=e=>{if(!root.current?.contains(e.target))setOpen(false)};const key=e=>{if(e.key==='Escape'){setOpen(false);trigger.current?.focus()}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',key);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',key)}},[open])
  async function openItem(item){
   if(!item.is_read)try{await setNotificationRead(item.notification_key,true);setData(old=>({...old,unread:Math.max(0,(old.unread||0)-1),items:old.items.map(x=>x.notification_key===item.notification_key?{...x,is_read:true}:x)}))}catch{/* Opening the authorized record remains available if marking read fails. */}
-  setOpen(false);const url=notificationUrl(item);if(url.startsWith('https://facilities.basmat-alnawabig.com.sa/'))window.location.assign(url);else navigate(url)
+  setOpen(false);const url=notificationUrl(item);if(/^https:\/\/(medical|facilities)\.basmat-alnawabig\.com\.sa\//.test(url))window.location.assign(url);else navigate(url)
  }
  return <div className="notification-bell" ref={root}>
   <button type="button" className="bafm-bell" ref={trigger} aria-label={(ar?'الإشعارات':'Notifications')+(data.unread?` (${data.unread})`:'')} aria-expanded={open} aria-haspopup="dialog" onClick={()=>{setOpen(v=>!v);if(!open)refresh()}}>
@@ -36,4 +36,5 @@ export default function NotificationBell(){
   </section>}
  </div>
 }
+
 

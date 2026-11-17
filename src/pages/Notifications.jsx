@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadNotifications,setNotificationRead,markAllNotificationsRead,notificationRefreshEvent} from '../lib/notifications'
-import {notificationLabel,notificationInstruction,notificationUrl} from '../lib/notificationPresentation'
+import {notificationLabel,notificationInstruction,notificationUrl,notificationBody} from '../lib/notificationPresentation'
 
 const severities={critical:'notificationCritical',high:'notificationHigh',normal:'notificationNormal'}
 export default function Notifications(){
@@ -57,7 +57,7 @@ export default function Notifications(){
      <span><strong>{t(severities[item.severity]||'notificationNormal')}</strong>{item.is_read?' ✓':''}</span>
     </div>
     {notificationInstruction(item,lang)&&<p>{notificationInstruction(item,lang)}</p>}
-    {item.body&&<p>{item.body}</p>}
+    {notificationBody(item)&&<p>{notificationBody(item)}</p>}
     <div className="row-actions">
      <button className="btn secondary" type="button" disabled={busy} onClick={()=>toggle(item)}>{item.is_read?t('notificationMarkUnread'):t('notificationMarkRead')}</button>
      <Link className="btn primary" to={notificationUrl(item)} onClick={()=>{if(!item.is_read)setNotificationRead(item.notification_key,true).catch(()=>{})}}>{t('notificationOpen')}</Link>
@@ -70,4 +70,5 @@ export default function Notifications(){
   </div>
  </section>
 }
+
 
