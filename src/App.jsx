@@ -68,7 +68,8 @@ import Corrective from './pages/Corrective'
 import CorrectiveDetails from './pages/CorrectiveDetails'
 import AssetDetails from './pages/AssetDetails'
 import MedicalMaintenanceCenter from './pages/MedicalMaintenanceCenter'
-import TechnicianExecution from './pages/TechnicianExecution'
+import TechnicianExecution from './pages/TechnicianExecution'
+
 import ReportsHub from './pages/ReportsHub'
 import AssetPassport from './pages/AssetPassport'
 import './basmat-print-signature.css'
@@ -141,7 +142,7 @@ export default function App(){
    <Route path="/release-readiness" element={guard('release.view',<ReleaseReadiness/>)}/>
    <Route path="/enterprise-access" element={guard('enterprise-access.view',<EnterpriseAccess/>)}/>
           <Route path="/project-setup" element={<ProjectSetupWizard/>}/>
-   <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
+   <Route path="/enterprise-structure" element={<Navigate to="/project-setup" replace/>}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="/roles-permissions" element={guard('roles.view',<RolesPermissions/>)}/>
    <Route path="/medical-devices" element={guard('medical.assets.view',<MedicalDeviceTraceability/>)} />

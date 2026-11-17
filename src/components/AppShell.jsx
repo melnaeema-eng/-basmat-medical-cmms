@@ -21,7 +21,6 @@ const groups=[
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
  ]},
  {title:'Setup | الإعداد',items:[
-  ['/maintenance-companies','Maintenance Companies | شركات الصيانة',companyAdminPermission,'building'],
   ['/owners','Owners | الملاك','clients.view','users'],
   ['/project-setup','Project Setup | إعداد المشروع','organizations.view','building'],
   ['/asset-library','Device Library | مكتبة الأجهزة','assets.view','grid'],
@@ -228,10 +227,7 @@ export default function AppShell(){
       placeholder={lang==='ar'?'البحث في أوامر العمل والأجهزة الطبية...':'Search work orders, assets, facilities...'}/>
     </form>
     <div className="bafm-top-actions">
-     {isPlatformAdmin&&organizations.length>0&&<select className="org-context-select" value={activeOrgId} onChange={e=>chooseOrganization(e.target.value)}>
-      <option value="">{lang==='ar'?'كل المنظمات / إدارة المنصة':'All organizations / Platform'}</option>
-      {organizations.map(o=><option key={o.id} value={o.id}>{lang==='ar'?(o.name_ar||o.name||o.name_en):(o.name_en||o.name||o.name_ar)}</option>)}
-     </select>}
+
      <button className="bafm-top-btn" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{lang==='ar'?'EN':'عربي'}</button>
      <NotificationBell/>
      <div className="bafm-user">

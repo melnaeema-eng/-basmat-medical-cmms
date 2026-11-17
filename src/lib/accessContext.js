@@ -8,6 +8,7 @@ const samePermission=(a,b)=>resolveMedicalPermission(keyOf(a))===resolveMedicalP
 const denied=row=>row?.is_allowed===false||row?.allowed===false||row?.organization_allowed===false||!active(row)
 
 export function normalizeAccessContext(payload={},verified=[]){
+  payload=bindHomeCompany(payload)
   const organizations=rows(payload.organizations).filter(active).map(o=>({...o,id:o.organization_id||o.id,organization_id:o.organization_id||o.id})).filter(o=>o.id)
   const homeId=payload.home_organization_id||payload.home_organization?.organization_id||payload.home_organization?.id
   const home=organizations.find(o=>o.id===homeId)||(organizations.length===1?organizations[0]:null)
@@ -23,9 +24,9 @@ export function normalizeAccessContext(payload={},verified=[]){
   }
   const unique=[...new Map(permissions.map(p=>[JSON.stringify([p.organization_id,p.permission_key,p.project_id||null,p.site_id||null,p.discipline_code||null]),p])).values()]
   return {...payload,organizations,home_organization_id:home?.id||null,home_organization:home,
-    role_assignments:rows(payload.role_assignments||payload.roles).filter(active),
+    role_assignments:rows(payload.role_assignments||payload.roles).filter(active).filter(r=>!r.organization_id||orgIds.has(r.organization_id)),
     roles:unique.map(p=>({...p,permission:p.permission_key})),permissions:unique,
-    projects:rows(payload.projects).filter(active)}
+    projects:rows(payload.projects).filter(active).filter(r=>orgIds.has(r.organization_id))}
 }
 
 // Legacy work-order RPCs still use bf_can. Accept only exact server-confirmed
