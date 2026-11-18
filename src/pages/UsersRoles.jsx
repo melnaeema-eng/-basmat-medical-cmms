@@ -219,8 +219,8 @@ export default function UsersRoles(){
   if(!rows.length)return <span className="muted">{ar?'بدون دور':'No role'}</span>
   return <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
    {rows.map(r=><span key={r.id} className="badge">
-    {r.name||r.code}
-    {canManageOrg(user.organization_id)&&<button type="button" onClick={()=>removeRole(user,r)}
+    {r.code==='org_admin'?(ar?'أدمن الشركة':'Company admin'):((ar?(data.roles||[]).find(x=>x.id===r.id)?.name_ar:(data.roles||[]).find(x=>x.id===r.id)?.name_en)||r.name||r.code)}
+    {canManageOrg(user.organization_id)&&(adminAccess.roles||[]).some(x=>x.id===r.id)&&<button type="button" onClick={()=>removeRole(user,r)}
       style={{border:0,background:'transparent',cursor:'pointer',marginInlineStart:5}}>×</button>}
    </span>)}
   </div>
