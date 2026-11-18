@@ -253,7 +253,7 @@ export default function AppShell(){
     gap:8
    }}>
     <span aria-hidden="true">👋</span>
-    <span>{welcomeText}</span>
+    <span>{welcomeText}</span><WelcomeAccess access={access} profile={profile} organizationId={activeOrganization?.id||homeOrganizationId} ar={lang==='ar'}/>
    </div>
    <main className="bafm-content" key={location.pathname}>
     {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
@@ -265,3 +265,18 @@ export default function AppShell(){
 }
 
 
+
+
+function WelcomeAccess({access, profile, organizationId, ar}) {
+ const scoped = rows => (rows || []).filter(row => !organizationId || row.organization_id === organizationId)
+ const roles = [...new Set(scoped(access?.role_assignments).map(role =>
+  role.role_code === 'org_admin' ? (ar ? 'أدمن الشركة' : 'Company admin') :
+   (ar ? role.role_name_ar || role.role_name_en : role.role_name_en || role.role_name_ar) || role.role_code
+ ).filter(Boolean))]
+ const projects = [...new Set(scoped(access?.projects).map(project => project.name || project.project_code).filter(Boolean))]
+ const platformAdmin = profile?.is_super_admin || access?.super_admin
+ return <span style={{display:'block',width:'100%',minWidth:0,overflowWrap:'anywhere',fontSize:'.85em',fontWeight:400}}>
+  <strong>{ar?'الدور':'Role'}</strong>{' · '}{platformAdmin?(ar?'مدير المنصة':'Platform admin'):roles.join('، ')||'—'}
+  {' | '}<strong>{ar?'المشاريع':'Projects'}</strong>{' · '}{platformAdmin?(ar?'جميع المشاريع':'All projects'):projects.join('، ')||'—'}
+ </span>
+}
