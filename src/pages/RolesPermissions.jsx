@@ -7,6 +7,8 @@ export default function RolesPermissions(){
  const {access}=useAuth()
  const [org,setOrg]=useState('')
  const [data,setData]=useState(null)
+ const [adminAccess,setAdminAccess]=useState({can_manage:false,roles:[]})
+ const [newRole,setNewRole]=useState({ar:'',en:''})
  const [busy,setBusy]=useState(false)
  const [error,setError]=useState('')
  const [orgs,setOrgs]=useState(access?.organizations||[])
@@ -42,7 +44,8 @@ export default function RolesPermissions(){
   setBusy(false)
   if(e){setError(e.message);return}
   if(d?.error){setError(d.error);return}
-  setData(d)
+  setData({...d,roles:(d?.roles||[]).map(r=>r.role_code==='org_admin'?{...r,role_name_ar:'أدمن الشركة',role_name_en:'Company admin'}:r)})
+  const admin=await supabase.rpc('bf_company_admin_access',{p_org:org});if(!admin.error)setAdminAccess(admin.data||{can_manage:false,roles:[]})
  }
 
  useEffect(()=>{load()},[org])
@@ -85,6 +88,13 @@ export default function RolesPermissions(){
   await load()
  }
 
+ async function createRole(e){e.preventDefault();if(!adminAccess.can_manage)return;setBusy(true);setError('')
+  const {error}=await supabase.rpc('bf_company_create_role',{p_org:org,p_name_ar:newRole.ar.trim(),p_name_en:newRole.en.trim()})
+  setBusy(false);if(error){setError(error.message);return}setNewRole({ar:'',en:''});await load()
+ }
+ const canAssign=role=>access?.super_admin||adminAccess.roles.some(r=>r.id===role.id)
+ const canEditPermission=(role,permission)=>!!access?.super_admin||(adminAccess.can_manage&&role.organization_id===org&&!role.is_system&&canAssign(role)&&permission.organization_allowed&&!['users.manage','roles.manage','access.manage','security.manage','organizations.manage','organization.manage','enterprise-access.manage','*'].includes(permission.permission_key)&&!permission.permission_key.startsWith('platform.'))
+
  return <section className="facility-panel">
   <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
    <h1 style={{marginInlineEnd:'auto'}}>الأدوار والصلاحيات | Roles & Permissions</h1>
@@ -99,6 +109,7 @@ export default function RolesPermissions(){
   {error&&<div className="bafm-error">{error}</div>}
   {busy&&<p>جاري التحميل...</p>}
 
+  {adminAccess.can_manage&&<form className="form-grid" onSubmit={createRole} style={{marginTop:20}}><h2 className="span-2">دور مخصص للشركة | Company role</h2><label>اسم الدور بالعربية<input required minLength={2} maxLength={100} value={newRole.ar} onChange={e=>setNewRole({...newRole,ar:e.target.value})}/></label><label>Role name in English<input required minLength={2} maxLength={100} value={newRole.en} onChange={e=>setNewRole({...newRole,en:e.target.value})}/></label><button className="btn primary" disabled={busy}>إنشاء دور وتحديد صلاحياته | Create role</button></form>}
   {data&&<>
    <h2>تعيين الأدوار للمستخدمين</h2>
    <div style={{overflowX:'auto'}}>
@@ -112,7 +123,7 @@ export default function RolesPermissions(){
       return <tr key={u.user_id}>
        <td><strong>{u.full_name||u.email}</strong><br/><small>{u.email}</small></td>
        {data.roles.map(r=><td key={r.id} style={{textAlign:'center'}}>
-        <input type="checkbox" checked={current.has(r.id)} disabled={busy}
+        <input type="checkbox" checked={current.has(r.id)} disabled={busy||!canAssign(r)}
          onChange={e=>setRole(u.user_id,r.id,e.target.checked)}/>
        </td>)}
       </tr>
@@ -144,7 +155,7 @@ export default function RolesPermissions(){
    <p>
     {access?.super_admin
       ?'Super Admin: يمكنك تعديل القالب العام للدور.'
-      :'عرض فقط. تعديل قالب الدور العام متاح لـ Super Admin فقط.'}
+      :'يمكنك تعديل صلاحيات الأدوار المخصصة لشركتك. قوالب الأدوار العامة وصلاحيات الإدارة محمية.'}
    </p>
 
    <div style={{overflowX:'auto',maxHeight:'60vh'}}>
@@ -163,7 +174,7 @@ export default function RolesPermissions(){
        return <td key={r.id} style={{textAlign:'center'}}>
         <input type="checkbox"
          checked={!!rp?.is_allowed}
-         disabled={busy||!access?.super_admin||!p.organization_allowed}
+         disabled={busy||!canEditPermission(r,p)}
          onChange={e=>setPermission(r.id,p.permission_key,e.target.checked)}/>
        </td>
       })}

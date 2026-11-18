@@ -30,7 +30,7 @@ export default function DashboardIdentity(){
 
  const name=profile?.full_name||user?.email||'User'
  const orgName=(ar?org?.name_ar||org?.name||org?.name_en:org?.name_en||org?.name||org?.name_ar)||org?.code||''
- const roleText=roles.map(r=>(ar?r.role_name_ar||r.role_name_en:r.role_name_en||r.role_name_ar)||r.role_code).filter(Boolean).join(' • ')
+ const roleText=roles.map(r=>r.role_code==='org_admin'?(ar?'أدمن الشركة':'Company admin'):((ar?r.role_name_ar||r.role_name_en:r.role_name_en||r.role_name_ar)||r.role_code)).filter(Boolean).join(' • ')
  const projectText=projects.map(p=>p.name||p.project_code).join(' • ')
 
  return <div className="facility-panel" style={{marginBottom:18}}>

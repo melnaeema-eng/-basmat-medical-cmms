@@ -1,3 +1,4 @@
+import AcceptInvitation from './pages/AcceptInvitation'
 import Suppliers from './pages/Suppliers'
 import MaintenanceCompanies from './pages/MaintenanceCompanies'
 import MasterAssetLibrary from './pages/MasterAssetLibrary'
@@ -80,6 +81,7 @@ export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
   <Route path="/login" element={<Login/>}/>
+  <Route path="/accept-invitation" element={<AcceptInvitation/>}/>
   <Route element={<ProtectedRoute><AppShell/></ProtectedRoute>}>
    <Route index element={<Dashboard/>}/>
    <Route path="/maintenance-companies" element={guard('organizations.view',<MaintenanceCompanies libraryPath="/medical-knowledge-library"/>)}/>
