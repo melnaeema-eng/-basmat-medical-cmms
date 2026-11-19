@@ -3,11 +3,15 @@ import {Link,useNavigate,useParams} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadProcurement,procurementAction,amount,total,receiptRemaining} from '../lib/procurement'
-import {Field,Select,Notice,Status} from '../components/FacilityFields'
+import {inventoryAction} from '../lib/inventory'
+import {Dialog,Field,Select,Notice,Status} from '../components/FacilityFields'
 const emptyReceipt={line_id:'',quantity:'',bin_id:'',owner_client_id:'',lot_code:'',serial_number:'',expires_on:'',supplier_reference:'',idempotency_key:''}
 export default function ProcurementDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
+ const [storageOpen,setStorageOpen]=useState(false)
+ const [storage,setStorage]=useState({warehouseId:'',warehouseName:'',code:''})
+ const [storageError,setStorageError]=useState('')
  const [line,setLine]=useState({part_id:'',quantity:'',notes:''}),[reason,setReason]=useState(''),[supplier,setSupplier]=useState(''),[currency,setCurrency]=useState('SAR'),[numberMode,setNumberMode]=useState('automatic'),[number,setNumber]=useState(''),[prices,setPrices]=useState({})
  const load=async()=>{setError('');try{setData(await loadProcurement())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[kind,id])
@@ -37,7 +41,40 @@ export default function ProcurementDetails(){
  const button=(command,enabled,payload={},target=kind,primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload,target)}>{t(command)}</button>:null
  const submitLine=e=>{e.preventDefault();run('add_line',line)}
  const createPO=e=>{e.preventDefault();run('create',{requisition_id:id,supplier_id:supplier,currency,number_mode:numberMode,number,prices},'purchase_order')}
- const receiptBins=(data?.bins||[]).filter(bin=>bin.organization_id===row?.organization_id&&data.warehouses.some(warehouse=>warehouse.id===bin.warehouse_id&&warehouse.organization_id===row.organization_id&&warehouse.status==='active'))
+ const activeWarehouses=(data?.warehouses||[]).filter(warehouse=>warehouse.organization_id===row?.organization_id&&warehouse.status==='active')
+ const receiptBins=(data?.bins||[]).filter(bin=>bin.organization_id===row?.organization_id&&activeWarehouses.some(warehouse=>warehouse.id===bin.warehouse_id))
+ const ar=lang==='ar'
+ const tr=(arabic,english)=>ar?arabic:english
+ const openStorage=()=>{
+  setStorage({warehouseId:activeWarehouses[0]?.id||'',warehouseName:'',code:''})
+  setStorageError('')
+  setStorageOpen(true)
+ }
+ const saveStorage=async e=>{
+  e.preventDefault()
+  if(busy||!row||!can('inventory.manage',row.organization_id)||!storage.code.trim())return
+  const warehouseName=storage.warehouseName.trim()
+  if(!storage.warehouseId&&!warehouseName)return
+  setBusy(true)
+  setStorageError('')
+  try{
+   let warehouseId=storage.warehouseId
+   const organization_id=row.organization_id
+   if(!warehouseId){
+    warehouseId=await inventoryAction('warehouse',null,'create',{organization_id,name_ar:warehouseName,name_en:warehouseName,kind:'central'})
+    const warehouse={id:warehouseId,organization_id,name_ar:warehouseName,name_en:warehouseName,status:'active'}
+    setData(current=>({...current,warehouses:[...current.warehouses,warehouse]}))
+    setStorage(current=>({...current,warehouseId}))
+   }
+   const code=storage.code.trim()
+   const binId=await inventoryAction('bin',null,'create',{warehouse_id:warehouseId,code})
+   const bin={id:binId,organization_id,warehouse_id:warehouseId,code}
+   setData(current=>({...current,bins:[...current.bins,bin]}))
+   setReceipt('bin_id',binId)
+   setStorageOpen(false)
+  }catch(err){setStorageError(err.message||String(err))}
+  finally{setBusy(false)}
+ }
  const receive=e=>{
   e.preventDefault()
   if(!receiptBins.some(bin=>bin.id===receiptForm.bin_id))return
@@ -70,7 +107,7 @@ export default function ProcurementDetails(){
     {data.orders.filter(x=>x.requisition_id===id).map(x=><p key={x.id}><Link to={'/procurement/purchase_order/'+x.id}>{x.number}</Link></p>)}
    </>:<>
     <div className="facility-panel"><div className="row-actions">{button('approve',approver&&row.status==='draft',{},kind,true)}{button('cancel',manager&&row.status==='draft',{reason})}</div><p className="muted">{t('approvalNotice')}</p></div>
-    {manager&&can('inventory.manage',row.organization_id)&&['approved','part_received'].includes(row.status)&&<form className="facility-form facility-panel" onSubmit={receive}><h3>{t('receive')}</h3><p className="muted">{t('receiptNotice')}</p>{!receiptBins.length&&<div className="alert" role="status"><p>{lang==='ar'?'لا يوجد موقع تخزين متاح لهذا الأمر. أضف موقعًا في مستودع نشط ثم عد وحدّث الأمر.':'No storage location is available for this order. Add one to an active warehouse, then return and refresh the order.'}</p><Link className="btn secondary" to="/inventory?tab=warehouses">{lang==='ar'?'فتح المستودعات':'Open warehouses'}</Link></div>}<div className="form-grid">
+    {manager&&can('inventory.manage',row.organization_id)&&['approved','part_received'].includes(row.status)&&<form className="facility-form facility-panel" onSubmit={receive}><h3>{t('receive')}</h3><p className="muted">{t('receiptNotice')}</p>{!receiptBins.length&&<div className="alert" role="status"><p>{lang==='ar'?'لا يوجد موقع تخزين متاح لهذا الأمر. أضف موقعًا في مستودع نشط ليظهر هنا فورًا.':'No storage location is available for this order. Add one to an active warehouse to select it here.'}</p><button type="button" className="btn secondary" disabled={busy} onClick={openStorage}>{tr('إضافة موقع تخزين','Add storage location')}</button></div>}<div className="form-grid">
      <Field label={t('part')} required><Select required value={receiptForm.line_id} onChange={v=>setReceipt('line_id',v)} options={opts(lines.filter(l=>receiptRemaining(l)>0),l=>part(l.part_id)?.sku+' · '+amount(receiptRemaining(l),3)+' '+t('remaining'))}/></Field>
      <Field label={t('quantity')} required><input type="number" min="0.001" step="0.001" max={lines.find(l=>l.id===receiptForm.line_id)?receiptRemaining(lines.find(l=>l.id===receiptForm.line_id)):undefined} required value={receiptForm.quantity} onChange={e=>setReceipt('quantity',e.target.value)}/></Field>
      <Field label={t('bin')} required><Select required disabled={!receiptBins.length} value={receiptForm.bin_id} onChange={v=>setReceipt('bin_id',v)} options={opts(receiptBins,b=>name(data.warehouses.find(w=>w.id===b.warehouse_id))+' / '+b.code)}/></Field>
@@ -80,5 +117,14 @@ export default function ProcurementDetails(){
     <div className="facility-panel"><h3>{t('goodsReceipts')}</h3>{data.receipts.filter(x=>x.po_id===id).map(x=><div className="row-actions" key={x.id} style={{padding:'8px 0'}}><strong>{x.number}</strong><span>{x.supplier_reference}</span><span>{amount(x.quantity,3)}</span><span>{new Date(x.received_at).toLocaleDateString(lang)}</span></div>)}</div>
    </>}
   </>}
+  <Dialog open={storageOpen} title={tr('إضافة موقع تخزين','Add storage location')} onClose={()=>!busy&&setStorageOpen(false)}>
+   <form className="facility-form" onSubmit={saveStorage}>
+    <Notice error={storageError}/>
+    {activeWarehouses.length>0&&<Field label={t('warehouse')}><Select disabled={busy} value={storage.warehouseId} onChange={warehouseId=>setStorage(current=>({...current,warehouseId}))} options={[{value:'',label:tr('إنشاء مستودع جديد','Create a warehouse')},...activeWarehouses.map(warehouse=>({value:warehouse.id,label:name(warehouse)}))]}/></Field>}
+    {!storage.warehouseId&&<Field label={tr('اسم المستودع الفعلي','Warehouse name')} required><input required disabled={busy} value={storage.warehouseName} onChange={e=>setStorage(current=>({...current,warehouseName:e.target.value}))}/></Field>}
+    <Field label={t('binCode')} required><input required disabled={busy} value={storage.code} onChange={e=>setStorage(current=>({...current,code:e.target.value}))}/></Field>
+    <button type="submit" className="btn primary" disabled={busy||!storage.code.trim()||(!storage.warehouseId&&!storage.warehouseName.trim())}>{tr('حفظ واختيار الموقع','Save and select location')}</button>
+   </form>
+  </Dialog>
  </section>
 }
