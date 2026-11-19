@@ -70,7 +70,7 @@ export default function CorrectiveDetails(){
      {button('accept',executor&&row.status==='assigned',{},true)}
      {button('start',executor&&row.status==='accepted',{},true)}
      {button('resume',(executor||manager)&&row.status==='on_hold')}
-     {button('submit_qa',manager&&row.status==='completed')}
+     {button('submit_qa',manager&&row.status==='completed'&&['not_submitted','rejected'].includes(row.approval_status))}
      {button('approve',approver&&row.status==='completed'&&row.approval_status==='pending',{},true)}
     </div><p className="muted">{t('qaNotice')}</p>
     {(manager||executor)&&['draft','assigned','accepted','in_progress','on_hold','completed','approved','closed'].includes(row.status)&&<details className="maintenance-history"><summary>{lang==='ar'?'إجراءات أخرى أو إعادة العمل':'Other actions or rework'}</summary><Field label={t('reason')}><textarea disabled={busy||!(kind==='request'?manager&&['submitted','triaged'].includes(row.status):(manager||executor)&&['assigned','accepted','in_progress'].includes(row.status)||manager&&['draft','on_hold','completed'].includes(row.status)||approver&&['approved','closed'].includes(row.status))} value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">
