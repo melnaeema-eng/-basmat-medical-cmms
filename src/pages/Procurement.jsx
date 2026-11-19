@@ -1,3 +1,4 @@
+import ProcurementCatalogPart from '../components/ProcurementCatalogPart'
 import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
@@ -34,6 +35,9 @@ export default function Procurement({defaultTab='requisitions'}){
  return <section className="facility-module">
   <div className="page-head"><h1>{t(defaultTab==='suppliers'?'suppliers':'procurement')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{(tab==='suppliers'?can('procurement.manage',org||null):tab==='requisitions'?can('procurement.request',org||null):false)&&<button className="btn primary" onClick={start}>{t(tab==='suppliers'?'newSupplier':'newRequisition')}</button>}</div></div>
   <Notice error={error} success={success}/>
+  {can('procurement.manage',org||null)&&<div className="row-actions">
+   <ProcurementCatalogPart organizations={data?.organizations.filter(x=>can('procurement.manage',x.id))||[]} selectedCompany={org} onSave={load}/>
+  </div>}
   <div className="row-actions">{[['requisitions','requisitions'],['orders','purchaseOrders'],['suppliers','suppliers'],['receipts','goodsReceipts'],['stock','traceableStock']].map(([key,label])=><button key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>{setTab(key);setQuery('')}}>{t(label)} ({data?.[key]?.length||0})</button>)}</div>
   <div className="facility-panel filter-grid"><CompanyField label={t('organization')}><Select value={org} onChange={setOrg} options={opts(data?.organizations,name)}/></CompanyField><Field label={t('search')}><input value={query} onChange={e=>setQuery(e.target.value)}/></Field></div>
   {!data?<p>{t('loading')}</p>:<DataTable rows={rows} columns={columns[tab]} emptyText={t('noData')}/>}
@@ -44,7 +48,7 @@ export default function Procurement({defaultTab='requisitions'}){
     {tab==='suppliers'?<>
      {['name','tax_number','contact_name','email','phone','address'].map(key=><Field key={key} label={t(({tax_number:'taxNumber',contact_name:'contactName'})[key]||key)} required={key==='name'}><input required={key==='name'} value={form[key]||''} onChange={e=>set(key,e.target.value)}/></Field>)}
     </>:<>
-     <Field label={t('workOrder')}><Select value={form.work_order_id||''} onChange={v=>set('work_order_id',v)} options={opts(data?.workOrders.filter(x=>x.organization_id===form.organization_id),x=>x.work_order_number+' · '+x.title)}/></Field>
+     <p className="muted">{lang==='ar'?'لطلب صِنف مرتبط بأمر عمل، افتح طلب قطع الغيار المعتمد داخل أمر العمل.':'For a work order, open its approved spare parts request to submit a linked requisition.'}</p>
      <Field label={t('reason')} required wide><textarea required minLength={5} value={form.reason||''} onChange={e=>set('reason',e.target.value)}/></Field>
     </>}
    </div><FormActions busy={busy} onCancel={()=>setOpen(false)}/></form>

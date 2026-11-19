@@ -1,3 +1,4 @@
+import WorkOrderSpareParts from './WorkOrderSpareParts'
 import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -60,6 +61,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false,st
  return <div className="facility-panel">
   <div className="page-head"><h2>{t('fieldOperations')}</h2><button type="button" className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
+  <WorkOrderSpareParts key={wo} workOrder={workOrder}/>
   {!allowed&&<p className="alert warning" role="status">{lang==='ar'
    ?(!executor?'التسجيل متاح للفني المسند إلى أمر العمل. راجع الإسناد أو ادخل بحساب الفني المسند.':workOrder.status==='assigned'?'اقبل أمر العمل أولًا، ثم ابدأ التنفيذ لتسجيل الزيارة والوقت.':'التسجيل غير متاح في الحالة الحالية لأمر العمل.')
    :(!executor?'Recording is available to the assigned technician. Check the assignment or sign in as that technician.':workOrder.status==='assigned'?'Accept the work order, then start execution before recording the visit and time.':'Recording is unavailable in the current work-order status.')}</p>}
