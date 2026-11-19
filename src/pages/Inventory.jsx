@@ -1,6 +1,6 @@
 import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
-import {Link,useNavigate} from 'react-router-dom'
+import {Link,useNavigate,useSearchParams} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {inventoryAction,loadInventory,quantity,available,stockTotals} from '../lib/inventory'
@@ -14,7 +14,8 @@ const blankRequest={work_order_id:'',part_id:'',quantity:''}
 export default function Inventory(){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
- const [tab,setTab]=useState('parts'),[form,setForm]=useState(blankPart),[open,setOpen]=useState(false),[mode,setMode]=useState('create'),[query,setQuery]=useState(''),[org,setOrg]=useState('')
+ const [searchParams]=useSearchParams()
+ const [tab,setTab]=useState(()=>searchParams.get('tab')==='warehouses'?'warehouses':'parts'),[form,setForm]=useState(blankPart),[open,setOpen]=useState(false),[mode,setMode]=useState('create'),[query,setQuery]=useState(''),[org,setOrg]=useState('')
  const load=async()=>{setError('');try{setData(await loadInventory())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name

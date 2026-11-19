@@ -37,8 +37,10 @@ export default function ProcurementDetails(){
  const button=(command,enabled,payload={},target=kind,primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload,target)}>{t(command)}</button>:null
  const submitLine=e=>{e.preventDefault();run('add_line',line)}
  const createPO=e=>{e.preventDefault();run('create',{requisition_id:id,supplier_id:supplier,currency,number_mode:numberMode,number,prices},'purchase_order')}
+ const receiptBins=(data?.bins||[]).filter(bin=>bin.organization_id===row?.organization_id&&data.warehouses.some(warehouse=>warehouse.id===bin.warehouse_id&&warehouse.organization_id===row.organization_id&&warehouse.status==='active'))
  const receive=e=>{
   e.preventDefault()
+  if(!receiptBins.some(bin=>bin.id===receiptForm.bin_id))return
   const key=receiptForm.idempotency_key||crypto.randomUUID()
   if(!receiptForm.idempotency_key)setReceiptState(f=>({...f,idempotency_key:key}))
   run('receive',{...receiptForm,idempotency_key:key})
@@ -68,13 +70,13 @@ export default function ProcurementDetails(){
     {data.orders.filter(x=>x.requisition_id===id).map(x=><p key={x.id}><Link to={'/procurement/purchase_order/'+x.id}>{x.number}</Link></p>)}
    </>:<>
     <div className="facility-panel"><div className="row-actions">{button('approve',approver&&row.status==='draft',{},kind,true)}{button('cancel',manager&&row.status==='draft',{reason})}</div><p className="muted">{t('approvalNotice')}</p></div>
-    {manager&&can('inventory.manage',row.organization_id)&&['approved','part_received'].includes(row.status)&&<form className="facility-form facility-panel" onSubmit={receive}><h3>{t('receive')}</h3><p className="muted">{t('receiptNotice')}</p><div className="form-grid">
+    {manager&&can('inventory.manage',row.organization_id)&&['approved','part_received'].includes(row.status)&&<form className="facility-form facility-panel" onSubmit={receive}><h3>{t('receive')}</h3><p className="muted">{t('receiptNotice')}</p>{!receiptBins.length&&<div className="alert" role="status"><p>{lang==='ar'?'لا يوجد موقع تخزين متاح لهذا الأمر. أضف موقعًا في مستودع نشط ثم عد وحدّث الأمر.':'No storage location is available for this order. Add one to an active warehouse, then return and refresh the order.'}</p><Link className="btn secondary" to="/inventory?tab=warehouses">{lang==='ar'?'فتح المستودعات':'Open warehouses'}</Link></div>}<div className="form-grid">
      <Field label={t('part')} required><Select required value={receiptForm.line_id} onChange={v=>setReceipt('line_id',v)} options={opts(lines.filter(l=>receiptRemaining(l)>0),l=>part(l.part_id)?.sku+' · '+amount(receiptRemaining(l),3)+' '+t('remaining'))}/></Field>
      <Field label={t('quantity')} required><input type="number" min="0.001" step="0.001" max={lines.find(l=>l.id===receiptForm.line_id)?receiptRemaining(lines.find(l=>l.id===receiptForm.line_id)):undefined} required value={receiptForm.quantity} onChange={e=>setReceipt('quantity',e.target.value)}/></Field>
-     <Field label={t('bin')} required><Select required value={receiptForm.bin_id} onChange={v=>setReceipt('bin_id',v)} options={opts(data.bins.filter(b=>b.organization_id===row.organization_id),b=>name(data.warehouses.find(w=>w.id===b.warehouse_id))+' / '+b.code)}/></Field>
+     <Field label={t('bin')} required><Select required disabled={!receiptBins.length} value={receiptForm.bin_id} onChange={v=>setReceipt('bin_id',v)} options={opts(receiptBins,b=>name(data.warehouses.find(w=>w.id===b.warehouse_id))+' / '+b.code)}/></Field>
      <Field label={t('stockOwner')}><Select value={receiptForm.owner_client_id} onChange={v=>setReceipt('owner_client_id',v)} options={[{value:'',label:t('companyStock')},...data.clients.filter(c=>c.organization_id===row.organization_id).map(c=>({value:c.id,label:c.name}))]}/></Field>
      {['lot_code','serial_number','expires_on','supplier_reference'].map(key=><Field key={key} label={t(({lot_code:'lotCode',serial_number:'serialNumber',expires_on:'expiresOn',supplier_reference:'supplierReference'})[key])} required={key==='supplier_reference'}><input type={key==='expires_on'?'date':'text'} required={key==='supplier_reference'} value={receiptForm[key]} onChange={e=>setReceipt(key,e.target.value)}/></Field>)}
-    </div><button type="submit" className="btn primary" disabled={busy}>{t('receive')}</button></form>}
+    </div><button type="submit" className="btn primary" disabled={busy||!receiptBins.length}>{t('receive')}</button></form>}
     <div className="facility-panel"><h3>{t('goodsReceipts')}</h3>{data.receipts.filter(x=>x.po_id===id).map(x=><div className="row-actions" key={x.id} style={{padding:'8px 0'}}><strong>{x.number}</strong><span>{x.supplier_reference}</span><span>{amount(x.quantity,3)}</span><span>{new Date(x.received_at).toLocaleDateString(lang)}</span></div>)}</div>
    </>}
   </>}
