@@ -1,3 +1,4 @@
+import WorkOrderStock from '../components/WorkOrderStock'
 import MedicalWorkJourney from '../components/MedicalWorkJourney'
 import {medicalWorkflowError} from '../lib/medicalJourney'
 import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
@@ -56,6 +57,7 @@ export default function CorrectiveDetails(){
   <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
    {showApprovalJourney?<MedicalWorkJourney compact refreshKey={data} asset={journeyAsset} workOrders={[row]} onRefresh={load}/>:<NextActionCard action={nextAction} lang={lang}/>}
+   {kind==='work_order'&&<WorkOrderStock key={row.id} workOrderId={row.id} refreshKey={data} onRefresh={load}/>}
    <div className="stats-grid facility-stats">{[['priority',t(row.priority)],['status',t(row.status)],...(kind==='work_order'?[['approvalStatus',t(row.approval_status)],['slaStatus',t(row.sla_status)]]:[])].map(([k,v])=><div className="stat-card" key={k}><span>{t(k)}</span><strong>{v}</strong></div>)}</div>
    <div className="facility-panel"><h3>{t('requestDetails')}</h3><div className="form-grid">{fields.map(([key,label,table])=><div key={key}><span className="muted">{t(label)}</span><p>{key==='asset_id'?data?.assets.find(x=>x.id===row[key])?.asset_tag:key==='contract_id'?data?.contracts.find(x=>x.id===row[key])?.contract_number:value(data?.[table].find(x=>x.id===row[key]))||'—'}</p></div>)}</div><p>{row.description}</p></div>
    {kind==='request'?<div className="facility-panel"><h3>{t('actions')}</h3>{manager&&['submitted','triaged','converted'].includes(row.status)&&<><div className="form-grid"><Field label={t('priority')}><Select value={form.priority||row.priority} onChange={v=>set('priority',v)} options={priorities.map(x=>({value:x,label:t(x)}))}/></Field></div><div className="row-actions">{button('triage',row.status==='submitted',{priority:form.priority||row.priority})}{button('convert',true,{},true)}</div></>}{manager&&['submitted','triaged'].includes(row.status)&&<><Field label={t('reason')}><textarea disabled={busy||!(kind==='request'?manager&&['submitted','triaged'].includes(row.status):(manager||executor)&&['assigned','accepted','in_progress'].includes(row.status)||manager&&['draft','on_hold','completed'].includes(row.status)||approver&&['approved','closed'].includes(row.status))} value={form.reason} onChange={e=>set('reason',e.target.value)}/></Field><div className="row-actions">{button('reject',true,{reason:form.reason})}{button('cancel',true,{reason:form.reason})}</div></>}</div>:
