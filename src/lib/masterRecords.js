@@ -51,6 +51,21 @@ export function normalizeMaster(key,form){
  if(key==='clients'||key==='sites')p.name=String(form.name||'').trim()
 
  if(key==='contracts'){
+  if(form.sla_targets!==undefined){
+   const targets={}
+   for(const priority of ['P1','P2','P3','P4']){
+    const {response,completion}=form.sla_targets[priority]||{}
+    if(!response&&!completion)continue
+    const validate=value=>/^[0-9]{1,6}$/.test(String(value))&&Number(value)>0
+    if(!validate(response)||!validate(completion)||Number(completion)<Number(response)){
+     throw Error(priority+' · أدخل مدتي الاستجابة والإنجاز، والإنجاز لا يقل عن الاستجابة / Enter both targets and keep completion at or above response')
+    }
+    targets[priority]={response:Number(response),completion:Number(completion)}
+   }
+   if(form.sla_targets.ppm===true)targets.ppm=true
+   p.sla_targets=targets
+  }
+
   if(p.contract_value!==null&&p.contract_value!==undefined)p.contract_value=Number(p.contract_value)
   if(p.contract_value!==null&&(!Number.isFinite(p.contract_value)||p.contract_value<0))throw Error('Invalid contract value')
  }

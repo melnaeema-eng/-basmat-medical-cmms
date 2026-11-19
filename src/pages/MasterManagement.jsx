@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import {useMasterRecords} from '../lib/useMasterRecords'
 import {isActive,labelFor,writeMaster} from '../lib/masterRecords'
 import {ownerLogoSource,readOwnerLogo} from '../lib/ownerLogo'
+import ContractSlaFields from '../components/ContractSlaFields'
 import SiteGeoFields from '../components/SiteGeoFields'
 
 const configs={
@@ -159,6 +160,7 @@ export default function MasterManagement({kind}){
    <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     {error&&<div className="alert error span-2" role="alert">{error}</div>}
     {cfg.fields.map(renderField)}
+    {kind==='contracts'&&<ContractSlaFields value={form.sla_targets} onChange={value=>set('sla_targets',value)} disabled={busy} lang={lang}/>}
     {kind==='clients'&&<div className="span-2"><label>{lang==='ar'?'شعار المالك — يظهَر في التقارير والجواز والتاق والمستندات':'Owner logo — shared by reports, passports, tags and documents'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async e=>{try{const file=e.target.files?.[0];if(file)set('logo_url',await readOwnerLogo(file))}catch(e){setError(e.message)}}}/></label><label>{lang==='ar'?'أو رابط HTTPS للشعار':'Or logo HTTPS URL'}<input type="url" value={String(form.logo_url||'').startsWith('data:')?'':form.logo_url||''} disabled={busy} onChange={e=>set('logo_url',e.target.value)} placeholder="https://…"/></label>{ownerLogoSource(form.logo_url)&&<div style={{display:'flex',alignItems:'center',gap:12,marginTop:10}}><img src={ownerLogoSource(form.logo_url)} alt={lang==='ar'?'معاينة شعار المالك':'Owner logo preview'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn" onClick={()=>set('logo_url','')}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}</div>}
     <div className="form-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setOpen(false)}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>
    </form>}
