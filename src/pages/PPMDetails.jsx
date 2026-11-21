@@ -4,7 +4,7 @@ import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
 import {maintenanceAction,checklistFocus} from '../lib/maintenanceFocus'
 import OwnerBrand,{useOwnerIdentity} from '../components/OwnerBrand'
 import {useEffect,useState} from 'react'
-import {Link,useNavigate,useParams} from 'react-router-dom'
+import {Link,useLocation,useNavigate,useParams} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadPPM,loadPPMDirectory,loadPPMHistory,ppmAction,frequencies} from '../lib/ppm'
@@ -13,6 +13,7 @@ import {Field,Select,Notice,Status} from '../components/FacilityFields'
 const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',task_type:'inspection',response_type:'pass_fail',required:true,unit:'',min_value:'',max_value:'',safety_notes:'',tools:'',materials:'',reference:''}
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
+ const ppmAssetId=useLocation().state?.ppmAssetId
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[executionPkg,setExecutionPkg]=useState(null),[executionEvidence,setExecutionEvidence]=useState([]),[uploadingEvidence,setUploadingEvidence]=useState(false),[reviewStep,setReviewStep]=useState(null)
  const load=async()=>{
@@ -131,7 +132,7 @@ export default function PPMDetails(){
  const editStep=s=>{setEditingStep(s.id);setStep({...blankStep,...s,min_value:s.min_value??'',max_value:s.max_value??''})}
  const deleteStep=s=>{if(confirm(t('confirmAction')))run('delete_step',{step_id:s.id})}
  return <section className="facility-module">
-  <div className="page-head"><div><Link to="/ppm">← {t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
+  <div className="page-head"><div><Link to={ppmAssetId?'/medical-asset-cockpit?ppmAsset='+encodeURIComponent(ppmAssetId):'/ppm'}>← {ppmAssetId?(lang==='ar'?'العودة إلى صيانة الجهاز':'Back to device maintenance'):t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
   <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
@@ -141,6 +142,9 @@ export default function PPMDetails(){
     kind==='plan'?details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['procedure',data.procedures.find(x=>x.id===row.procedure_id)?.code],['frequency',t(row.frequency)],['startDate',row.start_date],['nextDue',row.next_due],['intervalCount',row.interval_count],['status',t(row.status)]]):
     details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
+    {kind==='procedure'&&row.status==='approved'&&ppmAssetId&&manager&&<Link className="btn primary" to={'/medical-asset-cockpit?ppmAsset='+encodeURIComponent(ppmAssetId)}>
+      {lang==='ar'?'متابعة إعداد خطة الجهاز':'Continue to device plan setup'}
+    </Link>}
    </div>
    {kind==='procedure'&&<>
     <div className="facility-panel"><h3>{t('checklist')}</h3>

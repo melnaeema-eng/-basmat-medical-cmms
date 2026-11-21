@@ -2,14 +2,14 @@ import {useRef} from 'react'
 import MedicalWorkJourney from '../components/MedicalWorkJourney'
 import {useEffect,useMemo,useState} from 'react'
 import {findMedicalLibraryModels} from '../lib/medicalLibrarySearch'
-import {useNavigate,useLocation,useOutletContext} from 'react-router-dom'
+import {Link,useNavigate,useLocation,useOutletContext} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {useAuth} from '../context/AuthContext'
 import {supabase} from '../lib/supabaseClient'
 import {loadMasterAssetLibrary,adoptMasterTemplates} from '../lib/masterAssetLibrary'
 import {loadPPM,ppmAction} from '../lib/ppm'
 import {save} from '../lib/facility'
-import {medicalProcedureMatchesAsset} from '../lib/medicalProcedureCompatibility'
+import {medicalProcedureMatchesAsset,medicalProcedureScopeMatchesAsset} from '../lib/medicalProcedureCompatibility'
 import {
   searchMedicalAssets,loadMedicalAssetCockpit,loadAssetActionData,
   createAssetPPM,assignPPMJob,createFaultRequest,convertRequestToWorkOrder,
@@ -54,10 +54,13 @@ function ActionButton({children,onClick,primary=false}){
 
 
 export default function MedicalAssetCockpit(){
-  const {lang}=useLanguage()
+  const {lang,t}=useLanguage()
   const ar=lang==='ar'
   const nav=useNavigate()
-  const registrationPick=useLocation().state?.registration
+  const location=useLocation()
+  const registrationPick=location.state?.registration
+  const requestedId=new URLSearchParams(location.search).get('ppmAsset')
+  const ppmAssetId=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(requestedId||'')?requestedId:null
   const [registrationOpen,setRegistrationOpen]=useState(!!registrationPick)
   const {can}=useAuth()
   const {companyId:organizationId}=useOutletContext()
@@ -81,7 +84,7 @@ export default function MedicalAssetCockpit(){
     loading:false,
     project:null,
     templates:[],
-    procedures:[],
+    procedures:[],drafts:[],plans:[],
     master:null,
     ppm:null
   })
@@ -99,15 +102,17 @@ export default function MedicalAssetCockpit(){
   const [fault,setFault]=useState({title:'',description:'',priority:'P3',create_wo:true})
   const [wo,setWo]=useState({title:'',description:'',priority:'P3'})
 
-  const reloadList=async(needle=query)=>{
+  const reloadList=async(needle=query,assetId=null)=>{
     setLibraryQuery(needle)
     setLibraryLimit(24)
     const loadId=++listLoad.current
     setBusy(true)
     setError('')
     try{
-      const rows=await searchMedicalAssets(needle,organizationId)
-      if(loadId===listLoad.current)setAssets(rows)
+      const rows=await searchMedicalAssets(needle,organizationId,assetId)
+      if(loadId!==listLoad.current)return
+      setAssets(rows)
+      if(assetId&&rows[0])await openAsset(rows[0],'ppm')
     }catch(e){
       if(loadId===listLoad.current)setError(e.message)
     }finally{
@@ -118,9 +123,9 @@ export default function MedicalAssetCockpit(){
   useEffect(()=>{
     ++assetLoad.current
     setAssets([]);setAsset(null);setCtx(null);setActions(null);setSpares([])
-    reloadList()
+    reloadList(ppmAssetId?'':query,ppmAssetId)
     return()=>{++listLoad.current;++assetLoad.current}
-  },[organizationId])
+  },[organizationId,ppmAssetId])
 
   const loadDeployment=async()=>{
     if(!organizationId)return
@@ -166,7 +171,8 @@ export default function MedicalAssetCockpit(){
       const [c,a,s]=await Promise.all([
         loadMedicalAssetCockpit(row.asset_id),
         loadAssetActionData(row),
-        loadMedicalSpareUsage(row.asset_id)
+        loadMedicalSpareUsage(row.asset_id),
+        nextMode==='ppm'?loadLibraryForAsset(row):null
       ])
       if(loadId!==assetLoad.current)return
       setCtx(c)
@@ -185,7 +191,8 @@ export default function MedicalAssetCockpit(){
 
   const loadLibraryForAsset=async(row)=>{
     if(!row)return
-    setLibraryCtx(v=>({...v,loading:true}))
+    const loadId=assetLoad.current
+    setLibraryCtx({loading:true,templates:[],procedures:[],drafts:[],plans:[]})
     try{
       const [masterData,ppmData,mapResult,structureResult]=await Promise.all([
         loadMasterAssetLibrary(),
@@ -199,7 +206,9 @@ export default function MedicalAssetCockpit(){
         supabase.rpc('bf35_structure',{p_org:row.organization_id})
       ])
 
+      if(loadId!==assetLoad.current)return
       if(mapResult.error)throw mapResult.error
+      if(structureResult.error)throw structureResult.error
 
       const projectMap=(mapResult.data||[])[0]||null
       const projectRow=(structureResult.data?.projects||[]).find(
@@ -212,11 +221,15 @@ export default function MedicalAssetCockpit(){
 
       const templates=(masterData?.templates||[]).filter(t=>
         t.status!=='archived' &&
-        (!typeId||t.asset_type_id===typeId) &&
+        typeId && t.asset_type_id===typeId &&
         (!manufacturerId||!t.manufacturer_id||t.manufacturer_id===manufacturerId)
       )
 
-      const procedures=(ppmData?.procedures||[]).filter(p=>medicalProcedureMatchesAsset(p,row))
+      const currentAsset=(ppmData.assets||[]).find(a=>a.id===row.asset_id&&a.organization_id===row.organization_id)
+      const procedures=(ppmData.procedures||[]).filter(p=>medicalProcedureMatchesAsset(p,currentAsset))
+      const drafts=(ppmData.procedures||[]).filter(p=>p.status==='draft'&&
+        medicalProcedureScopeMatchesAsset(p,currentAsset))
+      const plans=(ppmData.plans||[]).filter(p=>p.asset_id===row.asset_id&&p.status!=='archived')
 
       setLibraryCtx({
         loading:false,
@@ -225,18 +238,19 @@ export default function MedicalAssetCockpit(){
         organizationName:orgRow?.name||orgRow?.code||row.organization_id||'',
         siteName:siteRow?.name||siteRow?.code||row.site_id||'',
         templates,
-        procedures,
+        procedures,drafts,plans,currentAsset,
         master:masterData,
         ppm:ppmData
       })
     }catch(e){
-      setLibraryCtx(v=>({...v,loading:false}))
+      if(loadId!==assetLoad.current)return
+      setLibraryCtx(v=>({...v,loading:false,failed:true}))
       setError(e.message)
     }
   }
 
   const prepareLibraryPPM=async()=>{
-    if(!asset)return
+    if(busy||!asset||!can('ppm.manage',asset.organization_id))return
     const typeId=asset.master_type_id||asset.asset_type_id||asset.category_id||null
     if(!asset.organization_id||!typeId){
       setError(ar?'بيانات المنظمة أو نوع الجهاز غير مكتملة.':'Organization or asset type is missing.')
@@ -262,8 +276,8 @@ export default function MedicalAssetCockpit(){
   }
 
   const createOfficialPlan=async(procedureId)=>{
-    if(!asset||!procedureId)return
-    if(!libraryCtx.procedures.some(p=>p.id===procedureId&&medicalProcedureMatchesAsset(p,asset))){
+    if(busy||!asset||!procedureId||!can('ppm.manage',asset.organization_id))return
+    if(!libraryCtx.procedures.some(p=>p.id===procedureId&&medicalProcedureMatchesAsset(p,libraryCtx.currentAsset))){
       setError(ar?'اختر إجراء صيانة معتمدًا مطابقًا لتصنيف هذا الجهاز ومصنّعه وموديله.':'Select an approved procedure matching this device category, manufacturer and model.')
       return
     }
@@ -279,7 +293,7 @@ export default function MedicalAssetCockpit(){
     setBusy(true);setError('');setSuccess('')
     try{
       const site=(libraryCtx.ppm?.sites||[]).find(s=>s.id===asset.site_id)
-      await ppmAction('plan',null,'create',{
+      const planId=await ppmAction('plan',null,'create',{
         organization_id:asset.organization_id,
         asset_id:asset.asset_id||asset.id,
         procedure_id:procedureId,
@@ -287,11 +301,7 @@ export default function MedicalAssetCockpit(){
         start_date:ppm.start_date,
         interval_count:1
       })
-      setSuccess(ar
-        ?'تم إنشاء خطة PPM الرسمية للجهاز، وستظهر في موديول الصيانة الوقائية.'
-        :'Official PPM plan created and will appear in Preventive Maintenance.')
-      await loadLibraryForAsset(asset)
-      await refresh()
+      nav('/ppm/plan/'+planId,{state:{ppmAssetId:asset.asset_id}})
     }catch(e){
       setError(e.message)
     }finally{
@@ -534,8 +544,10 @@ export default function MedicalAssetCockpit(){
   const workOrders=actions?.workOrders||[]
   const staff=actions?.staff||[]
   const nextJob=[...jobs]
-    .filter(x=>x.status!=='closed'&&x.status!=='completed')
+    .filter(x=>!['closed','completed','cancelled'].includes(x.status))
     .sort((a,b)=>String(a.due_date||'').localeCompare(String(b.due_date||'')))[0]
+  const canManagePPM=asset&&can('ppm.manage',asset.organization_id)&&can('ppm.view',asset.organization_id)
+  const showPPM=async()=>{setMode('ppm');await loadLibraryForAsset(asset)}
   const openWo=workOrders.filter(x=>!['closed','cancelled'].includes(x.status)).length
 
   return <section
@@ -766,9 +778,12 @@ export default function MedicalAssetCockpit(){
       </Panel>
 
       <div className="medical-asset-tabs">{[['journey',ar?'الصيانة الحالية':'Current maintenance'],['new',ar?'صيانة جديدة':'New maintenance'],['identity',ar?'بيانات الجهاز':'Device details']].map(([key,label])=><button key={key} className={'btn '+(mode===key?'primary':'')} onClick={()=>setMode(key)}>{label}</button>)}</div>
-      {mode==='new'&&<Panel title={ar?'ما المطلوب للجهاز؟':'What does this device need?'}><div className="row-actions"><button className="btn primary" onClick={async()=>{setMode('ppm');await loadLibraryForAsset(asset)}}>{ar?'صيانة وقائية':'Preventive maintenance'}</button><button className="btn primary" onClick={()=>setMode('fault')}>{ar?'إصلاح عطل':'Repair a fault'}</button></div></Panel>}
+      {mode==='new'&&<Panel title={ar?'ما المطلوب للجهاز؟':'What does this device need?'}><div className="row-actions"><button className="btn primary" onClick={showPPM}>{ar?'صيانة وقائية':'Preventive maintenance'}</button><button className="btn primary" onClick={()=>setMode('fault')}>{ar?'إصلاح عطل':'Repair a fault'}</button></div></Panel>}
       <details><summary>{ar?'السجل وخيارات إضافية':'History and more options'}</summary><div className="row-actions">{[['history',ar?'سجل الصيانة':'Maintenance history'],['spares',ar?'قطع الغيار':'Spare parts'],['wo',ar?'أمر عمل مباشر':'Direct work order']].map(([key,label])=><button className="btn" key={key} onClick={()=>setMode(key)}>{label}</button>)}<button className="btn" onClick={()=>nav('/qr-scan')}>{ar?'مسح رمز الجهاز':'Scan device QR'}</button></div></details>
-      {mode==='journey'&&<MedicalWorkJourney key={asset.asset_id} asset={asset} jobs={jobs} workOrders={workOrders} onRefresh={refresh}/>}
+      {mode==='journey'&&<>
+        {!nextJob&&canManagePPM&&<div className="row-actions"><button type="button" className="btn primary" onClick={showPPM}>{ar?'إعداد الصيانة الوقائية':'Set up preventive maintenance'}</button></div>}
+        <MedicalWorkJourney key={asset.asset_id} asset={asset} jobs={jobs} workOrders={workOrders} onRefresh={refresh}/>
+      </>}
       {mode==='identity'&&<Panel title={ar?'بيانات الجهاز والموقع':'Device identity and location'}><div className="form-grid">{[[ar?'الرقم التسلسلي':'Serial number',asset.serial_number],[ar?'المصنع':'Manufacturer',asset.manufacturer_name],[ar?'الموديل':'Model',asset.exact_model||asset.model],[ar?'شركة الصيانة':'Service provider',asset.maintenance_company_name],[ar?'العقد':'Contract',asset.contract_number],[ar?'الموقع':'Location',asset.location_path||asset.location_name_ar||asset.location_name_en]].map(([label,value])=><Stat key={label} label={label} value={value}/>)}</div><div className="row-actions" style={{marginTop:16}}><button className="btn" onClick={()=>nav('/assets/'+asset.asset_id)}>{ar?'تعديل ملف الجهاز وموقعه':'Edit device and location'}</button></div></Panel>}
       {mode==='ppm'&&<Panel title={ar?'PPM من المكتبة للجهاز الحالي':'Library PPM for Current Asset'}>
         <div style={{display:'grid',gap:12}}>
@@ -807,7 +822,7 @@ export default function MedicalAssetCockpit(){
                 </div>}
           </div>
 
-          <div className="row-actions">
+          {canManagePPM&&libraryCtx.templates.length>0&&<div className="row-actions">
             <button
               className="btn"
               disabled={busy||libraryCtx.loading}
@@ -815,31 +830,42 @@ export default function MedicalAssetCockpit(){
             >
               {ar?'اعتماد/تحديث PPM من المكتبة':'Adopt / Refresh PPM from Library'}
             </button>
-          </div>
+          </div>}
 
           <div>
             <h3 style={{marginBottom:8}}>{ar?'إجراءات PPM الرسمية المتاحة':'Available Official PPM Procedures'}</h3>
-            {libraryCtx.procedures.length
+            {!libraryCtx.loading&&!libraryCtx.failed&&(libraryCtx.procedures.length
               ?<div style={{display:'grid',gap:8}}>
-                {libraryCtx.procedures.map(p=><div key={p.id} style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',border:'1px solid #dbe3ee',borderRadius:10,padding:10}}>
-                  <div>
-                    <div style={{fontWeight:800}}>
-                      {ar?(p.name_ar||p.name_en):(p.name_en||p.name_ar)}
+                {libraryCtx.procedures.map(p=>{
+                  const existing=libraryCtx.plans.find(plan=>plan.procedure_id===p.id)
+                  return <div key={p.id} style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',border:'1px solid #dbe3ee',borderRadius:10,padding:10}}>
+                    <div>
+                      <div style={{fontWeight:800}}>
+                        {ar?(p.name_ar||p.name_en):(p.name_en||p.name_ar)}
+                      </div>
+                      <div className="muted">{p.frequency?t(p.frequency):'—'}</div>
                     </div>
-                    <div className="muted">{p.frequency||'—'}</div>
-                  </div>
-                  <button
-                    className="btn primary"
-                    disabled={busy||!asset.site_id||!libraryCtx.project?.project_id}
-                    onClick={()=>createOfficialPlan(p.id)}
-                  >
-                    {ar?'إنشاء الخطة الرسمية':'Create Official Plan'}
-                  </button>
-                </div>)}
+                    {existing?<Link className="btn secondary" to={'/ppm/plan/'+existing.id} state={{ppmAssetId:asset.asset_id}}>
+                      {ar?'فتح الخطة الحالية':'Open existing plan'}
+                    </Link>:canManagePPM&&<button
+                      className="btn primary"
+                      disabled={busy||!asset.site_id||!libraryCtx.project?.project_id||libraryCtx.currentAsset?.status!=='active'}
+                      onClick={()=>createOfficialPlan(p.id)}
+                    >
+                      {ar?'إنشاء خطة صيانة وقائية':'Create preventive maintenance plan'}
+                    </button>}
+                </div>})}
               </div>
-              :<div className="muted">
-                {ar?'لا يوجد إجراء معتمد مطابق لتصنيف هذا الجهاز ومصنّعه وموديله. جهّز إجراءً مطابقًا واعتمده من مركز الصيانة الوقائية.':'No approved procedure matches this device category, manufacturer and model. Prepare and approve a matching procedure in the PPM Center.'}
-              </div>}
+              :<>
+                <p className="muted">{ar?'لا يوجد إجراء معتمد مطابق لهذا الجهاز. تُنشأ الخطة بعد اعتماد الإجراء.':'No approved procedure matches this device. Create the plan after the procedure is approved.'}</p>
+                {canManagePPM&&libraryCtx.currentAsset&&<div className="row-actions">
+                  {libraryCtx.drafts.map(p=><Link key={p.id} className="btn secondary" to={'/ppm/procedure/'+p.id} state={{ppmAssetId:asset.asset_id}}>
+                    {ar?'متابعة المسودة':'Continue draft'} · {ar?p.name_ar||p.name_en:p.name_en||p.name_ar}
+                  </Link>)}<Link className="btn primary" to="/ppm" state={{createForAsset:asset.asset_id}}>
+                    {ar?'إنشاء إجراء صيانة وقائية':'Create preventive maintenance procedure'}
+                  </Link>
+                </div>}
+              </>)}
           </div>
         </div>
       </Panel>}

@@ -16,14 +16,16 @@ export async function loadMedicalAssetCockpit(assetId){
   return data
 }
 
-export async function searchMedicalAssets(query='',organizationId){
+export async function searchMedicalAssets(query='',organizationId,assetId=null){
   if(!organizationId)return []
-  const {data,error}=await supabase
+  let request=supabase
     .from('bf_med_asset_service_overview')
     .select('*')
     .eq('organization_id',organizationId)
     .order('asset_tag',{ascending:true})
     .limit(2000)
+  if(assetId)request=request.eq('asset_id',assetId)
+  const {data,error}=await request
 
   if(error)throw error
   const rows=data||[]

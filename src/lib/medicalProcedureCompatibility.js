@@ -1,7 +1,11 @@
 const normalized=value=>String(value??'').trim().toLowerCase()
 
 export function medicalProcedureMatchesAsset(procedure,asset){
-  if(!procedure||!asset||procedure.status!=='approved')return false
+  return procedure?.status==='approved'&&medicalProcedureScopeMatchesAsset(procedure,asset)
+}
+
+export function medicalProcedureScopeMatchesAsset(procedure,asset){
+  if(!procedure||!asset)return false
   if(!asset.organization_id||procedure.organization_id!==asset.organization_id)return false
   if(procedure.category_id&&procedure.category_id!==asset.category_id)return false
   const manufacturer=normalized(procedure.manufacturer)
