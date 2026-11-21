@@ -1,4 +1,4 @@
-import {useMemo} from 'react'
+import {useOutletContext} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 
@@ -6,15 +6,7 @@ export default function DashboardIdentity(){
  const {profile,user,access}=useAuth()
  const {lang}=useLanguage(),ar=lang==='ar'
 
- const org=useMemo(()=>{
-  if(!access?.super_admin)return access?.home_organization||null
-  const selected=localStorage.getItem('basmat.active.organization')
-  return (access?.organizations||[]).find(x=>(x.organization_id||x.id)===selected)
-    ||(access?.organizations||[])[0]
-    ||null
- },[access])
-
- const orgId=org?.organization_id||org?.id||null
+ const {company:org,companyId:orgId}=useOutletContext()
 
  const roles=[...new Map(
   (access?.role_assignments||[])
@@ -43,7 +35,7 @@ export default function DashboardIdentity(){
   </div>
   <div style={{marginTop:5}}>
    <strong>{ar?(projects.length>1?'المشروعات:':'المشروع:'):'Projects:'}</strong>{' '}
-   {access?.super_admin?(ar?'جميع المشاريع':'All projects'):(projectText||'—')}
+   {access?.super_admin?(ar?'كل مشاريع الشركة الحالية':'All projects in the current company'):(projectText||'—')}
   </div>
  </div>
 }

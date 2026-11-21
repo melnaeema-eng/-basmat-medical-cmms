@@ -1,11 +1,13 @@
 import CompanyWorkspaceBoundary from './CompanyWorkspaceBoundary'
-import {companyWorkspace,companyAdminPermission} from '../lib/companyWorkspace'
+import {companyWorkspace,companyAdminPermission,ownerPortalPermission} from '../lib/companyWorkspace'
 import NotificationBell from './NotificationBell'
 import {NavLink,Outlet,useLocation,useNavigate} from 'react-router-dom'
-import {useEffect,useMemo,useState} from 'react'
+import {useEffect,useLayoutEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
+import {setMedicalWorkspace} from '../lib/medicalCompanyTransport'
+import {MEDICAL_COMPANY_ID} from '../lib/medicalCompanyConfig'
 import {useSmartLanguageInputs} from '../lib/smartLanguage'
 import '../bafm-theme.css'
 import './AppShellActions.css'
@@ -25,6 +27,7 @@ const groups=[
   ['/project-setup','Project Setup | إعداد المشروع','organizations.view','building'],
   ['/asset-library','Device Library | مكتبة الأجهزة','assets.view','grid'],
   ['/contracts','Contracts | العقود','contracts.view','contract'],
+  ['/maintenance-companies','Company Workspaces | مساحات الشركات',companyAdminPermission,'building'],
   ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
   ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
  ]},
@@ -33,6 +36,7 @@ const groups=[
   ['/inventory','Inventory | المخزون','inventory.view','box'],
   ['/procurement','Procurement | المشتريات','procurement.view','cart'],
   ['/reports','Management Reports | تقارير الإدارة','reports.view','report'],
+  ['/owner-portal','Owner Portal | بوابة المالك',ownerPortalPermission,'work'],
  ]}
 ]
 function NavIcon({type}){
@@ -72,11 +76,19 @@ export default function AppShell(){
  useEffect(()=>{const refresh=()=>setOrgRevision(v=>v+1);window.addEventListener('basmat-organizations-changed',refresh);return()=>window.removeEventListener('basmat-organizations-changed',refresh)},[])
  const [query,setQuery]=useState('')
  const [organizations,setOrganizations]=useState(access?.organizations||[])
- const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
+ const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||MEDICAL_COMPANY_ID)
  useSmartLanguageInputs()
- const visible=permission=>!!(profile?.is_super_admin||access?.super_admin)||permission===null||permission==='__client__'||can(permission,access?.home_organization_id||null)
- const isPlatformAdmin=companyWorkspace(access,profile).isSuperAdmin
- const homeOrganizationId=companyWorkspace(access,profile).companyId
+ const {isSuperAdmin:isPlatformAdmin,companyId:homeOrganizationId}=companyWorkspace(access,profile)
+ const workspaceId=isPlatformAdmin?activeOrgId:homeOrganizationId
+ const showItem=([path,,permission])=>!(isPlatformAdmin&&path==='/users')&&(!permission||can(permission,workspaceId))
+ useLayoutEffect(()=>{
+  setMedicalWorkspace({companyId:workspaceId,isPlatformAdmin})
+ },[workspaceId,isPlatformAdmin])
+ useEffect(()=>{
+  const changed=e=>{if(isPlatformAdmin&&e.detail?.organization_id)setActiveOrgId(e.detail.organization_id)}
+  window.addEventListener('basmat-organization-changed',changed)
+  return()=>window.removeEventListener('basmat-organization-changed',changed)
+ },[isPlatformAdmin])
 
  useEffect(()=>{
   let alive=true
@@ -107,33 +119,7 @@ export default function AppShell(){
   return()=>{alive=false}
  },[user,isPlatformAdmin,homeOrganizationId,access,orgRevision,location.pathname])
 
- const activeOrganization=useMemo(()=>{
-  if(!organizations.length)return null
-  if(!isPlatformAdmin)return organizations.find(x=>x.id===homeOrganizationId)||null
-  const selected=organizations.find(x=>x.id===activeOrgId)
-  return selected||null
- },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
- useEffect(()=>{
-  if(!isPlatformAdmin){
-   const fixed=homeOrganizationId||''
-   if(activeOrgId!==fixed)setActiveOrgId(fixed)
-   if(fixed)localStorage.setItem('basmat.active.organization',fixed)
-   else localStorage.removeItem('basmat.active.organization')
-   window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:fixed||null}}))
-   return
-  }
-  if(organizations.length===1&&activeOrgId!==organizations[0].id){
-   setActiveOrgId(organizations[0].id)
-   localStorage.setItem('basmat.active.organization',organizations[0].id)
-  }
- },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
- const chooseOrganization=id=>{
-  if(!isPlatformAdmin)return
-  setActiveOrgId(id)
-  if(id)localStorage.setItem('basmat.active.organization',id)
-  else localStorage.removeItem('basmat.active.organization')
-  window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:id||null}}))
- }
+ const activeOrganization=organizations.find(x=>x.id===workspaceId)||null
  const organizationLogo=activeOrganization?.logo_url||''
  const organizationBrand=activeOrganization
   ?(lang==='ar'?(activeOrganization.name_ar||activeOrganization.name||activeOrganization.name_en):(activeOrganization.name_en||activeOrganization.name||activeOrganization.name_ar))
@@ -157,7 +143,7 @@ export default function AppShell(){
   ? `مرحباً ${displayName} — ${organizationLabel}`
   : `Welcome ${displayName} — ${organizationLabel}`
 
- const allowed=useMemo(()=>groups.flatMap(g=>g.items).filter(x=>visible(x[2])),[can,access])
+ const allowed=useMemo(()=>groups.flatMap(g=>g.items).filter(showItem),[can,workspaceId,isPlatformAdmin])
  const submit=e=>{
   e.preventDefault()
   const q=query.trim().toLowerCase()
@@ -200,7 +186,7 @@ export default function AppShell(){
    </div>
    <nav className="bafm-nav">
     {groups.map(group=>{
-     const items=group.items.filter(([, ,permission])=>visible(permission))
+     const items=group.items.filter(showItem)
      if(!items.length)return null
      return <section className="bafm-nav-section" key={group.title}>
       <div className="bafm-nav-title">{group.title}</div>
@@ -255,11 +241,11 @@ export default function AppShell(){
     <span aria-hidden="true">👋</span>
     <span>{welcomeText}</span><WelcomeAccess access={access} profile={profile} organizationId={activeOrganization?.id||homeOrganizationId} ar={lang==='ar'}/>
    </div>
-   <main className="bafm-content" key={location.pathname}>
+   <main className="bafm-content" key={location.pathname+':'+workspaceId}>
     {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
       <strong>{lang==='ar'?'وضع إعداد المشروع':'Project Setup Mode'}</strong>
       <button type="button" className="btn secondary" onClick={()=>navigate(sessionStorage.getItem('bafm-project-setup-return')||'/project-setup')}>{lang==='ar'?'العودة إلى إعداد المشروع':'Back to Project Setup'}</button>
-    </div>}<CompanyWorkspaceBoundary><Outlet/></CompanyWorkspaceBoundary></main>
+    </div>}<CompanyWorkspaceBoundary><Outlet context={{companyId:workspaceId,company:activeOrganization}}/></CompanyWorkspaceBoundary></main>
   </div>
  </div>
 }
@@ -277,6 +263,6 @@ function WelcomeAccess({access, profile, organizationId, ar}) {
  const platformAdmin = profile?.is_super_admin || access?.super_admin
  return <span style={{display:'block',width:'100%',minWidth:0,overflowWrap:'anywhere',fontSize:'.85em',fontWeight:400}}>
   <strong>{ar?'الدور':'Role'}</strong>{' · '}{platformAdmin?(ar?'مدير المنصة':'Platform admin'):roles.join('، ')||'—'}
-  {' | '}<strong>{ar?'المشاريع':'Projects'}</strong>{' · '}{platformAdmin?(ar?'جميع المشاريع':'All projects'):projects.join('، ')||'—'}
+  {' | '}<strong>{ar?'المشاريع':'Projects'}</strong>{' · '}{platformAdmin?(ar?'كل مشاريع الشركة الحالية':'All projects in the current company'):projects.join('، ')||'—'}
  </span>
 }

@@ -3,12 +3,12 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {loadOwnerPortal,createOwnerRequest,decideOwnerApproval} from '../lib/ownerPortal'
 
 export default function OwnerPortal(){
- const {t}=useLanguage()
+ const {t,lang}=useLanguage()
  const [data,setData]=useState({clients:[],sites:[],assets:[],requests:[],work_orders:[],ppm:[],approvals:[],documents:[],summary:{}})
  const [clientId,setClientId]=useState('')
  const [form,setForm]=useState({site_id:'',asset_id:'',title:'',description:'',priority:'P3'})
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('')
- const load=async(id=clientId)=>{setBusy(true);setError('');try{const d=await loadOwnerPortal(id||null);setData(d);if(!id&&d.clients?.length===1)setClientId(d.clients[0].client_id)}catch(e){setError(e.message)}finally{setBusy(false)}}
+ const load=async(id=clientId)=>{setBusy(true);setError('');try{const d=await loadOwnerPortal(id||null);setData(d);if(!id&&d.clients?.length===1)setClientId(d.clients[0].client_id)}catch(e){setError(e.code==='42501'?(lang==='ar'?'بوابة المالك متاحة لممثل مالك مسند إلى مشروع.':'The owner portal requires an assigned owner representative.'):e.message)}finally{setBusy(false)}}
  useEffect(()=>{load('')},[])
  const client=useMemo(()=>data.clients?.find(x=>x.client_id===clientId)||data.clients?.[0],[data.clients,clientId])
  const sites=useMemo(()=>data.sites?.filter(x=>!client||x.client_id===client.client_id)||[],[data.sites,client])
@@ -27,6 +27,10 @@ export default function OwnerPortal(){
   try{setBusy(true);await decideOwnerApproval(id,decision,comment);await load(client?.client_id)}catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const s=data.summary||{}
+ if(!client)return <section className="facility-module">
+  <div className="page-head"><h1>{t('ownerPortalTitle')}</h1><button className="btn secondary" onClick={()=>load('')} disabled={busy}>{t('ownerRefresh')}</button></div>
+  {error&&<div className="facility-panel" role="alert">{error}</div>}
+ </section>
  return <section className="facility-module">
   <div className="page-head"><h1>{t('ownerPortalTitle')}</h1><button className="btn secondary" onClick={()=>load(client?.client_id)} disabled={busy}>{t('ownerRefresh')}</button></div>
   {error&&<div className="facility-panel" role="alert">{error}</div>}{message&&<div className="facility-panel">{message}</div>}

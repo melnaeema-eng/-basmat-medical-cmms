@@ -8,7 +8,7 @@ import MedicalServiceCompaniesLibrary from './pages/MedicalServiceCompaniesLibra
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
 import SoftFmOperations from './pages/SoftFmOperations'
-import OrganizationOnboarding from './pages/OrganizationOnboarding'
+import {companyAdminPermission,ownerPortalPermission} from './lib/companyWorkspace'
 import EnterpriseStructure from './pages/EnterpriseStructure'
 import EnterpriseAccess from './pages/EnterpriseAccess'
 import ReleaseReadiness from './pages/ReleaseReadiness'
@@ -84,9 +84,9 @@ export default function App(){
   <Route path="/accept-invitation" element={<AcceptInvitation/>}/>
   <Route element={<ProtectedRoute><AppShell/></ProtectedRoute>}>
    <Route index element={<Dashboard/>}/>
-   <Route path="/maintenance-companies" element={guard('organizations.view',<MaintenanceCompanies libraryPath="/medical-knowledge-library"/>)}/>
+   <Route path="/maintenance-companies" element={guard(companyAdminPermission,<MaintenanceCompanies libraryPath="/medical-knowledge-library"/>)}/>
    <Route path="/owners" element={guard('clients.view',<Clients/>)}/>
-   <Route path="/organizations" element={guard('organizations.view',<OrganizationOnboarding/>)}/>
+   <Route path="/organizations" element={<Navigate to="/maintenance-companies" replace/>}/>
    <Route path="/soft-fm" element={guard('soft-fm.view',<SoftFmOperations/>)}/>
    <Route path="/governance" element={guard('governance.view',<GovernanceMatrix/>)}/>
    <Route path="/access-review" element={guard('access-review.view',<AccessReview/>)}/>
@@ -136,7 +136,7 @@ export default function App(){
    <Route path="/hse" element={guard('hse.view',<HseIncidents/>)}/>
    <Route path="/contract-renewal" element={guard('contract-renewal.view',<ContractRenewalDashboard/>)}/>
    <Route path="/executive" element={guard('executive.view',<ExecutiveDashboard/>)}/>
-   <Route path="/owner-portal" element={<OwnerPortal/>}/>
+   <Route path="/owner-portal" element={guard(ownerPortalPermission,<OwnerPortal/>)}/>
    <Route path="/document-control" element={guard('document-control.view',<DocumentControl/>)}/>
    <Route path="/field-mobile" element={guard('mobile-field.view',<MobileField/>)}/>
    <Route path="/qr-scan" element={guard('mobile-field.view',<QrAssetScanner/>)}/>

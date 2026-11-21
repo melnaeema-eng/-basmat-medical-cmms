@@ -1,9 +1,8 @@
-import CompanyField from '../components/CompanyField'
 import {useRef} from 'react'
 import MedicalWorkJourney from '../components/MedicalWorkJourney'
 import {useEffect,useMemo,useState} from 'react'
 import {findMedicalLibraryModels} from '../lib/medicalLibrarySearch'
-import {useNavigate,useLocation} from 'react-router-dom'
+import {useNavigate,useLocation,useOutletContext} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {useAuth} from '../context/AuthContext'
 import {supabase} from '../lib/supabaseClient'
@@ -60,11 +59,10 @@ export default function MedicalAssetCockpit(){
   const nav=useNavigate()
   const registrationPick=useLocation().state?.registration
   const [registrationOpen,setRegistrationOpen]=useState(!!registrationPick)
-  const {can,access}=useAuth()
+  const {can}=useAuth()
+  const {companyId:organizationId}=useOutletContext()
   const assetLoad=useRef(0)
   const listLoad=useRef(0)
-  const [selectedOrganization,setSelectedOrganization]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
-  const organizationId=access?.super_admin?selectedOrganization:(access?.home_organization?.organization_id||access?.home_organization?.id||'')
   const canCreateAsset=org=>!!org&&(can('medical.assets.manage',org)||can('assets.manage',org))
 
   const [query,setQuery]=useState('')
@@ -118,12 +116,6 @@ export default function MedicalAssetCockpit(){
   }
 
   useEffect(()=>{
-    const changed=e=>setSelectedOrganization(e.detail?.organization_id||'')
-    window.addEventListener('basmat-organization-changed',changed)
-    return()=>window.removeEventListener('basmat-organization-changed',changed)
-  },[])
-
-  useEffect(()=>{
     ++assetLoad.current
     setAssets([]);setAsset(null);setCtx(null);setActions(null);setSpares([])
     reloadList()
@@ -131,29 +123,26 @@ export default function MedicalAssetCockpit(){
   },[organizationId])
 
   const loadDeployment=async()=>{
+    if(!organizationId)return
     setDeployCtx(v=>({...v,loading:true}))
     try{
       const [masterData,ppmData,projectSitesRes,sitesRes]=await Promise.all([
         loadMasterAssetLibrary().then(master=>{setDeployCtx(v=>({...v,master}));return master}),
         loadPPM(),
-        supabase.from('bf35_project_sites').select('project_id,organization_id,site_id,client_id'),
-        supabase.from('bf_sites').select('*').eq('status','active').order('name')
+        supabase.from('bf35_project_sites').select('project_id,organization_id,site_id,client_id').eq('organization_id',organizationId),
+        supabase.from('bf_sites').select('*').eq('organization_id',organizationId).eq('status','active').order('name')
       ])
       if(projectSitesRes.error)throw projectSitesRes.error
       if(sitesRes.error)throw sitesRes.error
 
-      const orgRows=(ppmData?.organizations||[]).filter(x=>x.status!=='archived')
-      const batches=await Promise.all(orgRows.map(async o=>{
-        const {data,error}=await supabase.rpc('bf35_structure',{p_org:o.id})
-        if(error)return[]
-        return (data?.projects||[]).map(x=>({...x,organization_id:x.organization_id||o.id}))
-      }))
+      const {data:structure,error:structureError}=await supabase.rpc('bf35_structure',{p_org:organizationId})
+      if(structureError)throw structureError
 
       setDeployCtx({
         loading:false,
         master:masterData,
         ppm:ppmData,
-        projects:batches.flat(),
+        projects:(structure?.projects||[]).map(p=>({...p,organization_id:organizationId})),
         projectSites:projectSitesRes.data||[],
         sites:sitesRes.data||[]
       })
@@ -163,7 +152,7 @@ export default function MedicalAssetCockpit(){
     }
   }
 
-  useEffect(()=>{loadDeployment()},[])
+  useEffect(()=>{loadDeployment()},[organizationId])
 
   const openAsset=async(row,nextMode='journey')=>{
     const loadId=++assetLoad.current
@@ -384,7 +373,6 @@ export default function MedicalAssetCockpit(){
 
   const libraryMatches=useMemo(()=>findMedicalLibraryModels(deployCtx.master,libraryQuery),[deployCtx.master,libraryQuery])
 
-  const deployOrgs=(deployCtx.ppm?.organizations||[]).filter(x=>x.status!=='archived')
   const deployProjects=(deployCtx.projects||[]).filter(
     p=>!deploy.organization_id||String(p.organization_id)===String(deploy.organization_id)
   )
@@ -622,19 +610,7 @@ export default function MedicalAssetCockpit(){
     <details className="medical-registration" open={registrationOpen} onToggle={e=>setRegistrationOpen(e.currentTarget.open)}><summary>{ar?'إضافة جهاز جديد من المكتبة':'Register a new device from the library'}</summary>
     <Panel title={ar?'إضافة جهاز من المكتبة إلى المشروع':'Add Asset from Library to Project'}>
       <div className="form-grid">
-        <CompanyField label={ar?'المنظمة':'Organization'}>
-          <select
-            value={deploy.organization_id}
-            onChange={e=>setDeploy({
-              organization_id:e.target.value,project_id:'',site_id:'',
-              asset_type_id:'',manufacturer_id:'',option_id:'',
-              serial_number:'',exact_model:''
-            })}
-          >
-            <option value="">{ar?'اختر المنظمة':'Select organization'}</option>
-            {deployOrgs.map(o=><option key={o.id} value={o.id}>{o.name||o.code}</option>)}
-          </select>
-        </CompanyField>
+
 
         <Field label={ar?'المشروع':'Project'}>
           <select

@@ -1,4 +1,4 @@
-import {bindHomeCompany,companyAdminPermission,companyWorkspace} from '../lib/companyWorkspace'
+import {bindHomeCompany,companyAdminPermission,companyWorkspace,hasOwnerPortalAccess,ownerPortalPermission} from '../lib/companyWorkspace'
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {resolveMedicalPermission} from '../lib/medicalPermissionAliases'
@@ -119,6 +119,8 @@ export function AuthProvider({children}){
   // Every active user can open their own server-filtered action inbox.
   if(permission==='notifications.view')return true
   if(permission===companyAdminPermission)return companyWorkspace(access,profile).isSuperAdmin
+
+  if(permission===ownerPortalPermission)return hasOwnerPortalAccess(access)
 
   // Platform Super Admin has unrestricted access
   if(isSuperAdmin)return true

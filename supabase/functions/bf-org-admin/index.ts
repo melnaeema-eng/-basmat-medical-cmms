@@ -22,10 +22,20 @@ Deno.serve(async req=>{
  const caller=createClient(url,anon,{global:{headers:{Authorization:`Bearer ${jwt}`}},auth:{persistSession:false}});
  const {data:{user},error}=await caller.auth.getUser(jwt);if(error||!user)return fail('Authentication required',401);
  const body=await req.json();const action=body.action;
- // This deployment is configured for ONE operating company. No organization switching.
- const org=mainOrg;
+ // Older callers default to Basmat. Invitations and membership changes always
+ // validate their explicit organization and the caller's authority below.
+ const requestedOrg=action==='invite'?body.member?.organization_id:body.organization_id;
+ if(requestedOrg!=null&&!validUUID(requestedOrg))return fail('Valid organization ID required');
+ const namedWorkspace=['facilities','medical'].includes(body.app);
+ if(!namedWorkspace&&requestedOrg&&requestedOrg!==mainOrg)return fail('Organization not authorized',403);
+ const org=String(requestedOrg||mainOrg);
  const accessCheck=await caller.rpc('bf_company_admin_access',{p_org:org});
  if(accessCheck.error||accessCheck.data?.can_manage!==true)return fail('Company administrator permission required',403);
+ const companyCheck=await db.from('bf_organizations').select('id,organization_type').eq('id',org).eq('status','active').maybeSingle();
+ if(companyCheck.error)throw companyCheck.error;
+ if(!companyCheck.data)return fail('Active organization not found',404);
+ if(namedWorkspace&&org!==mainOrg&&!['maintenance_contractor','service_provider','subcontractor'].includes(companyCheck.data.organization_type))
+  return fail('Maintenance company required',403);
  if(action==='directory'){
   const [{data:organization,error:oe},{data:roles,error:re},{data:assignments,error:ae},{data:memberships,error:me}]=await Promise.all([
    db.from('bf_organizations').select('id,name,status').eq('id',org),
@@ -44,14 +54,14 @@ Deno.serve(async req=>{
   const email=String(body.email||'').trim().toLowerCase();
   if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254)return fail('بريد إلكتروني غير صالح');
   const target=await userByEmail(email);
-  if(!target)return json({exists:false,can_assign:true,message:'حساب جديد؛ يمكن إرسال دعوة للانضمام إلى شركة بصمة النوابغ.'});
+  if(!target)return json({exists:false,can_assign:true,message:'حساب جديد؛ يمكن إرسال دعوة للانضمام إلى الشركة المحددة.'});
   const {data:membership,error:membershipError}=await db.from('bf_acl_user_organizations').select('organization_id,is_active').eq('user_id',target.id).maybeSingle();
   if(membershipError)throw membershipError;
   if(membership && membership.organization_id!==org){
     const {data:employer}=await db.from('bf_organizations').select('name').eq('id',membership.organization_id).maybeSingle();
-    return json({exists:true,can_assign:false,conflict:'different_employer',employer_name:employer?.name||'منظمة أخرى',message:'المستخدم مرتبط بالفعل بجهة عمل أخرى. لن يتم نقل عضويته أو منح دور تابع لشركة بصمة النوابغ تلقائياً. يلزم طلب انتساب معتمد منفصل.'});
+    return json({exists:true,can_assign:false,conflict:'different_employer',employer_name:employer?.name||'منظمة أخرى',message:'المستخدم مرتبط بالفعل بجهة عمل أخرى. لن يتم نقل عضويته أو منح دور تابع لالشركة المحددة تلقائياً. يلزم طلب انتساب معتمد منفصل.'});
   }
-  return json({exists:true,can_assign:true,message:'الحساب موجود ويمكن إدارة عضويته في شركة بصمة النوابغ.'});
+  return json({exists:true,can_assign:true,message:'الحساب موجود ويمكن إدارة عضويته في الشركة المحددة.'});
  }
  if(action==='invite'){
   const m=body.member||{};const email=String(m.email||'').trim().toLowerCase();
@@ -60,7 +70,12 @@ Deno.serve(async req=>{
   const role=String(m.role_code||'');if(!/^[a-z][a-z0-9_]{1,63}$/.test(role))return fail('Invalid role');
   if(m.start&&(!/^\d{4}-\d{2}-\d{2}$/.test(m.start)))return fail('Invalid start date');
   if(m.end&&(!/^\d{4}-\d{2}-\d{2}$/.test(m.end)||m.start&&m.end<m.start))return fail('Invalid end date');
-  const {data:roleRow,error:roleError}=await db.from('bf_acl_roles').select('id,organization_id').eq('role_code',role).eq('is_active',true).or(`organization_id.is.null,organization_id.eq.${org}`).maybeSingle();if(roleError||!roleRow)return fail('Active role not found');
+  if(m.role_id!=null&&!validUUID(m.role_id))return fail('Invalid role ID');
+  let roleQuery=db.from('bf_acl_roles').select('id,organization_id').eq('role_code',role)
+   .eq('is_active',true).or(`organization_id.is.null,organization_id.eq.${org}`);
+  if(m.role_id)roleQuery=roleQuery.eq('id',m.role_id);
+  const {data:roleRow,error:roleError}=await roleQuery.maybeSingle();
+  if(roleError||!roleRow)return fail('Active role not found');
   const roleCheck=await caller.rpc('bf_company_can_assign_role',{p_org:org,p_role:roleRow.id});if(roleCheck.error||roleCheck.data!==true)return fail('Role cannot be delegated',403);
   if(['super_admin','platform_admin','owner_rep'].includes(role))return fail('This role requires a separate administrative approval workflow',403);
   // Check existing affiliation BEFORE sending an invitation or changing any account state.

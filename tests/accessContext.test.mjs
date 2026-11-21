@@ -11,11 +11,11 @@ test('A sole server-returned membership supplies the same home organization to h
  assert.equal(a.role_assignments[0].role_id,'technician')
  assert.deepEqual(a.permissions,[])
 })
-test('Basmat remains the single company even when another membership or home is present',()=>{
+test('A verified home selects one company without guessing when memberships are ambiguous',()=>{
  const a=normalizeAccessContext({organizations:[org,{id:'b'}],roles:[{organization_id:MEDICAL_COMPANY_ID,role_code:'org_admin'}]})
- assert.equal(a.home_organization_id,MEDICAL_COMPANY_ID)
+ assert.equal(a.home_organization_id,null)
  assert.deepEqual(a.permissions,[])
- assert.equal(normalizeAccessContext({...a,home_organization_id:'b'}).home_organization_id,MEDICAL_COMPANY_ID)
+ assert.equal(normalizeAccessContext({...a,home_organization_id:'b'}).home_organization_id,'b')
 })
 test('Permission shapes are normalized only within active known memberships',()=>{
  const a=normalizeAccessContext({organizations:[org,{id:'b',is_active:false}],permissions:[
