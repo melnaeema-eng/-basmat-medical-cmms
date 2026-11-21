@@ -33,6 +33,8 @@ import PlanningCalendar from './pages/PlanningCalendar'
 import AuditCenter from './pages/AuditCenter'
 import KpiDashboard from './pages/KpiDashboard'
 import MaintenanceCosting from './pages/MaintenanceCosting'
+import MaintenanceStatements from './pages/MaintenanceStatements'
+import MaintenanceStatementDetails from './pages/MaintenanceStatementDetails'
 import AssetLifecycle from './pages/AssetLifecycle'
 import Documents from './pages/Documents'
 import Notifications from './pages/Notifications'
@@ -121,6 +123,8 @@ export default function App(){
    <Route path="/documents" element={<Documents/>}/>
    <Route path="/asset-lifecycle" element={<AssetLifecycle/>}/>
    <Route path="/maintenance-costing" element={<MaintenanceCosting/>}/>
+   <Route path="/statements" element={<MaintenanceStatements/>}/>
+   <Route path="/statements/:id" element={<MaintenanceStatementDetails/>}/>
    <Route path="/kpi" element={guard('kpi.view',<KpiDashboard/>)}/>
    <Route path="/audit" element={guard('audit.view',<AuditCenter/>)}/>
    <Route path="/planning" element={guard('planning.view',<PlanningCalendar/>)}/>

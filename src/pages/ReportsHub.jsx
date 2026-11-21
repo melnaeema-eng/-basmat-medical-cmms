@@ -1,3 +1,5 @@
+import {Link} from 'react-router-dom'
+import {useAuth} from '../context/AuthContext'
 import {useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import ManagementReports from './ManagementReports'
@@ -6,6 +8,7 @@ import OwnerReports from './OwnerReports'
 export default function ReportsHub(){
  const {lang}=useLanguage()
  const ar=lang==='ar'
+ const {can}=useAuth()
  const [tab,setTab]=useState('management')
 
  return <section className="facility-module">
@@ -25,6 +28,8 @@ export default function ReportsHub(){
   </div>
 
   <div className="medical-reports-tabs no-print">
+   <Link className="btn secondary" to="/statements">{ar?'مستخلصات الصيانة':'Maintenance statements'}</Link>
+   {(can('finance.view')||can('finance.manage'))&&<Link className="btn secondary" to="/maintenance-costing">{ar?'تكاليف الصيانة':'Maintenance costs'}</Link>}
    <button className={tab==='management'?'active':''} onClick={()=>setTab('management')}>
     {ar?'التقارير التشغيلية والإدارية':'Management & Operational Reports'}
    </button>
