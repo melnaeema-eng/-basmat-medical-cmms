@@ -16,7 +16,9 @@ const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',t
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
  const routeState=useLocation().state
+ const ppmDeskAsset=routeState?.ppmDeskAsset
  const ppmAssetId=routeState?.ppmAssetId
+ const pendingPlan=routeState?.pendingPlan
  const [oemReference,setOem]=useState(null),[reviewComment,setReviewComment]=useState(''),[oemChecked,setOemChecked]=useState(false)
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[executionPkg,setExecutionPkg]=useState(null),[executionEvidence,setExecutionEvidence]=useState([]),[uploadingEvidence,setUploadingEvidence]=useState(false),[reviewStep,setReviewStep]=useState(null)
@@ -40,6 +42,9 @@ export default function PPMDetails(){
  },[importedOem,id])
  const planProcedure=kind==='plan'?data?.procedures.find(p=>p.id===row?.procedure_id):null
  const linkedPlan=kind==='procedure'?data?.plans.find(p=>p.id===routeState?.linkedPlanId&&p.procedure_id===id):null
+ const deskAsset=ppmDeskAsset||row?.asset_id||linkedPlan?.asset_id
+ const backToDesk=deskAsset?'/ppm?asset='+encodeURIComponent(deskAsset):'/ppm'
+
  const manager=row&&can('ppm.manage',row.organization_id),approver=row&&can('ppm.approve',row.organization_id)
  const executor=row&&can('ppm.execute',row.organization_id)&&row.assigned_to===user?.id
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
@@ -166,7 +171,7 @@ export default function PPMDetails(){
  const editStep=s=>{setEditingStep(s.id);setStep({...blankStep,...s,min_value:s.min_value??'',max_value:s.max_value??''})}
  const deleteStep=s=>{if(confirm(t('confirmAction')))run('delete_step',{step_id:s.id})}
  return <section className="facility-module">
-  <div className="page-head"><div><Link to={ppmAssetId?'/medical-asset-cockpit?ppmAsset='+encodeURIComponent(ppmAssetId):'/ppm'}>← {ppmAssetId?(lang==='ar'?'العودة إلى صيانة الجهاز':'Back to device maintenance'):t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
+  <div className="page-head"><div><Link to={ppmAssetId?'/medical-asset-cockpit?ppmAsset='+encodeURIComponent(ppmAssetId):backToDesk}>← {ppmAssetId?(lang==='ar'?'العودة إلى صيانة الجهاز':'Back to device maintenance'):t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
   <OwnerBrand identity={ownerIdentity} lang={lang}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
@@ -177,7 +182,9 @@ export default function PPMDetails(){
     details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
     {linkedPlan&&<Link className="btn secondary" to={'/ppm/plan/'+linkedPlan.id}>{lang==='ar'?'العودة إلى الخطة المرتبطة':'Return to linked plan'} · {linkedPlan.code}</Link>}
-    {kind==='procedure'&&importedOem&&manager&&!linkedPlan&&<Link className="btn secondary" to="/ppm?tab=plans">
+    {kind==='procedure'&&manager&&pendingPlan?.organization_id===row.organization_id&&['draft','approved'].includes(row.status)&&
+     <Link className="btn primary" to={backToDesk} state={{resumePlan:{...pendingPlan,procedure_id:row.id}}}>{lang==='ar'?'متابعة خطة المعدة':'Continue asset plan'}</Link>}
+    {kind==='procedure'&&!pendingPlan&&importedOem&&manager&&!linkedPlan&&<Link className="btn secondary" to="/ppm?tab=plans">
       {t('ppmPlans')}
     </Link>}
     {kind==='procedure'&&row.status==='approved'&&ppmAssetId&&manager&&<Link className="btn primary" to={'/medical-asset-cockpit?ppmAsset='+encodeURIComponent(ppmAssetId)}>
