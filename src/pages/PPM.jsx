@@ -22,11 +22,12 @@ export default function PPM(){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
  const location=useLocation()
  const deskAsset=new URLSearchParams(location.search).get('asset')||''
+ const saving=useRef(false)
  const [deskForm,setDeskForm]=useState(false)
- const openDeskAsset=id=>{
+ const openDeskAsset=(id,{replace=false}={})=>{
   const params=new URLSearchParams()
   if(id)params.set('asset',id)
-  navigate({pathname:'/ppm',search:params.toString()})
+  navigate({pathname:'/ppm',search:params.toString()},{replace})
   setTab('desk')
  }
  const L=(ar,en)=>lang==='ar'?ar:en
@@ -116,16 +117,26 @@ export default function PPM(){
   startDeskPlan(asset,resume.procedure_id,resume)
  },[data,resume,companyId])
  const submit=async e=>{
-  e.preventDefault();if(busy||(tab==='plans'&&!canSubmitPlan))return;setBusy(true);setError('')
+  e.preventDefault()
+  if(saving.current||busy||(tab==='plans'&&!canSubmitPlan))return
+  saving.current=true
+  setBusy(true);setError('');setSuccess('')
   try{
    const kind=tab==='procedures'?'procedure':'plan'
    const procedure=suggestedProcedures.find(p=>p.id===form.procedure_id)
    const payload=kind==='plan'&&procedure?.status==='draft'?{...form,allow_draft_procedure:true}:form
    const id=await ppmAction(kind,null,'create',payload)
    setOpen(false)
-   navigate('/ppm/'+kind+'/'+id,{state:contextAllowed?{ppmAssetId:createForAsset}:kind==='plan'?{ppmDeskAsset:form.asset_id}:null})
+   if(kind==='plan'){
+    setDeskForm(false)
+    openDeskAsset(form.asset_id,{replace:true})
+    setSuccess(L('تم حفظ الخطة لهذه المعدة.','Plan saved for this asset.'))
+    await load()
+    return
+   }
+   navigate('/ppm/procedure/'+id,{state:contextAllowed?{ppmAssetId:createForAsset}:null})
   }
-  catch(e){setError(e.message)}finally{setBusy(false)}
+  catch(e){setError(e.message)}finally{saving.current=false;setBusy(false)}
  }
  const run=async(kind,id,command,payload={})=>{
   if(!confirm(t('confirmAction')))return

@@ -21,7 +21,7 @@ export default function PreventiveAssetDesk({data, companyId, assetId, onAsset, 
   if(!plansByAsset.has(row.asset_id))plansByAsset.set(row.asset_id,[])
   plansByAsset.get(row.asset_id).push(row)
  }
- const assetPlans=asset?plansByAsset.get(asset.id)||[]:[]
+ const assetPlans=asset?(plansByAsset.get(asset.id)||[]).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')):[]
  const matches=asset?matchingProcedures(asset.id,asset.organization_id):[]
  const existingProcedures=new Set(assetPlans.map(row=>row.procedure_id))
  const available=matches.filter(row=>!existingProcedures.has(row.id))

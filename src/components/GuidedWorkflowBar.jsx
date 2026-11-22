@@ -23,19 +23,6 @@ const ROUTES={
    step('description',['description','details','notes'],/description|details|notes|الوصف|التفاصيل|الملاحظات/i,null,false)
   ]
  },
- ppm:{
-  test:p=>p==='/ppm'||p.startsWith('/ppm/'),
-  title:'Preventive Maintenance',
-  titleAr:'الصيانة الوقائية PPM',
-  steps:[
-   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/organizations'),
-   step('asset',['asset_id','asset'],/asset|الأصل|الجهاز/i,'/assets'),
-   step('procedure',['procedure_id','procedure'],/procedure|الإجراء|إجراء الصيانة/i,'/asset-library'),
-   step('contract',['contract_id','contract'],/contract|العقد/i,'/contracts',false),
-   step('start_date',['start_date','start'],/start date|تاريخ البداية/i,null),
-   step('interval',['interval_count','interval'],/interval|الفاصل|التكرار/i,null,false)
-  ]
- },
  enterprise:{
   test:p=>p==='/enterprise-structure'||p.startsWith('/enterprise-structure/'),
   title:'Project Setup',
@@ -186,6 +173,10 @@ function notifyFlow(){
  window.dispatchEvent(new CustomEvent('basmat-guided-refresh'))
 }
 
+function isLegacyPpmFlow(flow){
+ return flow?.type==='ppm'||[flow?.originPath,flow?.returnPath].some(path=>path==='/ppm'||path?.startsWith('/ppm/'))
+}
+
 export default function GuidedWorkflowBar(){
  const location=useLocation(),navigate=useNavigate()
  const [flow,setFlow]=useState(()=>getGuidedWorkflow())
@@ -198,6 +189,7 @@ export default function GuidedWorkflowBar(){
   const refresh=()=>setTick(x=>x+1)
   window.addEventListener('basmat-guided-workflow',update)
   window.addEventListener('basmat-guided-refresh',refresh)
+  if(isLegacyPpmFlow(getGuidedWorkflow()))finishGuidedWorkflow()
   return()=>{
    window.removeEventListener('basmat-guided-workflow',update)
    window.removeEventListener('basmat-guided-refresh',refresh)
@@ -278,7 +270,7 @@ export default function GuidedWorkflowBar(){
 
  useEffect(()=>{
   const f=getGuidedWorkflow()
-  if(f?.mode!=='prerequisite'||!f.returnPath||location.pathname===f.returnPath)return
+  if(isLegacyPpmFlow(f)||f?.mode!=='prerequisite'||!f.returnPath||location.pathname===f.returnPath)return
   const observer=new MutationObserver(()=>{
    const success=[...document.querySelectorAll('.alert.success,[role=status],.success')]
     .some(x=>visible(x)&&String(x.textContent||'').trim().length>0)
@@ -300,7 +292,8 @@ export default function GuidedWorkflowBar(){
  const firstMissing=relevant.find(x=>!x.done&&x.required)
  const percent=relevant.length?Math.round(relevant.filter(x=>x.done||!x.required).length/relevant.length*100):0
  const ar=languageIsArabic()
- const currentFlow=flow||getGuidedWorkflow()
+ const savedFlow=flow||getGuidedWorkflow()
+ const currentFlow=isLegacyPpmFlow(savedFlow)?null:savedFlow
 
  const start=()=>{
   if(!config)return
