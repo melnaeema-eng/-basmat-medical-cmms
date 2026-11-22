@@ -1,5 +1,15 @@
 export const ppmDict={
 en:{
+ ppmGuideTitle:'Preventive maintenance workflow',
+ ppmGuideProcedure:'Create the procedure',
+ ppmGuideProcedureHelp:'Open Procedure library, choose New procedure, select the asset category and frequency, and save a draft.',
+ ppmGuideApprove:'Add and approve the steps',
+ ppmGuideApproveHelp:'Open the procedure details, add the steps from the maintenance reference, then have an authorized user approve it.',
+ ppmGuidePlan:'Create and activate the plan',
+ ppmGuidePlanHelp:'In Asset plans, select the asset, approved procedure and start date. Save the plan and select Activate.',
+ ppmGuideSchedule:'Generate the schedule and assign a technician',
+ ppmGuideScheduleHelp:'In the active plan, select Generate schedule and set the end date. Open a task in Annual schedule and assign a technician to create the linked work order.',
+ ppmProcedureMissing:'No approved procedure matches this asset. Create the procedure, add its steps and approve it before saving the plan.',
  year:'Year',month:'Month',ppm:'Preventive maintenance',ppmProcedures:'Procedure library',ppmPlans:'Asset plans',ppmSchedule:'Annual schedule',ppmJobs:'PPM work orders',
  newProcedure:'New procedure',newPlan:'New asset plan',procedure:'Procedure',plan:'Plan',job:'Work order',procedureCode:'Procedure code',planCode:'Plan code',jobNumber:'PPM job number',workOrder:'Unified work order',
  frequency:'Frequency',daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',semiannual:'Semiannual',annual:'Annual',intervalCount:'Every N intervals',startDate:'Start date',nextDue:'Next due',dueDate:'Due date',
@@ -19,6 +29,16 @@ en:{
  confirmAction:'Confirm this action?',noAssignee:'Assign an authorized technician first.',noProcedure:'Create and approve a procedure first.',noPlan:'Create an active plan first.',automaticCode:'Generated when saved'
 },
 ar:{
+ ppmGuideTitle:'خطوات الصيانة الوقائية',
+ ppmGuideProcedure:'إنشاء الإجراء',
+ ppmGuideProcedureHelp:'من مكتبة الإجراءات، اختر «إجراء جديد»، وحدّد تصنيف المعدة ودورية الصيانة، ثم احفظه كمسودة.',
+ ppmGuideApprove:'إضافة الخطوات واعتماد الإجراء',
+ ppmGuideApproveHelp:'افتح تفاصيل الإجراء وأضف الخطوات من مرجع الصيانة، ثم اعتمد الإجراء بالحساب المخوّل.',
+ ppmGuidePlan:'إنشاء الخطة وتفعيلها',
+ ppmGuidePlanHelp:'من خطط المعدات، اختر المعدة والإجراء المعتمد وتاريخ البداية. احفظ الخطة واضغط «تفعيل».',
+ ppmGuideSchedule:'توليد الجدول وإسناد المهمة',
+ ppmGuideScheduleHelp:'من الخطة المفعّلة، اضغط «توليد الجدول» وحدّد تاريخ النهاية. افتح المهمة من الجدول السنوي وأسندها للفني لإنشاء أمر العمل المرتبط.',
+ ppmProcedureMissing:'لا يوجد إجراء معتمد مطابق لهذه المعدة. أنشئ الإجراء وأضف خطواته واعتمده أولًا، ثم ارجع لحفظ الخطة.',
  year:'السنة',month:'الشهر',ppm:'الصيانة الوقائية',ppmProcedures:'مكتبة الإجراءات',ppmPlans:'خطط المعدات',ppmSchedule:'الجدول السنوي',ppmJobs:'أوامر الصيانة الوقائية',
  newProcedure:'إجراء جديد',newPlan:'خطة معدة جديدة',procedure:'الإجراء',plan:'الخطة',job:'أمر العمل',procedureCode:'كود الإجراء',planCode:'كود الخطة',jobNumber:'رقم مهمة PPM',workOrder:'أمر العمل الموحد',
  frequency:'التكرار',daily:'يومي',weekly:'أسبوعي',monthly:'شهري',quarterly:'ربع سنوي',semiannual:'نصف سنوي',annual:'سنوي',intervalCount:'كل عدد من الفترات',startDate:'تاريخ البداية',nextDue:'الموعد التالي',dueDate:'تاريخ الاستحقاق',

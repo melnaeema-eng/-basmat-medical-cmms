@@ -17,4 +17,4 @@ export function Dialog({open,title,onClose,children}){
 }
 export function Notice({error,success}){return <>{error&&<div role="alert" className="alert error">{error}</div>}{success&&<div role="status" className="alert success">{success}</div>}</>}
 export function Status({value}){const {t}=useLanguage();return <span className={'facility-status status-'+value}>{t(value)}</span>}
-export function FormActions({busy,onCancel}){const {t}=useLanguage();return <div className="form-actions"><button type="button" className="btn secondary" onClick={onCancel}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>}
+export function FormActions({busy,disabled,onCancel}){const {t}=useLanguage();return <div className="form-actions"><button type="button" className="btn secondary" onClick={onCancel}>{t('cancel')}</button><button className="btn primary" disabled={busy||disabled}>{busy?t('loading'):t('save')}</button></div>}
