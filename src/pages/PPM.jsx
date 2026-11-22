@@ -18,12 +18,17 @@ const workflowSteps=[
 ]
 export default function PPM(){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
+ const location=useLocation()
  const {companyId}=useOutletContext()
  const createForAsset=useLocation().state?.createForAsset
  const initializedAsset=useRef(null)
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [year,setYear]=useState(new Date().getFullYear()),[month,setMonth]=useState(0)
  const [tab,setTab]=useState('procedures'),[form,setForm]=useState(blankProcedure),[open,setOpen]=useState(false),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
+ useEffect(()=>{
+  if(new URLSearchParams(location.search).get('tab')!=='plans')return
+  setTab('plans');setQuery('');setFilter('')
+ },[location.key,location.search])
  const load=async()=>{setError('');try{setData(await loadPPM())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
  const contextAsset=data?.assets.find(asset=>asset.id===createForAsset&&asset.organization_id===companyId)
