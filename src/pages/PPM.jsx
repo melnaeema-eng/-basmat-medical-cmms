@@ -8,11 +8,12 @@ import {Field,Select,Dialog,Notice,Status,FormActions} from '../components/Facil
 import DataTable from '../components/DataTable'
 import {focusNextField} from '../lib/smartLanguage'
 import GuidedDevicePPM from '../components/GuidedDevicePPM'
+import MedicalOemProcedure from '../components/MedicalOemProcedure'
 const blankProcedure={organization_id:'',name_ar:'',name_en:'',category_id:'',manufacturer:'',model:'',frequency:'monthly',reference:'',estimated_minutes:60}
 const blankPlan={organization_id:'',asset_id:'',procedure_id:'',contract_id:'',start_date:'',interval_count:1}
 const workflowSteps=[
- ['ppmGuideProcedure','ppmGuideProcedureHelp','procedures','ppmProcedures'],
- ['ppmGuideApprove','ppmGuideApproveHelp'],
+ ['ppmGuideProcedure','ppmGuideProcedureHelp'],
+ ['ppmGuideApprove','ppmGuideApproveHelp','procedures','ppmProcedures'],
  ['ppmGuidePlan','ppmGuidePlanHelp','plans','ppmPlans'],
  ['ppmGuideSchedule','ppmGuideScheduleHelp','jobs','ppmSchedule']
 ]
@@ -22,6 +23,7 @@ export default function PPM(){
  const {companyId}=useOutletContext()
  const createForAsset=useLocation().state?.createForAsset
  const initializedAsset=useRef(null)
+ const [showOem,setShowOem]=useState(false)
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [year,setYear]=useState(new Date().getFullYear()),[month,setMonth]=useState(0)
  const [tab,setTab]=useState('procedures'),[form,setForm]=useState(blankProcedure),[open,setOpen]=useState(false),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
@@ -53,7 +55,7 @@ export default function PPM(){
  const procedures=data?.procedures||[],plans=data?.plans||[],jobs=data?.jobs||[]
  const norm=v=>(v||'').trim().toLowerCase()
  const matchRank=(p,a,org)=>{
-  if(!a||p.organization_id!==org||p.status!=='approved')return -1
+  if(!a||p.organization_id!==org||!['approved','draft'].includes(p.status))return -1
   if(p.category_id&&p.category_id!==a.category_id)return -1
   if(p.manufacturer&&norm(p.manufacturer)!==norm(a.manufacturer))return -1
   if(p.model&&norm(p.model)!==norm(a.model))return -1
@@ -65,14 +67,14 @@ export default function PPM(){
  const matchingProcedures=(assetId=form.asset_id,org=form.organization_id)=>{
   const a=data?.assets.find(x=>x.id===assetId)
   if(!a)return[]
-  return procedures.map(p=>({p,rank:matchRank(p,a,org)})).filter(x=>x.rank>=0).sort((a,b)=>b.rank-a.rank||(Number(b.p.version||1)-Number(a.p.version||1))).map(x=>x.p)
+  return procedures.map(p=>({p,rank:matchRank(p,a,org)})).filter(x=>x.rank>=0).sort((a,b)=>Number(b.p.status==='approved')-Number(a.p.status==='approved')||b.rank-a.rank||(Number(b.p.version||1)-Number(a.p.version||1))).map(x=>x.p)
  }
  const selectedAsset=data?.assets.find(a=>a.id===form.asset_id)
  const suggestedProcedures=matchingProcedures()
  const canSubmitPlan=suggestedProcedures.some(procedure=>procedure.id===form.procedure_id)
  const change=(key,value)=>setForm(f=>{
   if(key==='organization_id')return {...f,organization_id:value,asset_id:'',procedure_id:'',contract_id:'',category_id:''}
-  if(key==='asset_id'){const matches=matchingProcedures(value,f.organization_id);return {...f,asset_id:value,procedure_id:matches[0]?.id||'',contract_id:''}}
+  if(key==='asset_id'){const matches=matchingProcedures(value,f.organization_id);return {...f,asset_id:value,procedure_id:matches.find(p=>p.status==='approved')?.id||'',contract_id:''}}
   return {...f,[key]:value}
  })
  const rows=useMemo(()=>{
@@ -80,12 +82,14 @@ export default function PPM(){
   const source=tab==='procedures'?procedures:tab==='plans'?plans:jobs
   return source.filter(x=>(tab!=='jobs'||(x.due_date?.startsWith(String(year))&&(!month||Number(x.due_date.slice(5,7))===month)))&&(!filter||x.status===filter)&&(!query||Object.values(x).some(v=>typeof v==='string'&&v.toLowerCase().includes(query.toLowerCase()))))
  },[data,tab,query,filter,year,month])
- const start=()=>{setForm(tab==='procedures'?blankProcedure:{...blankPlan,start_date:new Date().toISOString().slice(0,10)});setOpen(true);setError('')}
+ const start=()=>{setShowOem(false);setForm(tab==='procedures'?blankProcedure:{...blankPlan,start_date:new Date().toISOString().slice(0,10)});setOpen(true);setError('')}
  const submit=async e=>{
   e.preventDefault();if(busy||(tab==='plans'&&!canSubmitPlan))return;setBusy(true);setError('')
   try{
    const kind=tab==='procedures'?'procedure':'plan'
-   const id=await ppmAction(kind,null,'create',form)
+   const procedure=suggestedProcedures.find(p=>p.id===form.procedure_id)
+   const payload=kind==='plan'&&procedure?.status==='draft'?{...form,allow_draft_procedure:true}:form
+   const id=await ppmAction(kind,null,'create',payload)
    setOpen(false)
    navigate('/ppm/'+kind+'/'+id,{state:contextAllowed?{ppmAssetId:createForAsset}:null})
   }
@@ -105,7 +109,7 @@ export default function PPM(){
   {key:'frequency',label:t(tab==='jobs'?'dueDate':'frequency'),render:x=>tab==='jobs'?x.due_date:t(x.frequency)},
   {key:'status',label:t('status'),render:x=><Status value={x.status}/>},
   {key:'actions',label:t('actions'),render:x=><div className="row-actions"><Link className="btn xs secondary" to={'/ppm/'+(tab==='procedures'?'procedure':tab==='plans'?'plan':'job')+'/'+x.id}>{t('details')}</Link>
-   {tab==='plans'&&can('ppm.manage',x.organization_id)&&x.status==='draft'&&<button className="btn xs primary" disabled={busy} onClick={()=>run('plan',x.id,'activate')}>{t('activate')}</button>}
+   {tab==='plans'&&can('ppm.manage',x.organization_id)&&x.status==='draft'&&procedures.some(p=>p.id===x.procedure_id&&p.status==='approved')&&<button className="btn xs primary" disabled={busy} onClick={()=>run('plan',x.id,'activate')}>{t('activate')}</button>}
    </div>}
  ]
  const today=new Date().toISOString().slice(0,10)
@@ -119,6 +123,7 @@ export default function PPM(){
     {workflowSteps.map(([title,help,key,label])=><li key={title}>
      <strong>{t(title)}</strong>
      <p className="muted">{t(help)}</p>
+     {title==='ppmGuideProcedure'&&can('assets.view')&&<Link className="btn xs secondary" to="/asset-library">{t('ppmGuideLibrary')}</Link>}
      {key&&tab!==key&&<button type="button" className="btn xs secondary" onClick={()=>selectTab(key)}>{t(label)}</button>}
     </li>)}
    </ol>
@@ -136,7 +141,10 @@ export default function PPM(){
    {!data?<p>{t('loading')}</p>:<DataTable rows={rows} columns={columns} emptyText={t('noData')}/>}
   </>}
   {tab==='jobs'&&data&&<div className="facility-panel"><h3>{t('ppmSchedule')}</h3><div className="form-grid"><Field label={t('frequency')}><p>{t('scheduleNotice')}</p></Field><Field label={t('dueDate')}><p>{annual.length} {t('ppmJobs')}</p></Field></div></div>}
-  <Dialog open={open} title={t(tab==='procedures'?'newProcedure':'newPlan')} onClose={closeForm}>
+  <Dialog open={open} title={showOem?(lang==='ar'?'إضافة إجراء من دليل المصنع':'Add a manufacturer procedure'):t(tab==='procedures'?'newProcedure':'newPlan')} onClose={showOem?()=>!busy&&setShowOem(false):closeForm}>
+   {showOem?<MedicalOemProcedure organizationId={form.organization_id||companyId} asset={contextAsset} busy={busy} setBusy={setBusy}
+    onCancel={()=>setShowOem(false)} onSave={id=>navigate('/ppm/procedure/'+id,{state:contextAllowed?{ppmAssetId:createForAsset}:null})}/>:<>
+
    <form className="facility-form" onSubmit={submit}>
    <Notice error={error}/>
    <div className="form-grid">
@@ -148,10 +156,17 @@ export default function PPM(){
      {['manufacturer','model','reference'].map(key=><Field key={key} label={t(key)}><input value={form[key]} onChange={e=>change(key,e.target.value)}/></Field>)}
      <Field label={t('frequency')}><Select value={form.frequency} onChange={v=>change('frequency',v)} options={frequencies.map(v=>({value:v,label:t(v)}))}/></Field>
      <Field label={t('estimatedMinutes')}><input required type="number" min="1" value={form.estimated_minutes} onChange={e=>change('estimated_minutes',e.target.value)}/></Field>
+     <div className="span-2">
+      <button type="button" className="btn secondary" disabled={busy||!(form.organization_id||companyId)} onClick={()=>setShowOem(true)}>
+       {lang==='ar'?'إضافة إجراء من دليل المصنع':'Add a manufacturer procedure'}
+      </button>
+     </div>
+     <p className="muted span-2">{t('ppmManualReferenceHelp')}</p>
      <p className="muted span-2">{t('procedureNotice')}</p>
     </>:<>
      <Field label={t('asset')} required><Select required value={form.asset_id} onChange={v=>change('asset_id',v)} options={options(data?.assets.filter(x=>x.organization_id===form.organization_id&&x.status==='active'),x=>x.asset_tag+' · '+name(x))}/></Field>
-     <Field label={t('procedure')} required><Select required disabled={!suggestedProcedures.length} value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={suggestedProcedures.map(x=>({value:x.id,label:x.code+' · '+name(x)+' · '+t(x.frequency)}))}/></Field>
+     <Field label={t('procedure')} required><Select required disabled={!suggestedProcedures.length} value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={suggestedProcedures.map(x=>({value:x.id,label:x.code+' · '+name(x)+' · '+t(x.frequency)+' · '+t(x.status)}))}/></Field>
+     {suggestedProcedures.some(p=>p.id===form.procedure_id&&p.status==='draft')&&<p className="muted span-2">{t('ppmPlanApprovalWait')}</p>}
      {selectedAsset&&!suggestedProcedures.length&&<div className="span-2">
       <p className="muted">{t('ppmProcedureMissing')}</p>
       <button type="button" className="btn secondary" onClick={openProcedureLibrary}>{t('ppmProcedures')}</button>
@@ -162,6 +177,7 @@ export default function PPM(){
      <p className="muted span-2">{t('planNotice')}</p>
     </>}
    </div><FormActions busy={busy} disabled={tab==='plans'&&!canSubmitPlan} onCancel={closeForm}/></form>
+   </>}
   </Dialog>
  </section>
 }
